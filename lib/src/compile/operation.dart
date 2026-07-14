@@ -102,6 +102,18 @@ abstract final class Op {
 
   // Dart-specific synthesis (C compiles \X to a subtree; we use one opcode).
   static const int extendedGraphemeCluster = 90;
+
+  // Dart-specific greedy-repeat fast loop (like C's OP_ANYCHAR_STAR, generalized
+  // to single-char classes/ctypes): scans the whole run in a tight loop and
+  // pushes ONE decrement-on-backtrack frame instead of one alt frame per char.
+  // Emitted immediately before its (unchanged) single body op; exit is pc+2.
+  static const int starGreedy = 91;
+
+  // Dart-specific alternation first-byte quick-check: if str[s]'s byte is not in
+  // the branch's (complete over-approximated) first-byte set, jump past the
+  // branch (addr) instead of PUSHing + entering it and failing. The set lives in
+  // `bs`. Only emitted for non-nullable branches with a determinable set.
+  static const int peekByte = 92;
 }
 
 /// SaveType (`enum SaveType`).

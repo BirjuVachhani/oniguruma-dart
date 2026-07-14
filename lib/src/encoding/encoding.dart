@@ -45,6 +45,13 @@ abstract class OnigEncoding {
   /// True when every char is exactly one byte (fast paths rely on this).
   bool get isSingleByte => maxLength == 1;
 
+  /// True when a byte `< 0x80` at a character head is a standalone ASCII char
+  /// (length 1, code point == the byte). Holds for UTF-8 and every single-byte
+  /// encoding (all ASCII supersets here); false for UTF-16/UTF-32 (an ASCII
+  /// char spans >1 byte) and conservatively for the legacy CJK multibyte
+  /// encodings. Lets the executor skip the virtual decode for ASCII bytes.
+  bool get isAsciiFast => isSingleByte || (isUnicodeEncoding && minLength == 1);
+
   /// True for Unicode encodings (UTF-8/16/32): code points are Unicode, so
   /// `\w`/`\p{}` class ctypes use the shared Unicode property ranges. Legacy
   /// multibyte encodings (EUC-JP, SJIS, …) return false and classify via

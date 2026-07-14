@@ -631,12 +631,18 @@ class _Compiler {
     for (var i = 0; i < branches.length; i++) {
       final last = i == branches.length - 1;
       if (!last) {
+        // Quick-check: if this branch has a complete, non-nullable first-byte
+        // set, peek the current byte and skip the branch (no PUSH/enter/fail)
+        // when it can't match.
+        final fb = _altFirstBytes(branches[i]);
+        final peekIdx = fb == null ? -1 : emit(Operation(Op.peekByte)..bs = fb);
         final pushIdx = emit(Operation(Op.push));
         compileTree(branches[i]);
         final jumpIdx = emit(Operation(Op.jump));
         jumpIdxs.add(jumpIdx);
-        // PUSH alternative = the next branch (op right after this JUMP).
-        ops[pushIdx].addr = (jumpIdx + 1) - pushIdx;
+        final nextStart = jumpIdx + 1; // op right after this JUMP
+        ops[pushIdx].addr = nextStart - pushIdx;
+        if (peekIdx >= 0) ops[peekIdx].addr = nextStart - peekIdx;
       } else {
         compileTree(branches[i]);
       }
@@ -644,6 +650,56 @@ class _Compiler {
     final endIdx = pos;
     for (final j in jumpIdxs) {
       ops[j].addr = endIdx - j;
+    }
+  }
+
+  /// Complete over-approximation of the first byte of [node] as a 256-bit
+  /// [BitSet], or null if it can't be proven complete. Only non-nullable heads
+  /// are accepted (so the set really is every byte that can begin a match) —
+  /// this is the safety condition for skipping the branch in [Op.peekByte].
+  BitSet? _altFirstBytes(Node node) {
+    final bs = BitSet();
+    return _altFirstBytesInto(node, bs) ? bs : null;
+  }
+
+  bool _altFirstBytesInto(Node node, BitSet bs) {
+    switch (node) {
+      case StrNode():
+        if (node.len == 0 || node.st(NdSt.ignoreCase)) return false;
+        bs.set(node.bytes[0]);
+        return true;
+      case CClassNode():
+        // Single-byte, non-negated classes only: a negated or multibyte class
+        // can begin with bytes the bitset doesn't enumerate.
+        if (node.mbuf != null && !node.mbuf!.isEmpty) return false;
+        if (node.isNot) return false;
+        var any = false;
+        for (var b = 0; b < 256; b++) {
+          if (node.bs.at(b)) {
+            bs.set(b);
+            any = true;
+          }
+        }
+        return any;
+      case QuantNode():
+        if (node.lower < 1) return false; // optional head → first byte may shift
+        return _altFirstBytesInto(node.body!, bs);
+      case BagNode():
+        switch (node.type) {
+          case BagType.memory:
+          case BagType.option:
+          case BagType.stopBacktrack:
+            return node.body != null && _altFirstBytesInto(node.body!, bs);
+          case BagType.ifElse:
+            return false;
+        }
+      case ListNode():
+        // Safe only when the head consumes ≥1 byte, so it alone fixes the first
+        // byte; a nullable head would let later elements contribute.
+        if (_minByteLen(node.car) == 0) return false;
+        return _altFirstBytesInto(node.car, bs);
+      default:
+        return false;
     }
   }
 
@@ -1537,7 +1593,11 @@ class _Compiler {
       // greedy/lazy loop whose body carries the empty-check.
       _compileNTimes(body, lower);
       if (greedy) {
-        _greedyInfinite(body, canEmpty);
+        if (!canEmpty && _isStarEligible(body)) {
+          _greedyInfiniteStar(body);
+        } else {
+          _greedyInfinite(body, canEmpty);
+        }
       } else {
         _lazyInfinite(body, canEmpty);
       }
@@ -1714,6 +1774,24 @@ class _Compiler {
     for (var i = 0; i < n; i++) {
       compileTree(body);
     }
+  }
+
+  /// Eligible for the [Op.starGreedy] fast loop: a body that compiles to exactly
+  /// one single-character-consuming op with no captures/empty-check — a char
+  /// class, or a ctype (anychar / `\w` / `\d`-style). `\X` (grapheme, ctype -2)
+  /// is excluded (it consumes a whole cluster via its own opcode).
+  bool _isStarEligible(Node body) =>
+      body is CClassNode || (body is CtypeNode && body.ctype != -2);
+
+  /// Greedy `*` / `+` / `{n,}` tail for a single-item body, as one [Op.starGreedy]
+  /// marker immediately followed by the (unchanged) body op. The executor scans
+  /// the whole run in a tight loop and pushes ONE decrement-on-backtrack frame
+  /// (semantics identical to template B's PUSH/body/JUMP, exit = starPc + 2).
+  void _greedyInfiniteStar(Node body) {
+    emit(Operation(Op.starGreedy));
+    final before = pos;
+    compileTree(body); // must be exactly one op (guaranteed by _isStarEligible)
+    assert(pos - before == 1, 'starGreedy body must be a single op');
   }
 
   /// PORTING_NOTES quant template (B): greedy `*` / `+` / `{n,}` tail.

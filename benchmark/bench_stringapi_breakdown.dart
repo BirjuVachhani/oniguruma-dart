@@ -119,15 +119,19 @@ void main() {
   stdout.writeln('pattern: "$pat"  (matches sparse over the corpus)\n');
   stdout.writeln('| component | time | note |');
   stdout.writeln('|---|--:|---|');
-  stdout.writeln('| encode (String->UTF-8) | ${f(encMs)} | Uint8List.fromList(utf8.encode) |');
-  stdout.writeln('| c2b dense List<int>    | ${f(c2bMs)} | code-unit -> byte, 1 runes pass |');
-  stdout.writeln('| b2c Map<int,int>       | ${f(b2cMs)} | byte -> code-unit HASHMAP |');
-  stdout.writeln('| match (byte API, no maps) | ${f(matchMs)} | onigSearch scan only |');
-  stdout.writeln('| **String API end-to-end** | **${f(strApiMs)}** | encode+c2b+b2c+match+results |');
-  stdout.writeln('| RegExp (reference)     | ${f(reMs)} | native, zero setup |');
-  final setup = encMs + c2bMs + b2cMs;
-  stdout.writeln('\nsetup (encode+c2b+b2c) = ${f(setup)} '
-      '= ${(setup / strApiMs * 100).toStringAsFixed(0)}% of String-API time');
-  stdout.writeln('match alone = ${f(matchMs)} '
-      '= ${(matchMs / strApiMs * 100).toStringAsFixed(0)}% of String-API time');
+  // NOTE: the encode/c2b/b2c rows below measure the OLD (pre-S1/S2) index-build
+  // components in isolation, kept for reference. The live String API now uses
+  // the ASCII identity fast path (no maps), so "String API end-to-end" no longer
+  // includes them — that is the point of the comparison.
+  final oldSetup = encMs + c2bMs + b2cMs;
+  stdout.writeln('| encode (String->UTF-8)       | ${f(encMs)} | reference only |');
+  stdout.writeln('| c2b dense List<int>          | ${f(c2bMs)} | reference only |');
+  stdout.writeln('| b2c Map<int,int> HASHMAP     | ${f(b2cMs)} | reference only (old path) |');
+  stdout.writeln('| OLD setup (encode+c2b+b2c)   | ${f(oldSetup)} | what S1/S2 removed |');
+  stdout.writeln('| match (byte API, no maps)    | ${f(matchMs)} | onigSearch scan only |');
+  stdout.writeln('| **String API end-to-end (now)** | **${f(strApiMs)}** | ASCII fast path, no maps |');
+  stdout.writeln('| RegExp (reference)           | ${f(reMs)} | native, zero setup |');
+  stdout.writeln('\nString API now = ${f(strApiMs)} vs RegExp ${f(reMs)} '
+      '(${(strApiMs / reMs).toStringAsFixed(2)}x); '
+      'old path would have added ${f(oldSetup)} of setup.');
 }

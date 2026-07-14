@@ -11,46 +11,22 @@ import math
 
 # label -> ns per full-corpus scan, per engine (pasted from the RAW lines).
 COUNT = {
-    "literal": 7856, "literal-unicode": 2938, "alt-5": 39251,
-    "class-lower": 166221, "class-digit": 5972, "word-w": 172193,
-    "two-words": 75064, "word-boundary": 39418, "email-like": 2027,
-    "named-group": 166221, "case-insens": 7856, "backref-dup": 15606,
-    "greedy-dotstar": 6518,
+    "literal": 7856, "literal-unicode": 2938, "alt-5": 39251, "class-lower": 166221, "class-digit": 5972, "word-w": 172193, "two-words": 75064, "word-boundary": 39418, "email-like": 2027, "named-group": 166221, "case-insens": 7856, "backref-dup": 15606, "greedy-dotstar": 6518
 }
 ONIG_C = {
-    "literal": 2300254.0, "literal-unicode": 1034080.9, "alt-5": 21564000.0,
-    "class-lower": 33687888.9, "class-digit": 5554384.6, "word-w": 33705555.6,
-    "two-words": 22213307.7, "word-boundary": 25580888.9, "email-like": 39039428.6,
-    "named-group": 32716777.8, "case-insens": 6623977.3, "backref-dup": 46954666.7,
-    "greedy-dotstar": 12158583.3,
+    "literal": 2284107.7, "literal-unicode": 1028140.8, "alt-5": 21267142.9, "class-lower": 29615100.0, "class-digit": 5422727.3, "word-w": 32698111.1, "two-words": 19785133.3, "word-boundary": 25402454.5, "email-like": 38791857.1, "named-group": 31748777.8, "case-insens": 6572822.2, "backref-dup": 46376166.7, "greedy-dotstar": 11851920.0
 }
 ONIG_VM = {
-    "literal": 140788250.0, "literal-unicode": 60520600.0, "alt-5": 177362000.0,
-    "class-lower": 193970750.0, "class-digit": 130823250.0, "word-w": 207749500.0,
-    "two-words": 182728750.0, "word-boundary": 184727500.0, "email-like": 273707500.0,
-    "named-group": 200339250.0, "case-insens": 164625250.0, "backref-dup": 472872500.0,
-    "greedy-dotstar": 881214000.0,
+    "literal": 5006470.0, "literal-unicode": 10903173.9, "alt-5": 58566700.0, "class-lower": 71884625.0, "class-digit": 8793706.9, "word-w": 79832375.0, "two-words": 62604250.0, "word-boundary": 64991750.0, "email-like": 151546750.0, "named-group": 75192125.0, "case-insens": 12333500.0, "backref-dup": 356497500.0, "greedy-dotstar": 14326638.9
 }
 ONIG_WEB = {
-    "literal": 173000000.0, "literal-unicode": 86333333.3, "alt-5": 280500000.0,
-    "class-lower": 561500000.0, "class-digit": 175750000.0, "word-w": 527500000.0,
-    "two-words": 338500000.0, "word-boundary": 296000000.0, "email-like": 379500000.0,
-    "named-group": 512500000.0, "case-insens": 229250000.0, "backref-dup": 665000000.0,
-    "greedy-dotstar": 1177500000.0,
+    "literal": 19142857.1, "literal-unicode": 15579044.1, "alt-5": 127750000.0, "class-lower": 309000000.0, "class-digit": 20269230.8, "word-w": 320000000.0, "two-words": 170000000.0, "word-boundary": 145500000.0, "email-like": 216000000.0, "named-group": 318500000.0, "case-insens": 26850000.0, "backref-dup": 496000000.0, "greedy-dotstar": 26300000.0
 }
 RE_VM = {
-    "literal": 4445447.4, "literal-unicode": 779814.8, "alt-5": 25775100.0,
-    "class-lower": 40550357.1, "class-digit": 43592166.7, "word-w": 41537571.4,
-    "two-words": 42629750.0, "word-boundary": 47402666.7, "email-like": 147029750.0,
-    "named-group": 43382083.3, "case-insens": 4412096.5, "backref-dup": 181687250.0,
-    "greedy-dotstar": 472104000.0,
+    "literal": 4360362.1, "literal-unicode": 765976.1, "alt-5": 25502200.0, "class-lower": 39684285.7, "class-digit": 43161333.3, "word-w": 40582642.9, "two-words": 41647714.3, "word-boundary": 46873416.7, "email-like": 144536000.0, "named-group": 42765166.7, "case-insens": 4367801.7, "backref-dup": 179198250.0, "greedy-dotstar": 455261500.0
 }
 RE_WEB = {
-    "literal": 1394487.5, "literal-unicode": 195421.3, "alt-5": 5500000.0,
-    "class-lower": 8145161.3, "class-digit": 394953.6, "word-w": 8416666.7,
-    "two-words": 6121951.2, "word-boundary": 7582442.1, "email-like": 17166666.7,
-    "named-group": 12980263.2, "case-insens": 1504509.1, "backref-dup": 18214285.7,
-    "greedy-dotstar": 102666666.7,
+    "literal": 1371953.4, "literal-unicode": 189114.3, "alt-5": 5382978.7, "class-lower": 7757575.8, "class-digit": 387596.9, "word-w": 8225806.5, "two-words": 5976190.5, "word-boundary": 7470588.2, "email-like": 16866666.7, "named-group": 12071428.6, "case-insens": 1479289.9, "backref-dup": 17892857.1, "greedy-dotstar": 102833333.3
 }
 
 LABELS = list(COUNT.keys())

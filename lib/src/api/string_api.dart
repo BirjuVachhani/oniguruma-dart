@@ -45,7 +45,7 @@ class OnigRegex {
 
   /// The first match at or after code-unit [start], or null.
   OnigMatch? firstMatch(String input, {int start = 0}) {
-    final map = _Utf8Index(input);
+    final map = _Subject(input);
     final bstart = map.byteAt(start);
     final region = OnigRegion();
     final r = onigSearch(
@@ -68,7 +68,7 @@ class OnigRegex {
 
   /// All non-overlapping matches in [input] (lazy).
   Iterable<OnigMatch> allMatches(String input, [int start = 0]) sync* {
-    final map = _Utf8Index(input);
+    final map = _Subject(input);
     final end = map.bytes.length;
     var bpos = map.byteAt(start);
     while (bpos <= end) {
@@ -106,7 +106,7 @@ class OnigRegex {
 class OnigMatch {
   final String input;
   final OnigRegion _region;
-  final _Utf8Index _map;
+  final _Subject _map;
   final Map<String, List<int>> _names;
 
   OnigMatch._(this.input, this._region, this._map, this._names);
@@ -153,61 +153,124 @@ class OnigMatch {
   String toString() => 'OnigMatch(${group(0)})';
 }
 
-/// Maps between UTF-8 byte offsets and UTF-16 code-unit indices for a string.
-class _Utf8Index {
+/// The subject bytes fed to the UTF-8 engine, plus the mapping between engine
+/// byte offsets and Dart `String` UTF-16 code-unit indices.
+///
+/// Two implementations, chosen per input (mirrors how the VM's `RegExp`
+/// specializes on one-byte vs two-byte strings):
+///  * [_AsciiSubject] — every code unit is `< 0x80`, so the code units *are* the
+///    UTF-8 bytes and byte offset == code-unit index. No maps built; conversion
+///    is the identity. This is the common case (all ASCII text).
+///  * [_Utf8Subject] — has non-ASCII code units; encodes to UTF-8 once and builds
+///    dense typed byte↔code-unit tables (no hashmap, O(1) lookup).
+abstract class _Subject {
+  /// Bytes handed to the engine (`onigSearch`).
+  Uint8List get bytes;
+
+  /// Code-unit index → engine byte offset (for a search `start`).
+  int byteAt(int codeUnitIndex);
+
+  /// Engine byte offset → UTF-16 code-unit index (for a result offset).
+  int charAt(int byteOffset);
+
+  /// Build the right subject for [input] in a single pass: if any code unit is
+  /// `>= 0x80` fall back to the UTF-8 subject, else keep the ASCII fast path.
+  factory _Subject(String input) {
+    final n = input.length;
+    final bytes = Uint8List(n);
+    for (var i = 0; i < n; i++) {
+      final cu = input.codeUnitAt(i);
+      if (cu >= 0x80) return _Utf8Subject(input);
+      bytes[i] = cu;
+    }
+    return _AsciiSubject(bytes);
+  }
+}
+
+/// All-ASCII: bytes == code units, offsets are the identity. Zero setup maps.
+class _AsciiSubject implements _Subject {
+  @override
   final Uint8List bytes;
-  // byte offset (at char boundaries + end) -> code-unit index
-  final Map<int, int> _b2c = {};
-  final List<int> _c2b; // code-unit index -> byte offset (dense)
+  _AsciiSubject(this.bytes);
 
-  _Utf8Index._(this.bytes, this._c2b);
+  @override
+  int byteAt(int c) => c < 0 ? 0 : (c > bytes.length ? bytes.length : c);
 
-  factory _Utf8Index(String input) {
-    final bytes = Uint8List.fromList(utf8.encode(input));
-    final c2b = List<int>.filled(input.length + 1, 0);
-    var bytePos = 0;
-    var cu = 0;
-    for (final rune in input.runes) {
-      final runeBytes = _utf8Len(rune);
-      final runeUnits = rune > 0xffff ? 2 : 1;
-      for (var k = 0; k < runeUnits; k++) {
-        c2b[cu + k] = bytePos; // both surrogate halves map to the rune start
-      }
-      bytePos += runeBytes;
-      cu += runeUnits;
-    }
-    c2b[cu] = bytePos; // end
-    final idx = _Utf8Index._(bytes, c2b);
-    // build byte->char at boundaries
-    var bp = 0, c = 0;
-    for (final rune in input.runes) {
-      idx._b2c[bp] = c;
-      bp += _utf8Len(rune);
-      c += rune > 0xffff ? 2 : 1;
-    }
-    idx._b2c[bp] = c;
-    return idx;
+  @override
+  int charAt(int b) => b;
+}
+
+/// Non-ASCII: UTF-8 subject with a lazy, bidirectional byte↔code-unit cursor.
+///
+/// The old dense `Int32List` tables cost an O(n) allocate-and-fill up front even
+/// when few offsets are ever queried. Instead we keep only the encoded bytes and
+/// a single memoised `(byte, codeUnit)` cursor: [charAt] walks the cursor to the
+/// requested byte offset (forward or backward). Match/group offsets are queried
+/// in mostly-increasing order, so the total walk is amortised O(n) with no big
+/// array — and short scans that only touch the start of a large corpus pay only
+/// for what they read.
+class _Utf8Subject implements _Subject {
+  @override
+  final Uint8List bytes;
+  int _cByte = 0; // cursor byte offset (a char head, or bytes.length)
+  int _cChar = 0; // UTF-16 code-unit index at _cByte
+
+  _Utf8Subject(String input)
+      : bytes = Uint8List.fromList(utf8.encode(input));
+
+  /// Byte length of the UTF-8 char whose lead byte is [b0]. A 4-byte sequence is
+  /// one supplementary code point = **two** UTF-16 code units.
+  static int _blen(int b0) =>
+      b0 < 0x80 ? 1 : (b0 < 0xe0 ? 2 : (b0 < 0xf0 ? 3 : 4));
+
+  void _forward() {
+    final bl = _blen(bytes[_cByte]);
+    _cByte += bl;
+    _cChar += bl == 4 ? 2 : 1;
   }
 
-  int byteAt(int codeUnitIndex) => codeUnitIndex <= 0
-      ? 0
-      : (codeUnitIndex >= _c2b.length ? bytes.length : _c2b[codeUnitIndex]);
+  void _backward() {
+    var p = _cByte - 1;
+    while (p > 0 && (bytes[p] & 0xc0) == 0x80) {
+      p--; // skip UTF-8 continuation bytes to the char head
+    }
+    _cByte = p;
+    _cChar -= _blen(bytes[p]) == 4 ? 2 : 1;
+  }
 
+  @override
   int charAt(int byteOffset) {
-    final v = _b2c[byteOffset];
-    if (v != null) return v;
-    // Not on a boundary (shouldn't happen for whole-char matches): find nearest.
-    var best = 0;
-    _b2c.forEach((b, c) {
-      if (b <= byteOffset && b >= best) best = b;
-    });
-    return _b2c[best] ?? 0;
+    if (byteOffset <= 0) {
+      _cByte = 0;
+      _cChar = 0;
+      return 0;
+    }
+    final n = bytes.length;
+    final target = byteOffset >= n ? n : byteOffset;
+    while (_cByte < target) {
+      _forward();
+    }
+    while (_cByte > target) {
+      _backward();
+    }
+    return _cChar;
   }
 
-  static int _utf8Len(int rune) {
-    if (rune < 0x80) return 1;
-    if (rune < 0x800) return 2;
-    if (rune < 0x10000) return 3;
-    return 4;
+  @override
+  int byteAt(int codeUnitIndex) {
+    // Only used for a search `start` (usually 0); walk from the buffer head so
+    // the [charAt] cursor is left undisturbed. A code unit inside a surrogate
+    // pair resolves to its rune's start byte (matches the old dense mapping).
+    if (codeUnitIndex <= 0) return 0;
+    var byte = 0, chr = 0;
+    final n = bytes.length;
+    while (byte < n) {
+      final bl = _blen(bytes[byte]);
+      final cu = bl == 4 ? 2 : 1;
+      if (chr + cu > codeUnitIndex) return byte;
+      byte += bl;
+      chr += cu;
+    }
+    return n;
   }
 }

@@ -24,6 +24,8 @@ abstract final class Stk {
       9; // saved right_range value (variable look-behind)
   static const int stepBack = 10; // look-behind step-back retry point
   static const int callout = 11; // callout retraction frame (re-fire on undo)
+  static const int starLoop =
+      12; // greedy single-item loop: give back one char per backtrack (str=cur end, x1=floor)
 }
 
 class MatchStack {

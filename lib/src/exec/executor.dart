@@ -36,6 +36,10 @@ class Executor {
   final List<CodeRangeBuffer?> opMb;
   final List<List<int>?> opNs;
   final OnigEncoding enc;
+
+  /// Cached [OnigEncoding.isAsciiFast]: when true, a byte `< 0x80` at a char
+  /// head is a standalone ASCII char, so hot ops skip the virtual decode.
+  final bool asciiFast;
   final Uint8List str; // subject bytes (offset 0 == buffer start)
   final int end;
 
@@ -103,6 +107,7 @@ class Executor {
        opMb = reg.flat.mb,
        opNs = reg.flat.ns,
        enc = reg.enc,
+       asciiFast = reg.enc.isAsciiFast,
        calloutRegistry = calloutRegistry ?? defaultCalloutRegistry {
     // `msa.options = arg_option | reg->options` (regexec.c MATCH_ARG_INIT):
     // the runtime option set is the search option merged with the compile
@@ -256,9 +261,19 @@ class Executor {
         case Op.cclass:
           if (s < _rightRange) {
             // Decode the code point so ASCII members match in wide encodings
-            // (UTF-16/32), where a single char spans several bytes.
-            final len = enc.length(str, s, end);
-            final code = enc.mbcToCode(str, s, end);
+            // (UTF-16/32), where a single char spans several bytes. For an
+            // ASCII byte in an ASCII-compatible encoding, code == byte and
+            // len == 1 — skip the two virtual encoding calls.
+            final int len;
+            final int code;
+            final b = str[s];
+            if (b < 0x80 && asciiFast) {
+              code = b;
+              len = 1;
+            } else {
+              len = enc.length(str, s, end);
+              code = enc.mbcToCode(str, s, end);
+            }
             if (code < 0x80 || (enc.isSingleByte && code < 0x100)) {
               if (opBs[pc]!.at(code)) {
                 s += len;
@@ -271,8 +286,16 @@ class Executor {
 
         case Op.cclassNot:
           if (s < _rightRange) {
-            final len = enc.length(str, s, end);
-            final code = enc.mbcToCode(str, s, end);
+            final int len;
+            final int code;
+            final b = str[s];
+            if (b < 0x80 && asciiFast) {
+              code = b;
+              len = 1;
+            } else {
+              len = enc.length(str, s, end);
+              code = enc.mbcToCode(str, s, end);
+            }
             final single = code < 0x80 || (enc.isSingleByte && code < 0x100);
             final inSet = single && opBs[pc]!.at(code);
             if (!inSet) {
@@ -289,8 +312,16 @@ class Executor {
         case Op.cclassMb:
         case Op.cclassMix:
           if (s < _rightRange) {
-            final len = enc.length(str, s, end);
-            final code = enc.mbcToCode(str, s, end);
+            final int len;
+            final int code;
+            final b = str[s];
+            if (b < 0x80 && asciiFast) {
+              code = b;
+              len = 1;
+            } else {
+              len = enc.length(str, s, end);
+              code = enc.mbcToCode(str, s, end);
+            }
             if (_ccMember(opBs[pc], opMb[pc], code)) {
               s += len;
               pc++;
@@ -302,8 +333,16 @@ class Executor {
         case Op.cclassMbNot:
         case Op.cclassMixNot:
           if (s < _rightRange) {
-            final len = enc.length(str, s, end);
-            final code = enc.mbcToCode(str, s, end);
+            final int len;
+            final int code;
+            final b = str[s];
+            if (b < 0x80 && asciiFast) {
+              code = b;
+              len = 1;
+            } else {
+              len = enc.length(str, s, end);
+              code = enc.mbcToCode(str, s, end);
+            }
             if (!_ccMember(opBs[pc], opMb[pc], code)) {
               s += len;
               pc++;
@@ -314,7 +353,8 @@ class Executor {
 
         case Op.anychar:
           if (s < _rightRange) {
-            final len = enc.length(str, s, end);
+            final b = str[s];
+            final len = (b < 0x80 && asciiFast) ? 1 : enc.length(str, s, end);
             if (!enc.isMbcNewline(str, s, end)) {
               s += len;
               pc++;
@@ -335,7 +375,8 @@ class Executor {
 
         case Op.anycharMl:
           if (s < _rightRange) {
-            s += enc.length(str, s, end);
+            final b = str[s];
+            s += (b < 0x80 && asciiFast) ? 1 : enc.length(str, s, end);
             pc++;
             continue;
           }
@@ -344,9 +385,18 @@ class Executor {
         case Op.word:
         case Op.wordAscii:
           if (s < _rightRange) {
-            final code = enc.mbcToCode(str, s, end);
+            final b = str[s];
+            final int code;
+            final int len;
+            if (b < 0x80 && asciiFast) {
+              code = b;
+              len = 1;
+            } else {
+              code = enc.mbcToCode(str, s, end);
+              len = enc.length(str, s, end);
+            }
             if (_isWord(code, sc[base + FlatOps.oOpcode] == Op.wordAscii)) {
-              s += enc.length(str, s, end);
+              s += len;
               pc++;
               continue;
             }
@@ -356,9 +406,18 @@ class Executor {
         case Op.noWord:
         case Op.noWordAscii:
           if (s < _rightRange) {
-            final code = enc.mbcToCode(str, s, end);
+            final b = str[s];
+            final int code;
+            final int len;
+            if (b < 0x80 && asciiFast) {
+              code = b;
+              len = 1;
+            } else {
+              code = enc.mbcToCode(str, s, end);
+              len = enc.length(str, s, end);
+            }
             if (!_isWord(code, sc[base + FlatOps.oOpcode] == Op.noWordAscii)) {
-              s += enc.length(str, s, end);
+              s += len;
               pc++;
               continue;
             }
@@ -847,6 +906,90 @@ class Executor {
           pc++;
           continue;
 
+        case Op.peekByte:
+          // Alternation quick-check: enter the branch only if the current byte
+          // is in its first-byte set; otherwise skip past it (no PUSH, no
+          // enter-and-fail). At end-of-range a non-nullable branch can't match.
+          if (s < _rightRange && opBs[pc]!.at(str[s])) {
+            pc++;
+            continue;
+          }
+          pc += sc[base + FlatOps.oAddr];
+          continue;
+
+        case Op.starGreedy:
+          {
+            // Greedy `*`/`+` over a single-char body op at pc+1: scan the whole
+            // run here (tight loop, no per-char PUSH/JUMP dispatch), then push
+            // ONE decrement-on-backtrack frame. Exit is pc+2. Semantics are
+            // identical to the PUSH/body/JUMP loop (longest first, give back one
+            // char per backtrack), just with O(1) live frames instead of O(n).
+            //
+            // The body opcode is loop-invariant, so it's switched ONCE here and
+            // the hottest matchers run a specialised tight inner loop; the rest
+            // fall back to _starConsume. All branches must stay byte-identical to
+            // the standalone char ops (and to _starConsume).
+            final bodyPc = pc + 1;
+            final bodyOpc = sc[bodyPc * FlatOps.stride + FlatOps.oOpcode];
+            final floor = s;
+            var cur = s;
+            final rr = _rightRange;
+            switch (bodyOpc) {
+              case Op.cclass:
+                final bs = opBs[bodyPc]!;
+                while (cur < rr) {
+                  final b = str[cur];
+                  if (b < 0x80 && asciiFast) {
+                    if (!bs.at(b)) break;
+                    cur++;
+                  } else {
+                    final code = enc.mbcToCode(str, cur, end);
+                    if (!((code < 0x80 || (enc.isSingleByte && code < 0x100)) &&
+                        bs.at(code))) {
+                      break;
+                    }
+                    cur += enc.length(str, cur, end);
+                  }
+                }
+              case Op.word:
+              case Op.wordAscii:
+                final asc = bodyOpc == Op.wordAscii;
+                while (cur < rr) {
+                  final b = str[cur];
+                  if (b < 0x80 && asciiFast) {
+                    if (!_isWord(b, asc)) break;
+                    cur++;
+                  } else {
+                    if (!_isWord(enc.mbcToCode(str, cur, end), asc)) break;
+                    cur += enc.length(str, cur, end);
+                  }
+                }
+              case Op.anychar:
+                while (cur < rr) {
+                  final b = str[cur];
+                  if (enc.isMbcNewline(str, cur, end)) break;
+                  cur += (b < 0x80 && asciiFast) ? 1 : enc.length(str, cur, end);
+                }
+              case Op.anycharMl:
+                while (cur < rr) {
+                  final b = str[cur];
+                  cur += (b < 0x80 && asciiFast) ? 1 : enc.length(str, cur, end);
+                }
+              default:
+                while (cur < rr) {
+                  final ns = _starConsume(bodyPc, bodyOpc, cur);
+                  if (ns < 0) break;
+                  cur = ns;
+                }
+            }
+            if (cur > floor) {
+              stk.push(Stk.starLoop, 0, pc + 2, cur, floor);
+            }
+            s = cur;
+            pc += 2;
+            continue;
+          }
+
         default:
           throw StateError('unimplemented opcode ${sc[base + FlatOps.oOpcode]}');
       }
@@ -870,6 +1013,22 @@ class Executor {
       switch (stk.type[i]) {
         case Stk.alt:
           return (stk.pc[i], stk.str[i]);
+        case Stk.starLoop:
+          {
+            // Give back one character from a greedy single-item run and resume
+            // the continuation at the loop exit; re-push if more can be given.
+            final exitPc = stk.pc[i];
+            final cur = stk.str[i];
+            final floor = stk.x1[i];
+            if (cur > floor) {
+              final ne = enc.leftAdjustCharHead(str, floor, cur - 1);
+              if (ne > floor) {
+                stk.push(Stk.starLoop, 0, exitPc, ne, floor);
+              }
+              return (exitPc, ne);
+            }
+            // cur == floor: run exhausted, keep unwinding.
+          }
         case Stk.stepBack:
           {
             // Look-behind: step back one more character and retry the body.
@@ -1162,6 +1321,112 @@ class Executor {
     return mb != null && mb.contains(code);
   }
 
+  /// Match ONE character of the [Op.starGreedy] body op (at [bodyPc], opcode
+  /// [bodyOpc]) at position [at]; returns the advanced position, or -1 on no
+  /// match. Caller guarantees `at < _rightRange`. This must stay byte-identical
+  /// to the standalone char ops (cclass*/word*/anychar*) it mirrors.
+  int _starConsume(int bodyPc, int bodyOpc, int at) {
+    final b = str[at];
+    switch (bodyOpc) {
+      case Op.cclass:
+        {
+          final int len;
+          final int code;
+          if (b < 0x80 && asciiFast) {
+            code = b;
+            len = 1;
+          } else {
+            len = enc.length(str, at, end);
+            code = enc.mbcToCode(str, at, end);
+          }
+          if ((code < 0x80 || (enc.isSingleByte && code < 0x100)) &&
+              opBs[bodyPc]!.at(code)) {
+            return at + len;
+          }
+          return -1;
+        }
+      case Op.cclassNot:
+        {
+          final int len;
+          final int code;
+          if (b < 0x80 && asciiFast) {
+            code = b;
+            len = 1;
+          } else {
+            len = enc.length(str, at, end);
+            code = enc.mbcToCode(str, at, end);
+          }
+          final single = code < 0x80 || (enc.isSingleByte && code < 0x100);
+          return (single && opBs[bodyPc]!.at(code)) ? -1 : at + len;
+        }
+      case Op.cclassMb:
+      case Op.cclassMix:
+        {
+          final int len;
+          final int code;
+          if (b < 0x80 && asciiFast) {
+            code = b;
+            len = 1;
+          } else {
+            len = enc.length(str, at, end);
+            code = enc.mbcToCode(str, at, end);
+          }
+          return _ccMember(opBs[bodyPc], opMb[bodyPc], code) ? at + len : -1;
+        }
+      case Op.cclassMbNot:
+      case Op.cclassMixNot:
+        {
+          final int len;
+          final int code;
+          if (b < 0x80 && asciiFast) {
+            code = b;
+            len = 1;
+          } else {
+            len = enc.length(str, at, end);
+            code = enc.mbcToCode(str, at, end);
+          }
+          return _ccMember(opBs[bodyPc], opMb[bodyPc], code) ? -1 : at + len;
+        }
+      case Op.word:
+      case Op.wordAscii:
+        {
+          final int code;
+          final int len;
+          if (b < 0x80 && asciiFast) {
+            code = b;
+            len = 1;
+          } else {
+            code = enc.mbcToCode(str, at, end);
+            len = enc.length(str, at, end);
+          }
+          return _isWord(code, bodyOpc == Op.wordAscii) ? at + len : -1;
+        }
+      case Op.noWord:
+      case Op.noWordAscii:
+        {
+          final int code;
+          final int len;
+          if (b < 0x80 && asciiFast) {
+            code = b;
+            len = 1;
+          } else {
+            code = enc.mbcToCode(str, at, end);
+            len = enc.length(str, at, end);
+          }
+          return _isWord(code, bodyOpc == Op.noWordAscii) ? -1 : at + len;
+        }
+      case Op.anychar:
+        {
+          final len = (b < 0x80 && asciiFast) ? 1 : enc.length(str, at, end);
+          return enc.isMbcNewline(str, at, end) ? -1 : at + len;
+        }
+      case Op.anycharMl:
+        return at + ((b < 0x80 && asciiFast) ? 1 : enc.length(str, at, end));
+      default:
+        return -1; // unreachable for _isStarEligible bodies
+    }
+  }
+
   int _matchBackref(int n, int s, [bool ic = false]) {
     if (n > reg.numMem) return -1;
     final b = memStart[n];
@@ -1193,7 +1458,10 @@ class Executor {
   }
 
   bool _isWord(int code, bool ascii) {
-    if (ascii) return asciiIsCodeCtype(code, CType.word);
+    // ASCII word membership is identical under ascii-mode and Unicode-mode
+    // (both are [A-Za-z0-9_] in [0,0x80)), so use the ASCII ctype table for any
+    // code < 0x80 and only pay the virtual `enc.isCodeCtype` for wider chars.
+    if (ascii || code < 0x80) return asciiIsCodeCtype(code, CType.word);
     return enc.isCodeCtype(code, CType.word);
   }
 
