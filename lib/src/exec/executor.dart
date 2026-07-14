@@ -35,6 +35,7 @@ class Executor {
   final List<BitSet?> opBs;
   final List<CodeRangeBuffer?> opMb;
   final List<List<int>?> opNs;
+  final List<Uint16List?> opDisp;
   final OnigEncoding enc;
 
   /// Cached [OnigEncoding.isAsciiFast]: when true, a byte `< 0x80` at a char
@@ -59,6 +60,23 @@ class Executor {
   CalloutRegistry calloutRegistry;
 
   final Map<int, int> _calloutCounters = {};
+
+  /// ASCII (`< 0x80`) case-fold representatives, built once from
+  /// [OnigEncoding.caseFoldRep] on first use by the ignore-case string op — so
+  /// its hot loop folds an ASCII byte with a table lookup instead of the virtual
+  /// decode+fold+length chain. Exact for any encoding (same source function).
+  Int32List? _asciiFoldRep;
+  Int32List get _asciiFold {
+    var t = _asciiFoldRep;
+    if (t == null) {
+      t = Int32List(0x80);
+      for (var c = 0; c < 0x80; c++) {
+        t[c] = enc.caseFoldRep(c);
+      }
+      _asciiFoldRep = t;
+    }
+    return t;
+  }
 
   /// `[tag] → callout id` for every tagged callout op, built once on demand so
   /// a callout (e.g. `(*CMP{AB,…})`) can read another's counter by tag.
@@ -106,6 +124,7 @@ class Executor {
        opBs = reg.flat.bs,
        opMb = reg.flat.mb,
        opNs = reg.flat.ns,
+       opDisp = reg.flat.disp,
        enc = reg.enc,
        asciiFast = reg.enc.isAsciiFast,
        calloutRegistry = calloutRegistry ?? defaultCalloutRegistry {
@@ -118,6 +137,16 @@ class Executor {
     _openStart = List.generate(reg.numMem + 1, (_) => <int>[]);
     emptyCheckStk = Int32List(reg.numEmptyCheck == 0 ? 1 : reg.numEmptyCheck);
     repeatStk = Int32List(reg.numRepeat == 0 ? 1 : reg.numRepeat);
+  }
+
+  /// Reset the only cross-search state (FIND_LONGEST bests) so this Executor can
+  /// be reused for a fresh search over the SAME subject without reallocating its
+  /// stack/mem buffers. Per-attempt state is reset by [matchAt]; [msaStart] is
+  /// set by the caller. Safe because a completed search leaves its result in the
+  /// caller's region, not in the Executor.
+  void resetForReuse() {
+    bestLen = OnigResult.mismatch;
+    bestS = -1;
   }
 
   /// Attempt a match anchored at [sstart]; returns the match END byte offset,
@@ -227,12 +256,24 @@ class Executor {
             if (sc[base + FlatOps.oFlag] == 2) {
               // code-point case-insensitive compare (opNs[pc] = pattern reps)
               final reps = opNs[pc]!;
+              final fold = _asciiFold; // ASCII fold table (== enc.caseFoldRep)
               var q = s;
               var ok = true;
               for (var k = 0; k < reps.length; k++) {
                 if (q >= _rightRange) {
                   ok = false;
                   break;
+                }
+                final bq = str[q];
+                if (bq < 0x80 && asciiFast) {
+                  // ASCII char: fold via table, advance one byte — no virtual
+                  // decode/fold/length calls.
+                  if (fold[bq] != reps[k]) {
+                    ok = false;
+                    break;
+                  }
+                  q++;
+                  continue;
                 }
                 final code = enc.mbcToCode(str, q, end);
                 if (enc.caseFoldRep(code) != reps[k]) {
@@ -917,6 +958,19 @@ class Executor {
           pc += sc[base + FlatOps.oAddr];
           continue;
 
+        case Op.dispatchByte:
+          // Literal-switch alternation: every branch has a distinct fixed first
+          // byte, so at most one can match here. Jump straight to it (no PUSH /
+          // backtrack frame); a byte matching no branch head fails outright.
+          if (s < _rightRange) {
+            final rel = opDisp[pc]![str[s]];
+            if (rel != 0) {
+              pc += rel;
+              continue;
+            }
+          }
+          break;
+
         case Op.starGreedy:
           {
             // Greedy `*`/`+` over a single-char body op at pc+1: scan the whole
@@ -982,7 +1036,10 @@ class Executor {
                   cur = ns;
                 }
             }
-            if (cur > floor) {
+            // Possessive (flag==1, set by auto-possessification): the follower
+            // can't match any char this loop consumed, so a give-back is always
+            // futile — skip the backtrack frame entirely.
+            if (cur > floor && sc[base + FlatOps.oFlag] == 0) {
               stk.push(Stk.starLoop, 0, pc + 2, cur, floor);
             }
             s = cur;
@@ -998,21 +1055,28 @@ class Executor {
       if (retryLimit != 0 && ++_retryCount > retryLimit) {
         return OnigErr.retryLimitInMatchOver;
       }
-      final r = _backtrack();
-      if (r == null) return OnigResult.mismatch;
-      pc = r.$1;
-      s = r.$2;
+      if (!_backtrack()) return OnigResult.mismatch;
+      pc = _resumePc;
+      s = _resumeS;
     }
   }
 
+  // Resume point produced by [_backtrack] (out-params instead of a returned
+  // record, so a hot backtrack allocates nothing).
+  int _resumePc = 0;
+  int _resumeS = 0;
+
   /// Pop the stack applying undo side-effects until a resume ([Stk.alt]) entry
-  /// is found. Returns (pc, s) to resume, or null if the stack is exhausted.
-  (int, int)? _backtrack() {
+  /// is found. On success sets [_resumePc]/[_resumeS] and returns true; returns
+  /// false if the stack is exhausted.
+  bool _backtrack() {
     while (stk.sp > 0) {
       final i = --stk.sp;
       switch (stk.type[i]) {
         case Stk.alt:
-          return (stk.pc[i], stk.str[i]);
+          _resumePc = stk.pc[i];
+          _resumeS = stk.str[i];
+          return true;
         case Stk.starLoop:
           {
             // Give back one character from a greedy single-item run and resume
@@ -1025,7 +1089,9 @@ class Executor {
               if (ne > floor) {
                 stk.push(Stk.starLoop, 0, exitPc, ne, floor);
               }
-              return (exitPc, ne);
+              _resumePc = exitPc;
+              _resumeS = ne;
+              return true;
             }
             // cur == floor: run exhausted, keep unwinding.
           }
@@ -1042,7 +1108,9 @@ class Executor {
             if (rem2 != 0) {
               stk.push(Stk.stepBack, 0, framePc, q, rem2);
             }
-            return (framePc, q);
+            _resumePc = framePc;
+            _resumeS = q;
+            return true;
           }
         case Stk.saveVal:
           // Only a SAVE_RIGHT_RANGE frame (type in pc) rewinds right_range;
@@ -1096,7 +1164,7 @@ class Executor {
           }
       }
     }
-    return null;
+    return false;
   }
 
   /// Faithful `STACK_EMPTY_CHECK_MEM` (regexec.c): at an empty iteration
@@ -1466,6 +1534,9 @@ class Executor {
   }
 
   int _prevCharCode(int s) {
+    // ASCII previous byte is a standalone char (no left-adjust / decode needed).
+    final b = str[s - 1];
+    if (b < 0x80 && asciiFast) return b;
     final prev = enc.leftAdjustCharHead(str, 0, s - 1);
     return enc.mbcToCode(str, prev, end);
   }

@@ -10,6 +10,7 @@ import 'encoding/encoding.dart';
 import 'exec/nfa.dart';
 import 'onig_errors.dart';
 import 'onig_types.dart';
+import 'parse/node.dart' show BitSet, CodeRangeBuffer;
 import 'parse/parser.dart';
 import 'syntax.dart';
 
@@ -57,10 +58,30 @@ class Regex {
   int thresholdLen = 0;
   Uint8List? exact; // literal prefix for BMH/quick search
   Uint16List? exactSkip; // Sunday/BMH bad-char skip table for [exact]
+  // The whole pattern IS the exact literal (no captures, anchors, or trailing
+  // ops): a Sunday hit is the match, so the driver can fill the region directly
+  // and skip the per-match matchAt re-verification.
+  bool exactWholeMatch = false;
+  Uint8List? exactIc; // ASCII-lower-folded needle for a case-insensitive search
+  Uint16List? exactIcSkip; // Sunday skip table over [exactIc] (folded bytes)
+  // Leading `C+ L…`: the match starts with a greedy one-or-more of char class C
+  // immediately followed by the exact literal L (with L's first byte ∉ C). The
+  // driver walks back from an L occurrence over C to the run start — the unique
+  // leftmost candidate for that L — and tries matchAt there once, instead of
+  // every position in the gap (turns `\w+@\w+`'s O(n) attempts into O(#L)).
+  bool hasExactBack = false;
+  int exactBackCtype = -1; // >=0: ctype id (word/digit/space/…); -1: use bs/mb
+  bool exactBackCtypeAscii = false; // ctype restricted to ASCII members
+  BitSet? exactBackBs; // char-class members < 0x100
+  CodeRangeBuffer? exactBackMb; // char-class multibyte members
   bool exactAnchorAnyChar = false; // leading greedy `.*` (ANCR_ANYCHAR_INF)
   bool exactAnchorAnyCharMl = false; // leading greedy `(?s).*` (crosses lines)
   Uint8List? map; // 256-entry char map / BMH skip
   int mapOffset = 0;
+  // A leading zero-width `\b` (word boundary) is present, so the driver may
+  // skip any candidate where str[s] and str[s-1] are both ASCII word chars —
+  // `\b` is provably false there, so matchAt would mismatch without entering.
+  bool leadingWordBoundary = false;
   int distMin = 0;
   int distMax = 0;
   int subAnchor = 0;

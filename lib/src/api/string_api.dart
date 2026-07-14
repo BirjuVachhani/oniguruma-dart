@@ -24,6 +24,40 @@ class OnigRegex {
 
   OnigRegex._(this._reg, this.pattern);
 
+  // One-entry memo of the last input's encoding, keyed by String identity.
+  // Repeated scans of the same String (the common case: firstMatch then
+  // allMatches, replace, or a loop) then skip the O(n) encode — the analog of
+  // the C/byte harness reading its byte buffer once and reusing it. Strings are
+  // immutable, so caching the bytes is always safe; a fresh [_Subject] (with a
+  // fresh offset cursor) is built per call.
+  String? _cacheInput;
+  Uint8List? _cacheBytes;
+  bool _cacheAscii = false;
+
+  _Subject _subjectFor(String input) {
+    var bytes = _cacheBytes;
+    if (!identical(input, _cacheInput) || bytes == null) {
+      // Fused ASCII detect + fill: build the byte buffer while scanning, and
+      // fall back to a full UTF-8 encode on the first code unit >= 0x80.
+      final n = input.length;
+      final b = Uint8List(n);
+      var ascii = true;
+      for (var i = 0; i < n; i++) {
+        final cu = input.codeUnitAt(i);
+        if (cu >= 0x80) {
+          ascii = false;
+          break;
+        }
+        b[i] = cu;
+      }
+      bytes = ascii ? b : utf8.encode(input);
+      _cacheInput = input;
+      _cacheBytes = bytes;
+      _cacheAscii = ascii;
+    }
+    return _cacheAscii ? _AsciiSubject(bytes) : _Utf8Subject(bytes);
+  }
+
   /// Compile [pattern] (UTF-8). [options] are `OnigOption.*` flags; [syntax]
   /// defaults to Oniguruma. Throws [OnigException] on a malformed pattern.
   factory OnigRegex.compile(
@@ -45,7 +79,7 @@ class OnigRegex {
 
   /// The first match at or after code-unit [start], or null.
   OnigMatch? firstMatch(String input, {int start = 0}) {
-    final map = _Subject(input);
+    final map = _subjectFor(input);
     final bstart = map.byteAt(start);
     final region = OnigRegion();
     final r = onigSearch(
@@ -68,7 +102,7 @@ class OnigRegex {
 
   /// All non-overlapping matches in [input] (lazy).
   Iterable<OnigMatch> allMatches(String input, [int start = 0]) sync* {
-    final map = _Subject(input);
+    final map = _subjectFor(input);
     final end = map.bytes.length;
     var bpos = map.byteAt(start);
     while (bpos <= end) {
@@ -161,8 +195,9 @@ class OnigMatch {
 ///  * [_AsciiSubject] — every code unit is `< 0x80`, so the code units *are* the
 ///    UTF-8 bytes and byte offset == code-unit index. No maps built; conversion
 ///    is the identity. This is the common case (all ASCII text).
-///  * [_Utf8Subject] — has non-ASCII code units; encodes to UTF-8 once and builds
-///    dense typed byte↔code-unit tables (no hashmap, O(1) lookup).
+///  * [_Utf8Subject] — has non-ASCII code units; UTF-8 bytes + a lazy cursor.
+///
+/// Chosen per input by [OnigRegex._subjectFor], which owns the encode + cache.
 abstract class _Subject {
   /// Bytes handed to the engine (`onigSearch`).
   Uint8List get bytes;
@@ -172,19 +207,6 @@ abstract class _Subject {
 
   /// Engine byte offset → UTF-16 code-unit index (for a result offset).
   int charAt(int byteOffset);
-
-  /// Build the right subject for [input] in a single pass: if any code unit is
-  /// `>= 0x80` fall back to the UTF-8 subject, else keep the ASCII fast path.
-  factory _Subject(String input) {
-    final n = input.length;
-    final bytes = Uint8List(n);
-    for (var i = 0; i < n; i++) {
-      final cu = input.codeUnitAt(i);
-      if (cu >= 0x80) return _Utf8Subject(input);
-      bytes[i] = cu;
-    }
-    return _AsciiSubject(bytes);
-  }
 }
 
 /// All-ASCII: bytes == code units, offsets are the identity. Zero setup maps.
@@ -215,8 +237,7 @@ class _Utf8Subject implements _Subject {
   int _cByte = 0; // cursor byte offset (a char head, or bytes.length)
   int _cChar = 0; // UTF-16 code-unit index at _cByte
 
-  _Utf8Subject(String input)
-      : bytes = Uint8List.fromList(utf8.encode(input));
+  _Utf8Subject(this.bytes);
 
   /// Byte length of the UTF-8 char whose lead byte is [b0]. A 4-byte sequence is
   /// one supplementary code point = **two** UTF-16 code units.

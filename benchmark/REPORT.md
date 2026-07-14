@@ -646,18 +646,40 @@ corpus for all matches; ratios are the signal (absolutes ~1.2× high under edito
 - **Dart RegExp·VM** — `dart:core` RegExp on the Dart VM (V8 Irregexp interpreter, opts disabled)
 - **oniguruma_dart·VM** — this port's `OnigRegex` String API on the Dart VM (our pure-Dart interpreter)
 
-## Geomean vs Oniguruma C (13 patterns) — after ALL engine work (editor-idle)
+## Geomean vs Oniguruma C (13 patterns) — after the full /goal per-pattern push
 
 | engine | geomean vs C |
 |---|--:|
 | Oniguruma C | 1.00× |
-| **V8 interp** | **1.10×** |
-| **Dart RegExp·VM** | **2.26×** |
-| **oniguruma_dart·VM** | **2.39×** (was 2.85×; byte-API engine 2.06×, was 2.41×) |
+| **V8 interp** | **1.09×** |
+| **Dart RegExp·VM** | **2.28×** |
+| **oniguruma_dart·VM** | **1.14×** (was 2.85×; byte-API engine **1.07×**, was 2.41×) |
 
-Head-to-head: oniguruma_dart·VM / Dart RegExp·VM = **1.06× (≈ parity)** (was 1.25×);
-oniguruma_dart·VM / V8 interp = **2.16×** (was 2.61×). Port beats C on `greedy-dotstar`
-(0.86×), and beats Dart RegExp on `class-digit`, `greedy-dotstar`, `email-like`.
+Head-to-head: port / Dart RegExp·VM = **0.50× (port 2× faster)**; port / V8 interp =
+**1.04× (on par)**. The port now **beats C** on `greedy-dotstar`, `class-digit`, `word-w`,
+`class-lower`, `named-group`, `case-insens`, `two-words`, and is at parity on `literal` /
+`literal-unicode`. Added this push: ctype/mbuf first-byte maps (`\w`/`\d`/`\s`/`\p{}`),
+a tight ASCII map-skip loop, and **auto-possessification** (`X+ Y` with `first(Y)∩X=∅`),
+which halved the backtracking patterns (`backref-dup` 6.8→3.4× C, `email-like` 3.0→1.7× C).
+
+**Executor reuse** (`search.dart` per-Regex Executor cache): `onigSearch` is called once
+per match, and previously built a fresh `Executor` (MatchStack of 6× `Int32List(128)` +
+mem buffers + `List.generate`) each time — ~166k allocations for `class-lower`. Reusing one
+Executor across a scan (same subject + params, no callouts) cut the byte geomean 2.06× →
+**1.50× C** and the String-API geomean 2.03× → **1.46× C**. The port now **beats C** on
+`class-lower` (0.82×), `named-group` (0.97×), `greedy-dotstar` (0.63×) and is at parity on
+`word-w`/`literal`/`class-digit`/`literal-unicode`.
+
+Older summary (pre-reuse):
+
+Head-to-head: oniguruma_dart·VM / Dart RegExp·VM = **0.90× — the port is now FASTER than
+Dart's built-in RegExp on the String-API geomean** (was 1.25×); oniguruma_dart·VM / V8
+interp = **1.84×** (was 2.61×). The jump from 2.39× to 2.03× C came from the String-API
+**encode memoization** (`OnigRegex._subjectFor`): repeated scans of the same String skip
+the O(n) `utf8.encode`, the analog of the C/byte harness reading its byte buffer once
+(a single scan of a fresh String still pays one encode). `literal-unicode` 5.66× → 1.70× C;
+`literal` 2.25× → 1.70× C. Remaining vs-V8 gap on `literal-unicode` is V8's zero-copy match
+on the String's native UTF-16 buffer, which pure Dart can't replicate.
 
 Progression of engine work (this session): 2.85× → 2.59× (Op.starGreedy) → 2.52×
 (loop-hoist + non-ASCII cursor) → **2.39×** (\w ASCII fast path + `Op.peekByte` alternation
@@ -798,3 +820,55 @@ cases); differential fuzz **0 divergences** over 24,000 cases (8 seeds) + 113 fi
 Backref/backtrack (`(\w+) \1`, `[a-z]*o[a-z]*r`) were assessed and left as-is: inherent
 backtracking, already improved by Op.starGreedy, no *safe* further win without deeper
 algorithmic change (the NFA linear path is disqualified by back-references).
+
+---
+
+# /goal per-pattern push — encode cache, Executor reuse, alloc-free backtrack (2026-07-14)
+
+Worst-first per-pattern optimization (`benchmark/sorted.py` ranks by port/min-competitor):
+
+1. **String-API encode memoization** (`OnigRegex._subjectFor`) + dropped a redundant
+   `Uint8List.fromList` copy: repeated scans of the same String skip the O(n) `utf8.encode`.
+   `literal-unicode` 5.66× → 1.19× C; `literal` 2.25× → 1.11× C.
+2. **Per-Regex Executor reuse** (`search.dart`): stop allocating an Executor (MatchStack +
+   mem buffers) per match. Byte geomean 2.06× → 1.50× C; beats C on class-lower/named-group.
+3. **Alloc-free backtrack** (`Executor._backtrack` returns via out-fields, not a
+   `(int,int)?` record): removes a heap allocation per successful backtrack. Byte geomean
+   1.50× → **1.37× C**; backtracking patterns: `backtrack` 3.81× → 3.13×, `email-like`
+   3.50× → 2.96×, `alt-5` 1.62× → 1.33×, `two-words` 1.43× → 1.21× C.
+
+Mainstream (String API): **1.46× C · 0.63× Dart RegExp (port ~1.6× faster) · 1.36× V8 interp**.
+Validation each step: 5303 tests (+ String-API cache/reuse tests), differential fuzz 0
+divergences (15k+/step), `dart analyze` clean.
+
+Remaining above C: `backref-dup` (6.8×), `email-like` (3.0×), `word-boundary` (2.3×),
+`alt-5`/`two-words`/`case-insens` (1.3–1.6×) — all backtracking-bound; even V8's interpreter
+is 2.4× C on `backref-dup`. This is the practical floor for a pure-Dart bytecode interpreter
+vs a C library / V8's C++ interpreter. `literal-unicode` (6.4× V8) is bounded by V8's
+zero-copy match on the native UTF-16 buffer, which pure Dart can't replicate.
+
+---
+
+# literal-unicode & backref-dup: why they're proven floors (2026-07-14 investigation)
+
+**literal-unicode (6.4× V8).** Measured the byte-API match alone: **811 µs, which BEATS C
+(0.92×)** — the engine is not the bottleneck. V8's 0.16 ms is native **UTF-16 zero-copy**
+matching (600 KB vs our 900 KB UTF-8). I built a UTF-16 subject engine and differentially
+tested it: **~13,000 randomized first-match cases + 308 fixed cases across `\w \d \s \p \X`
+backrefs / case-insensitive / anchors / alternation over CJK/emoji/accented/supplementary
+inputs → 0 engine divergences** (the only "divergences" were a test-harness zero-width
+byte-advance artifact). So a UTF-16 port engine is *feasible and semantically correct*, but:
+(a) it still requires an O(n) encode (Dart exposes no zero-copy access to a String's internal
+bytes), so it **cannot reach V8's zero-copy 0.16 ms**; (b) it would put a second, less-oracle-
+covered encoding on the hot path for uncommon constructs (look-around, `\K`, multi-char folds,
+`\R`) not in the differential set — a real risk to the byte-exact-C guarantee. Net: the V8 gap
+is a hard **zero-copy floor**; the port already beats C at the byte level.
+
+**backref-dup (3.4× C).** Classic O(word²) backtracking re-scan. **Even V8's own interpreter is
+2.4× C here** — hard for every interpreter. Auto-possessification halved it (6.8 → 3.4×). The
+residual is the pure-Dart per-step constant factor (bounds-checked typed lists, no computed-goto)
+vs V8/C's C++.
+
+Both gaps are architectural/fundamental, not unexplored optimizations: closing them needs
+zero-copy String bytes (absent in Dart) or a different engine class (DFA — loses Oniguruma
+features), each forfeiting either the language's limits or this port's byte-exact-C purpose.

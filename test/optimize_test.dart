@@ -56,27 +56,24 @@ void main() {
   // Regression guard for the case-insensitive prefilter: `(?i)…` literals must
   // get a first-byte map over the leading char's fold class, not fall back to
   // scanning every position.
-  group('case-insensitive first-byte map', () {
-    test('(?i)lorem → map over {l, L}, excludes others', () {
+  group('case-insensitive exact (strIc) — ASCII-fold-only literals', () {
+    test('(?i)lorem → strIc with ASCII-lower folded needle', () {
       final r = _c('(?i)lorem');
-      expect(r.optimize, Optimize.map, reason: 'must prefilter, not scan all');
-      final m = r.map!;
-      expect(m[0x6c], 1, reason: 'l'); // l
-      expect(m[0x4c], 1, reason: 'L'); // L
-      expect(m[0x7a], 0, reason: 'z must not be in the set');
-      expect(m[0x61], 0, reason: 'a must not be in the set');
+      expect(r.optimize, Optimize.strIc, reason: 'Sunday skip, not byte scan');
+      // needle is folded to ASCII-lower for the byte search.
+      expect(r.exactIc, [0x6c, 0x6f, 0x72, 0x65, 0x6d]); // "lorem"
     });
 
-    test('(?i)ABC → map includes both cases of the lead char', () {
-      final m = _c('(?i)ABC').map!;
-      expect(m[0x41], 1); // A
-      expect(m[0x61], 1); // a
+    test('(?i)ABC → strIc, needle folded to lower case', () {
+      final r = _c('(?i)ABC');
+      expect(r.optimize, Optimize.strIc);
+      expect(r.exactIc, [0x61, 0x62, 0x63]); // "abc"
     });
 
     test('(?i)(group) unwraps to the inner literal', () {
       final r = _c('(?i)(lorem)');
-      expect(r.optimize, Optimize.map);
-      expect(r.map![0x4c], 1); // L
+      expect(r.optimize, Optimize.strIc);
+      expect(r.exactIc, [0x6c, 0x6f, 0x72, 0x65, 0x6d]);
     });
 
     test('lead char with a multi-char fold (ß≡ss) bails safely to none', () {
@@ -85,9 +82,18 @@ void main() {
       expect(_c('(?i)ße').optimize, Optimize.none);
     });
 
-    test('map prefilter does not break case-insensitive matching', () {
-      final r = _c('(?i)lorem');
+    test('char with a NON-ascii fold member (s↔ſ) falls back to map', () {
+      // `s` folds with `ſ` (U+017F, multibyte), so a byte search would miss it
+      // — strIc bails and the first-byte map is used instead.
+      final r = _c('(?i)sun');
       expect(r.optimize, Optimize.map);
+      expect(r.map![0x73], 1); // s
+      expect(r.map![0x53], 1); // S
+    });
+
+    test('strIc does not break case-insensitive matching', () {
+      final r = _c('(?i)lorem');
+      expect(r.optimize, Optimize.strIc);
       for (final s in ['lorem', 'LOREM', 'Lorem', 'lOrEm']) {
         expect(_find(r, 'zz${s}zz'), greaterThanOrEqualTo(0), reason: s);
       }

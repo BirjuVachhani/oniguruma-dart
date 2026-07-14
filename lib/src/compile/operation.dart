@@ -114,6 +114,14 @@ abstract final class Op {
   // branch (addr) instead of PUSHing + entering it and failing. The set lives in
   // `bs`. Only emitted for non-nullable branches with a determinable set.
   static const int peekByte = 92;
+
+  // Dart-specific literal-switch alternation: every branch has a fixed, DISTINCT
+  // single first byte, so at most one branch can match at any position. Dispatch
+  // straight to the one branch via a 256-entry byte→relative-addr table (`disp`,
+  // 0 = no branch → fail) with NO PUSH/backtrack frame — there is never another
+  // branch to give back to. Collapses the whole PUSH/JUMP (or peekByte) chain
+  // into one table lookup. Emitted by _compileAlt only when heads are distinct.
+  static const int dispatchByte = 93;
 }
 
 /// SaveType (`enum SaveType`).
@@ -171,6 +179,7 @@ final class Operation {
   BitSet? bs; // cclass bitset
   CodeRangeBuffer? mb; // cclass multibyte ranges
   List<int>? ns; // multi backref group list
+  Uint16List? disp; // dispatchByte: 256-entry byte→relative-addr table (0=fail)
 
   // callout payload (OP_CALLOUT_*)
   String? calloutName;
@@ -213,8 +222,9 @@ class FlatOps {
   final List<BitSet?> bs;
   final List<CodeRangeBuffer?> mb;
   final List<List<int>?> ns;
+  final List<Uint16List?> disp;
 
-  FlatOps._(this.scalars, this.str, this.bs, this.mb, this.ns);
+  FlatOps._(this.scalars, this.str, this.bs, this.mb, this.ns, this.disp);
 
   factory FlatOps.from(List<Operation> ops) {
     final n = ops.length;
@@ -223,6 +233,7 @@ class FlatOps {
     final bs = List<BitSet?>.filled(n, null);
     final mb = List<CodeRangeBuffer?>.filled(n, null);
     final ns = List<List<int>?>.filled(n, null);
+    final disp = List<Uint16List?>.filled(n, null);
     for (var i = 0; i < n; i++) {
       final o = ops[i];
       final b = i * stride;
@@ -241,8 +252,9 @@ class FlatOps {
       bs[i] = o.bs;
       mb[i] = o.mb;
       ns[i] = o.ns;
+      disp[i] = o.disp;
     }
-    return FlatOps._(scalars, str, bs, mb, ns);
+    return FlatOps._(scalars, str, bs, mb, ns, disp);
   }
 }
 

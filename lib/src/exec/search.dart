@@ -16,6 +16,22 @@ import '../regex.dart';
 import 'executor.dart';
 import 'nfa.dart';
 
+/// One-entry Executor cache per [Regex], so a scan that calls [onigSearch] once
+/// per match (the String API's `allMatches`, and the byte-API bench loop) does
+/// not reallocate the Executor's stack + mem buffers on every match. Reuse is
+/// gated on an identical subject + identical search params, and disabled when
+/// callouts are in play (they can run user code that re-enters the same regex).
+final Expando<_CachedExecutor> _executorCache = Expando<_CachedExecutor>();
+
+class _CachedExecutor {
+  final Executor ex;
+  final Uint8List str;
+  final int end;
+  final int option;
+  final int retryLimit;
+  _CachedExecutor(this.ex, this.str, this.end, this.option, this.retryLimit);
+}
+
 /// `onig_search` — find the first match beginning in `[start, range]`.
 /// Returns the match **start** byte offset, or [OnigResult.mismatch], or a
 /// negative error code. Fills [region] on success.
@@ -41,14 +57,26 @@ int onigSearch(
     return nfaSearch(nfa, reg, str, end, start, range, region, effOptions);
   }
 
-  final ex = Executor(
-    reg,
-    str,
-    end,
-    retryLimit: retryLimit,
-    options: option,
-    calloutRegistry: callouts,
-  )..msaStart = start; // \G anchors to the fixed original start
+  // Reuse a per-Regex Executor across a scan (same subject + params, no
+  // callouts) to avoid reallocating its stack/mem buffers on every match.
+  final Executor ex;
+  if (callouts == null) {
+    final cached = _executorCache[reg];
+    if (cached != null &&
+        identical(cached.str, str) &&
+        cached.end == end &&
+        cached.option == option &&
+        cached.retryLimit == retryLimit) {
+      ex = cached.ex..resetForReuse();
+    } else {
+      ex = Executor(reg, str, end, retryLimit: retryLimit, options: option);
+      _executorCache[reg] = _CachedExecutor(ex, str, end, option, retryLimit);
+    }
+  } else {
+    ex = Executor(reg, str, end,
+        retryLimit: retryLimit, options: option, calloutRegistry: callouts);
+  }
+  ex.msaStart = start; // \G anchors to the fixed original start
 
   final enc = reg.enc;
 
@@ -118,9 +146,47 @@ int onigSearch(
       final distMax = reg.distMax;
       final anyChar = reg.exactAnchorAnyChar;
       final anyCharMl = reg.exactAnchorAnyCharMl;
+      // Pure-literal fast path: the whole pattern is the exact literal, so a
+      // Sunday hit at `found` IS the match — fill the region directly and skip
+      // the per-match matchAt. Disabled under options that change OP_END
+      // semantics (whole-string / not-empty; find-longest early-returns above).
+      final wholeLit = reg.exactWholeMatch &&
+          ((option | reg.options) &
+                  (OnigOption.matchWholeString | OnigOption.findNotEmpty)) ==
+              0;
+      final hasBack = reg.hasExactBack;
       while (s <= range) {
         final found = _searchExact(str, exact, skip, s + distMin, end);
         if (found < 0) return OnigResult.mismatch;
+
+        if (wholeLit) {
+          if (found > range) return OnigResult.mismatch;
+          if (region != null) {
+            region.resize(1);
+            region.beg[0] = found;
+            region.end[0] = found + exact.length;
+          }
+          return found;
+        }
+
+        if (hasBack) {
+          // The match is `C+ exact …`; walk back over C from `found` to the
+          // run start — the unique leftmost candidate for this occurrence of
+          // the exact — and try matchAt there once (not every gap position).
+          var q = found;
+          while (q > s) {
+            final prev = enc.leftAdjustCharHead(str, s, q - 1);
+            if (!_inBackClass(reg, enc.mbcToCode(str, prev, end), enc)) break;
+            q = prev;
+          }
+          if (q <= range) {
+            final r = ex.matchAt(q, region);
+            if (r >= 0) return q;
+            if (r < OnigResult.mismatch) return r;
+          }
+          s = found + 1; // this occurrence yields no match; jump to the next
+          continue;
+        }
 
         if (anyCharMl) {
           // Leading `(?s).*`: `.*` from `s` reaches any later occurrence, so a
@@ -166,11 +232,33 @@ int onigSearch(
 
     case Optimize.map:
       final map = reg.map!;
+      final wordStart = reg.leadingWordBoundary;
       while (s <= range) {
+        // Tight skip over a run of ASCII bytes that can't begin a match — no
+        // virtual `enc.length` per byte (map-optimized regexes always use a
+        // minLength==1 encoding, so an ASCII byte is exactly one char). This is
+        // our analog of V8's SkipUntilBitInTable.
+        var b = 0;
+        while (s < end && s <= range && (b = str[s]) < 0x80 && map[b] == 0) {
+          s++;
+        }
+        if (s > range) break;
+        // A multibyte char whose lead byte isn't in the map: skip by its length.
         if (s < end && map[str[s]] == 0) {
           final len = enc.length(str, s, end);
           s += len < 1 ? 1 : len;
           continue;
+        }
+        // Leading `\b`: when this candidate and the byte before it are both
+        // ASCII word chars, the boundary is provably false here, so matchAt
+        // would mismatch without consuming — skip it without entering the VM.
+        // (Both ASCII ⇒ single-byte, so advancing by 1 stays on a char head.)
+        if (wordStart && s > 0 && s < end && (b = str[s]) < 0x80 && _asciiWord(b)) {
+          final p = str[s - 1];
+          if (p < 0x80 && _asciiWord(p)) {
+            s++;
+            continue;
+          }
         }
         final r = ex.matchAt(s, region);
         if (r >= 0) return s;
@@ -178,6 +266,22 @@ int onigSearch(
         if (s >= range) break;
         final len = enc.length(str, s, end);
         s += len < 1 ? 1 : len;
+      }
+      return OnigResult.mismatch;
+
+    case Optimize.strIc:
+      // Case-insensitive Sunday search: jump multiple bytes per step to the next
+      // folded occurrence of the needle (built for a leading ic literal whose
+      // fold class is ASCII-only), then verify + capture with matchAt.
+      final needle = reg.exactIc!;
+      final skip = reg.exactIcSkip!;
+      while (s <= range) {
+        final found = _searchExactIc(str, needle, skip, s, end);
+        if (found < 0 || found > range) return OnigResult.mismatch;
+        final r = ex.matchAt(found, region);
+        if (r >= 0) return found;
+        if (r < OnigResult.mismatch) return r;
+        s = found + 1;
       }
       return OnigResult.mismatch;
 
@@ -194,6 +298,64 @@ int onigSearch(
       return OnigResult.mismatch;
   }
 }
+
+/// ASCII upper→lower fold of a single byte (non-ASCII bytes pass through, so a
+/// UTF-8 multibyte byte — always >= 0x80 — never folds into a needle byte).
+int _foldByte(int b) => (b >= 0x41 && b <= 0x5a) ? b + 0x20 : b;
+
+/// Is code point [code] a member of the recorded leading class C (for the
+/// `C+ exact…` walk-back)? Mirrors the executor's ctype / char-class test.
+bool _inBackClass(Regex reg, int code, OnigEncoding enc) {
+  final ct = reg.exactBackCtype;
+  if (ct >= 0) {
+    if (reg.exactBackCtypeAscii || code < 0x80) {
+      return asciiIsCodeCtype(code, ct);
+    }
+    return enc.isCodeCtype(code, ct);
+  }
+  final bs = reg.exactBackBs;
+  if (bs != null &&
+      (code < 0x80 || (enc.isSingleByte && code < 0x100)) &&
+      bs.at(code)) {
+    return true;
+  }
+  final mb = reg.exactBackMb;
+  return mb != null && mb.contains(code);
+}
+
+/// Leftmost index in `[from, end)` where [needle] matches case-insensitively
+/// (both sides ASCII-folded), or -1, using a Sunday skip over folded bytes.
+int _searchExactIc(
+    Uint8List hay, Uint8List needle, Uint16List skip, int from, int end) {
+  final n = needle.length;
+  if (n == 0) return from <= end ? from : -1;
+  final last = end - n;
+  var i = from < 0 ? 0 : from;
+  if (i > last) return -1;
+  final first = needle[0];
+  final lastByte = needle[n - 1];
+  while (true) {
+    if (_foldByte(hay[i]) == first && _foldByte(hay[i + n - 1]) == lastByte) {
+      var k = 1;
+      while (k < n - 1 && _foldByte(hay[i + k]) == needle[k]) {
+        k++;
+      }
+      if (k >= n - 1) return i;
+    }
+    final nextPos = i + n;
+    if (nextPos >= end) return -1;
+    i += skip[_foldByte(hay[nextPos])];
+    if (i > last) return -1;
+  }
+}
+
+/// ASCII word char (`[0-9A-Za-z_]`) — the `\w` membership test used by the
+/// leading-`\b` word-start skip (byte already known to be `< 0x80`).
+bool _asciiWord(int b) =>
+    (b >= 0x30 && b <= 0x39) || // 0-9
+    (b >= 0x41 && b <= 0x5a) || // A-Z
+    (b >= 0x61 && b <= 0x7a) || // a-z
+    b == 0x5f; // _
 
 /// Leftmost index of [needle] in [hay] within `[from, end)`, or -1, using
 /// Sunday quick search with the precomputed bad-char [skip] table (jumps up to

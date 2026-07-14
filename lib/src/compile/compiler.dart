@@ -36,6 +36,7 @@ void compile(Regex reg, Node? root) {
   c._fixupCalls();
   reg.numCall =
       c._pendingCalls.length; // >0 enables recursion-safe repeat count
+  c._markPossessiveStars(); // auto-possessify safe greedy single-item loops
   reg.flat = FlatOps.from(reg.ops); // flat arrays for the executor hot loop
   setOptimizeInfo(reg, root);
   // Build the linear-time NFA fast path for the safe subset (null otherwise).
@@ -627,6 +628,28 @@ class _Compiler {
     }
     if (cur != null) branches.add(cur);
 
+    // Fast path: literal switch — every branch has a fixed, DISTINCT single
+    // first byte and is non-nullable, so at most one branch can match at any
+    // position. Dispatch straight to that branch via a byte→addr table with no
+    // PUSH/backtrack frame (there is never another branch to give back to).
+    final lead = _distinctLeadBytes(branches);
+    if (lead != null) {
+      final dispIdx = emit(Operation(Op.dispatchByte));
+      final table = Uint16List(256);
+      final dJumpIdxs = <int>[];
+      for (var i = 0; i < branches.length; i++) {
+        table[lead[i]] = pos - dispIdx; // relative addr of this branch's start
+        compileTree(branches[i]);
+        if (i != branches.length - 1) dJumpIdxs.add(emit(Operation(Op.jump)));
+      }
+      final endIdx = pos;
+      for (final j in dJumpIdxs) {
+        ops[j].addr = endIdx - j;
+      }
+      ops[dispIdx].disp = table;
+      return;
+    }
+
     final jumpIdxs = <int>[];
     for (var i = 0; i < branches.length; i++) {
       final last = i == branches.length - 1;
@@ -701,6 +724,39 @@ class _Compiler {
       default:
         return false;
     }
+  }
+
+  /// Per-branch fixed first byte for a literal-switch alternation, or null when
+  /// any branch's first byte isn't a single determinable value or two branches
+  /// share a head. Distinctness is what makes [Op.dispatchByte] sound: it means
+  /// at most one branch is viable at a position, so no give-back frame is ever
+  /// needed. Reuses the (audited) non-nullable-head predicate [_altFirstBytes]
+  /// and requires its set to be a singleton.
+  List<int>? _distinctLeadBytes(List<Node> branches) {
+    if (branches.length < 2) return null;
+    final lead = List<int>.filled(branches.length, 0);
+    final seen = <int>{};
+    for (var i = 0; i < branches.length; i++) {
+      final b = _singleLeadByte(branches[i]);
+      if (b < 0 || !seen.add(b)) return null; // undeterminable or duplicate head
+      lead[i] = b;
+    }
+    return lead;
+  }
+
+  /// The one fixed first byte of [node] if its first-byte set is a singleton and
+  /// the head is non-nullable; otherwise -1.
+  int _singleLeadByte(Node node) {
+    final bs = BitSet();
+    if (!_altFirstBytesInto(node, bs)) return -1;
+    var found = -1;
+    for (var b = 0; b < 256; b++) {
+      if (bs.at(b)) {
+        if (found != -1) return -1; // more than one possible first byte
+        found = b;
+      }
+    }
+    return found;
   }
 
   // --- string --------------------------------------------------------------
@@ -1792,6 +1848,74 @@ class _Compiler {
     final before = pos;
     compileTree(body); // must be exactly one op (guaranteed by _isStarEligible)
     assert(pos - before == 1, 'starGreedy body must be a single op');
+  }
+
+  /// Auto-possessification: a greedy single-item loop `X*`/`X+` (an [Op.starGreedy])
+  /// followed by an atom whose first byte cannot be an `X` — or by end-of-pattern —
+  /// never needs to give a character back (giving back exposes only `X` chars,
+  /// where the follower can't match). Mark such loops possessive (flag=1) so the
+  /// executor skips pushing the give-back frame entirely. Provably match-preserving.
+  void _markPossessiveStars() {
+    for (var i = 0; i + 1 < ops.length; i++) {
+      if (ops[i].opcode != Op.starGreedy) continue;
+      final body = ops[i + 1];
+      // Find the next consuming op after the loop exit (i+2), skipping only the
+      // zero-width capture-group boundary ops. Anything else → don't possessify.
+      var j = i + 2;
+      while (j < ops.length && _isMemBoundary(ops[j].opcode)) {
+        j++;
+      }
+      if (j >= ops.length) continue;
+      if (_starPossessiveSafe(body, ops[j])) ops[i].flag = 1;
+    }
+  }
+
+  static bool _isMemBoundary(int op) =>
+      op == Op.memStart ||
+      op == Op.memStartPush ||
+      op == Op.memEnd ||
+      op == Op.memEndPush ||
+      op == Op.memEndPushRec ||
+      op == Op.memEndRec;
+
+  bool _starPossessiveSafe(Operation body, Operation next) {
+    if (next.opcode == Op.end) return true; // nothing follows the loop
+    final nb = _firstLiteralByte(next);
+    if (nb < 0 || nb >= 0x80) return false; // only ASCII single-literal followers
+    return !_bodyMatchesByte(body, nb); // safe iff the follower ∉ loop's char set
+  }
+
+  /// First byte of a plain (non-ignore-case) literal op, or -1.
+  int _firstLiteralByte(Operation op) {
+    switch (op.opcode) {
+      case Op.str1:
+      case Op.str2:
+      case Op.str3:
+      case Op.str4:
+      case Op.str5:
+      case Op.strN:
+        if (op.flag != 0) return -1; // ignore-case / crude: bail
+        final s = op.str;
+        return (s != null && s.isNotEmpty) ? s[0] : -1;
+      default:
+        return -1;
+    }
+  }
+
+  /// Whether the [Op.starGreedy] body matches ASCII byte [b] (b < 0x80). Returns
+  /// true (⇒ not disjoint ⇒ not possessive) for any body it can't prove disjoint.
+  bool _bodyMatchesByte(Operation body, int b) {
+    switch (body.opcode) {
+      case Op.cclass:
+      case Op.cclassMb:
+      case Op.cclassMix:
+        return body.bs?.at(b) ?? true; // mbuf is ≥0x80, irrelevant for ASCII b
+      case Op.word:
+      case Op.wordAscii:
+        return asciiIsCodeCtype(b, CType.word);
+      default:
+        return true; // conservative: assume a match → keep backtracking
+    }
   }
 
   /// PORTING_NOTES quant template (B): greedy `*` / `+` / `{n,}` tail.

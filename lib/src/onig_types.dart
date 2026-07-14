@@ -120,6 +120,7 @@ abstract final class Optimize {
   static const int strFast = 2; // Sunday quick-search / BMH
   static const int strFastStepForward = 3;
   static const int map = 4; // 256-entry char map
+  static const int strIc = 5; // case-insensitive Sunday quick-search (ASCII fold)
 }
 
 /// Word-boundary / anchor "mode" for OP_WORD_BOUNDARY etc. (ascii flag).

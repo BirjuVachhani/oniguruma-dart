@@ -177,6 +177,54 @@ void main() {
     });
   });
 
+  group('encode cache correctness', () {
+    test('one regex, repeated + interleaved scans of different strings', () {
+      final re = OnigRegex.compile(r'\w+');
+      const a = 'foo bar baz'; // ASCII
+      const b = 'héllo 東京 wörld'; // non-ASCII
+      const c = 'x1 y2 z3'; // ASCII, different
+      // Hit (a,a), rebuild (b), back to a, alternate — every scan must be right.
+      for (final s in [a, a, b, a, c, b, b, a]) {
+        final ms = re.allMatches(s).toList();
+        for (final m in ms) {
+          expect(s.substring(m.start, m.end), m.group(0),
+              reason: 'scan of "$s"');
+        }
+        expect(ms, isNotEmpty);
+      }
+    });
+
+    test('many matches with captures reuse the Executor without corruption', () {
+      // Long multi-match input + capture groups: every allMatches step reuses
+      // the cached Executor, so memStart/memEnd must reset per match. Compare
+      // exhaustively against RegExp (they agree on this pattern).
+      final buf = StringBuffer();
+      for (var i = 0; i < 500; i++) {
+        buf.write('a${i}b c${i}d ');
+      }
+      final s = buf.toString();
+      final pat = r'(\w)(\w+)(\w)';
+      final og = OnigRegex.compile(pat).allMatches(s).toList();
+      final re = RegExp(pat).allMatches(s).toList();
+      expect(og.length, re.length);
+      expect(og.length, greaterThan(500));
+      for (var i = 0; i < og.length; i++) {
+        for (var g = 0; g <= 3; g++) {
+          expect(og[i].group(g), re[i].group(g), reason: 'match $i group $g');
+        }
+      }
+    });
+
+    test('firstMatch then allMatches on the same string agree', () {
+      final re = OnigRegex.compile('京');
+      const s = '東京東京東';
+      final fm = re.firstMatch(s)!;
+      final am = re.allMatches(s).first;
+      expect([fm.start, fm.end], [am.start, am.end]);
+      expect([fm.start, fm.end], [1, 2]);
+    });
+  });
+
   group('start offset + empty matches', () {
     test('allMatches honors start (code-unit) offset', () {
       final ms = OnigRegex.compile('a').allMatches('aXaXa', 1).toList();
