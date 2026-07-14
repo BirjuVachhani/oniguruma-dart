@@ -45,19 +45,19 @@
     "greedy-dotstar": 389504500.0
   },
   "ONIG_VM": {
-    "literal": 1820000.0,
-    "literal-unicode": 1024349.3,
-    "alt-5": 19600000.0,
-    "class-lower": 22391416.7,
-    "class-digit": 2056512.3,
-    "word-w": 25973100.0,
-    "two-words": 16900000.0,
-    "word-boundary": 21550000.0,
-    "email-like": 2850000.0,
-    "named-group": 23857409.1,
-    "case-insens": 2900000.0,
-    "backref-dup": 132397750.0,
-    "greedy-dotstar": 6054654.8
+    "literal": 1690000,
+    "literal-unicode": 880000,
+    "alt-5": 18690000,
+    "class-lower": 20190000,
+    "class-digit": 1920000,
+    "word-w": 22450000,
+    "two-words": 16410000,
+    "word-boundary": 21140000,
+    "email-like": 2820000,
+    "named-group": 22720000,
+    "case-insens": 2750000,
+    "backref-dup": 132080000,
+    "greedy-dotstar": 5860000
   },
   "COUNT": {
     "literal": 7856,

@@ -79,6 +79,23 @@ void main() {
       expect(ms.map((m) => m.group(0)), ['foo', 'foo']);
     });
 
+    test('reused region: materialized matches keep DISTINCT snapshots', () {
+      // allMatches reuses one OnigRegion; each OnigMatch must snapshot its own
+      // offsets/groups. Materialize everything first, then read out of order —
+      // a shared region would make every match report the LAST one's data.
+      final ms = OnigRegex.compile(r'(\w)(\d)').allMatches('a1 b2 c3').toList();
+      expect(ms.length, 3);
+      // read in reverse to defeat any "last write wins" aliasing
+      expect(ms[2].group(0), 'c3');
+      expect([ms[2].group(1), ms[2].group(2)], ['c', '3']);
+      expect(ms[0].group(0), 'a1');
+      expect([ms[0].group(1), ms[0].group(2)], ['a', '1']);
+      expect(ms[1].group(0), 'b2');
+      expect([ms[1].start, ms[1].end], [3, 5]);
+      expect(ms.map((m) => m.group(0)), ['a1', 'b2', 'c3']);
+      expect(ms.map((m) => m.startOf(2)), [1, 4, 7]);
+    });
+
     test('Latin-1: char after é is at the right code-unit index', () {
       // a(0) é(1) b(2) é(3) c(4)
       final m = OnigRegex.compile('b').firstMatch('aébéc')!;

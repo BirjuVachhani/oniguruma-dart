@@ -105,8 +105,12 @@ class OnigRegex {
     final map = _subjectFor(input);
     final end = map.bytes.length;
     var bpos = map.byteAt(start);
+    // One region reused across the whole scan: onigSearch overwrites it each
+    // call and OnigMatch snapshots the offsets it needs at construction, so no
+    // per-match OnigRegion allocation (the dominant per-match cost for dense,
+    // simple patterns — e.g. literal scans over a large corpus).
+    final region = OnigRegion();
     while (bpos <= end) {
-      final region = OnigRegion();
       final r = onigSearch(_reg, map.bytes, end, bpos, end, region);
       if (r < 0) break;
       yield OnigMatch._(input, region, map, _reg.nameTable);
@@ -139,27 +143,47 @@ class OnigRegex {
 /// A single match result, with `Match`-like accessors (code-unit offsets).
 class OnigMatch {
   final String input;
-  final OnigRegion _region;
+
+  /// Snapshotted engine byte offsets, interleaved `[beg0, end0, beg1, end1, …]`.
+  /// Copied out of the [OnigRegion] at construction so the region can be reused
+  /// across an `allMatches` scan without a per-match allocation (see below).
+  final Int32List _regs;
+
+  /// Register count (whole match + capture groups).
+  final int numRegs;
+
   final _Subject _map;
   final Map<String, List<int>> _names;
 
-  OnigMatch._(this.input, this._region, this._map, this._names);
+  OnigMatch._(this.input, OnigRegion region, this._map, this._names)
+      : numRegs = region.numRegs,
+        _regs = _snapshot(region);
+
+  static Int32List _snapshot(OnigRegion r) {
+    final n = r.numRegs;
+    final a = Int32List(n << 1);
+    for (var i = 0; i < n; i++) {
+      a[i << 1] = r.beg[i];
+      a[(i << 1) + 1] = r.end[i];
+    }
+    return a;
+  }
 
   /// Number of capture groups (excluding the whole match).
-  int get groupCount => _region.numRegs - 1;
+  int get groupCount => numRegs - 1;
 
   /// Whole-match start (code-unit index).
-  int get start => _map.charAt(_region.beg[0]);
+  int get start => _map.charAt(_regs[0]);
 
   /// Whole-match end (code-unit index).
-  int get end => _map.charAt(_region.end[0]);
+  int get end => _map.charAt(_regs[1]);
 
   /// Group [i]'s substring (0 = whole match), or null if unset.
   String? group(int i) {
-    if (i < 0 || i >= _region.numRegs) return null;
-    final b = _region.beg[i];
+    if (i < 0 || i >= numRegs) return null;
+    final b = _regs[i << 1];
     if (b < 0) return null;
-    return input.substring(_map.charAt(b), _map.charAt(_region.end[i]));
+    return input.substring(_map.charAt(b), _map.charAt(_regs[(i << 1) + 1]));
   }
 
   /// Named group's substring, or null.
@@ -174,13 +198,13 @@ class OnigMatch {
   }
 
   /// Start code-unit index of group [i] (-1 if unset).
-  int startOf(int i) => (i < _region.numRegs && _region.beg[i] >= 0)
-      ? _map.charAt(_region.beg[i])
+  int startOf(int i) => (i < numRegs && _regs[i << 1] >= 0)
+      ? _map.charAt(_regs[i << 1])
       : -1;
 
   /// End code-unit index of group [i] (-1 if unset).
-  int endOf(int i) => (i < _region.numRegs && _region.end[i] >= 0)
-      ? _map.charAt(_region.end[i])
+  int endOf(int i) => (i < numRegs && _regs[(i << 1) + 1] >= 0)
+      ? _map.charAt(_regs[(i << 1) + 1])
       : -1;
 
   @override
