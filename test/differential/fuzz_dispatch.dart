@@ -110,8 +110,10 @@ Future<void> main(List<String> argv) async {
   for (final f in failures) {
     stderr.writeln('DIVERGE: $f');
   }
-  print('$passed passed, $failed failed, $skipped skipped '
-      '($count generated, seed $seed)');
+  print(
+    '$passed passed, $failed failed, $skipped skipped '
+    '($count generated, seed $seed)',
+  );
   if (failed != 0) exitCode = 1;
 }
 

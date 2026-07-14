@@ -51,9 +51,7 @@ int onigSearch(
   // backward search (range < start) isn't supported — both fall through.
   final nfa = reg.nfa;
   final effOptions = option | reg.options;
-  if (nfa != null &&
-      (effOptions & nfaUnsafeOptions) == 0 &&
-      range >= start) {
+  if (nfa != null && (effOptions & nfaUnsafeOptions) == 0 && range >= start) {
     return nfaSearch(nfa, reg, str, end, start, range, region, effOptions);
   }
 
@@ -73,8 +71,14 @@ int onigSearch(
       _executorCache[reg] = _CachedExecutor(ex, str, end, option, retryLimit);
     }
   } else {
-    ex = Executor(reg, str, end,
-        retryLimit: retryLimit, options: option, calloutRegistry: callouts);
+    ex = Executor(
+      reg,
+      str,
+      end,
+      retryLimit: retryLimit,
+      options: option,
+      calloutRegistry: callouts,
+    );
   }
   ex.msaStart = start; // \G anchors to the fixed original start
 
@@ -150,7 +154,8 @@ int onigSearch(
       // Sunday hit at `found` IS the match — fill the region directly and skip
       // the per-match matchAt. Disabled under options that change OP_END
       // semantics (whole-string / not-empty; find-longest early-returns above).
-      final wholeLit = reg.exactWholeMatch &&
+      final wholeLit =
+          reg.exactWholeMatch &&
           ((option | reg.options) &
                   (OnigOption.matchWholeString | OnigOption.findNotEmpty)) ==
               0;
@@ -253,7 +258,11 @@ int onigSearch(
         // ASCII word chars, the boundary is provably false here, so matchAt
         // would mismatch without consuming — skip it without entering the VM.
         // (Both ASCII ⇒ single-byte, so advancing by 1 stays on a char head.)
-        if (wordStart && s > 0 && s < end && (b = str[s]) < 0x80 && _asciiWord(b)) {
+        if (wordStart &&
+            s > 0 &&
+            s < end &&
+            (b = str[s]) < 0x80 &&
+            _asciiWord(b)) {
           final p = str[s - 1];
           if (p < 0x80 && _asciiWord(p)) {
             s++;
@@ -326,7 +335,12 @@ bool _inBackClass(Regex reg, int code, OnigEncoding enc) {
 /// Leftmost index in `[from, end)` where [needle] matches case-insensitively
 /// (both sides ASCII-folded), or -1, using a Sunday skip over folded bytes.
 int _searchExactIc(
-    Uint8List hay, Uint8List needle, Uint16List skip, int from, int end) {
+  Uint8List hay,
+  Uint8List needle,
+  Uint16List skip,
+  int from,
+  int end,
+) {
   final n = needle.length;
   if (n == 0) return from <= end ? from : -1;
   final last = end - n;
@@ -361,7 +375,12 @@ bool _asciiWord(int b) =>
 /// Sunday quick search with the precomputed bad-char [skip] table (jumps up to
 /// `needle.length + 1` bytes per mismatch instead of scanning one at a time).
 int _searchExact(
-    Uint8List hay, Uint8List needle, Uint16List skip, int from, int end) {
+  Uint8List hay,
+  Uint8List needle,
+  Uint16List skip,
+  int from,
+  int end,
+) {
   final n = needle.length;
   if (n == 0) return from <= end ? from : -1;
   final last = end - n; // last valid start offset

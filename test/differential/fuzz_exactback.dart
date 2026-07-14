@@ -10,8 +10,16 @@ import 'dart:io';
 import 'diff_util.dart';
 
 const _pats = [
-  r'\w+@\w+', r'\w+@\w+@\w+', r'[a-z]+:[a-z]+', r'\d+\.\d+', r'\w+@\d+',
-  r'\w+-\w+', r'[a-z]+/[a-z]+', r'\w+\.\w+\.\w+', r'\d+:\d+', r'[a-zA-Z]+=\w+',
+  r'\w+@\w+',
+  r'\w+@\w+@\w+',
+  r'[a-z]+:[a-z]+',
+  r'\d+\.\d+',
+  r'\w+@\d+',
+  r'\w+-\w+',
+  r'[a-z]+/[a-z]+',
+  r'\w+\.\w+\.\w+',
+  r'\d+:\d+',
+  r'[a-zA-Z]+=\w+',
 ];
 
 const _alpha = 'abcXY_09 @:.-/=\t!';
@@ -70,8 +78,10 @@ Future<void> main(List<String> argv) async {
   for (final f in failures) {
     stderr.writeln('DIVERGE: $f');
   }
-  print('$passed passed, $failed failed, $skipped skipped '
-      '($count generated, seed $seed)');
+  print(
+    '$passed passed, $failed failed, $skipped skipped '
+    '($count generated, seed $seed)',
+  );
   if (failed != 0) exitCode = 1;
 }
 

@@ -495,7 +495,8 @@ class Executor {
 
         case Op.textSegmentBoundary:
           {
-            final boundary = sc[base + FlatOps.oFlag] == TextSegmentBoundaryType.word
+            final boundary =
+                sc[base + FlatOps.oFlag] == TextSegmentBoundaryType.word
                 ? _wordBoundaryAt(s)
                 : _isGraphemeBoundary(s);
             if (boundary != (sc[base + FlatOps.oFlag2] == 1)) {
@@ -579,7 +580,8 @@ class Executor {
               pc++;
               continue;
             }
-          } else if (sc[base + FlatOps.oFlag] == CheckPositionType.currentRightRange) {
+          } else if (sc[base + FlatOps.oFlag] ==
+              CheckPositionType.currentRightRange) {
             if (s == _rightRange) {
               pc++;
               continue;
@@ -611,7 +613,11 @@ class Executor {
 
         case Op.backrefN:
           {
-            final r = _matchBackref(sc[base + FlatOps.oMem], s, sc[base + FlatOps.oFlag] == 1);
+            final r = _matchBackref(
+              sc[base + FlatOps.oMem],
+              s,
+              sc[base + FlatOps.oFlag] == 1,
+            );
             if (r >= 0) {
               s = r;
               pc++;
@@ -640,7 +646,12 @@ class Executor {
 
         case Op.backrefWithLevel:
           {
-            final r = _backrefAtLevel(opNs[pc]!, sc[base + FlatOps.oC], s, sc[base + FlatOps.oFlag] == 1);
+            final r = _backrefAtLevel(
+              opNs[pc]!,
+              sc[base + FlatOps.oC],
+              s,
+              sc[base + FlatOps.oFlag] == 1,
+            );
             if (r >= 0) {
               s = r;
               pc++;
@@ -679,7 +690,13 @@ class Executor {
           // restore frame. The completed result is set at MEM_END, so the
           // last-closed instance wins — correct for recursion and `\g<>`.
           _openStart[sc[base + FlatOps.oMem]].add(s);
-          stk.push(Stk.memStart, sc[base + FlatOps.oMem], 0, s, 0); // str = start position
+          stk.push(
+            Stk.memStart,
+            sc[base + FlatOps.oMem],
+            0,
+            s,
+            0,
+          ); // str = start position
           pc++;
           continue;
 
@@ -747,7 +764,13 @@ class Executor {
           continue;
 
         case Op.mark:
-          stk.push(Stk.mark, sc[base + FlatOps.oId], 0, s, sc[base + FlatOps.oFlag]);
+          stk.push(
+            Stk.mark,
+            sc[base + FlatOps.oId],
+            0,
+            s,
+            sc[base + FlatOps.oFlag],
+          );
           pc++;
           continue;
 
@@ -757,7 +780,10 @@ class Executor {
             // flag==2: atomic cut, keep body's right_range/\K SAVE_VAL so a
             //          range-cutter boundary is undone on outer backtrack (#891).
             // flag==0: plain cut (look-behind / conditional), discard frames.
-            final markStr = _cutToMark(sc[base + FlatOps.oId], sc[base + FlatOps.oFlag] == 2);
+            final markStr = _cutToMark(
+              sc[base + FlatOps.oId],
+              sc[base + FlatOps.oFlag] == 2,
+            );
             if (sc[base + FlatOps.oFlag] == 1 && markStr >= 0) {
               s = markStr; // restore_pos (look-around)
             }
@@ -840,7 +866,13 @@ class Executor {
           // array without this corrupts nested-loop empty detection.
           // zid = sc[base + FlatOps.oMem] so `_capsChanged` can find this START frame; the
           // MEMST end does the capture comparison via a stack-scan (no snapshot).
-          stk.push(Stk.emptyCheck, sc[base + FlatOps.oMem], 0, 0, emptyCheckStk[sc[base + FlatOps.oMem]]);
+          stk.push(
+            Stk.emptyCheck,
+            sc[base + FlatOps.oMem],
+            0,
+            0,
+            emptyCheckStk[sc[base + FlatOps.oMem]],
+          );
           emptyCheckStk[sc[base + FlatOps.oMem]] = s;
           pc++;
           continue;
@@ -919,14 +951,26 @@ class Executor {
           // for SAVE_RIGHT_RANGE frames — never for a SAVE_S position.
           switch (sc[base + FlatOps.oFlag]) {
             case SaveType.rightRange:
-              stk.push(Stk.saveVal, sc[base + FlatOps.oId], SaveType.rightRange, 0, _rightRange);
+              stk.push(
+                Stk.saveVal,
+                sc[base + FlatOps.oId],
+                SaveType.rightRange,
+                0,
+                _rightRange,
+              );
             case SaveType.s:
               stk.push(Stk.saveVal, sc[base + FlatOps.oId], SaveType.s, 0, s);
             default: // SaveType.keep
               // \K keep: the reported match start becomes the current position.
               // Save the old value so backtracking undoes it (C's SAVE_KEEP
               // frame — the topmost surviving \K wins).
-              stk.push(Stk.saveVal, sc[base + FlatOps.oId], SaveType.keep, 0, _keep);
+              stk.push(
+                Stk.saveVal,
+                sc[base + FlatOps.oId],
+                SaveType.keep,
+                0,
+                _keep,
+              );
               _keep = s;
           }
           pc++;
@@ -1022,12 +1066,16 @@ class Executor {
                 while (cur < rr) {
                   final b = str[cur];
                   if (enc.isMbcNewline(str, cur, end)) break;
-                  cur += (b < 0x80 && asciiFast) ? 1 : enc.length(str, cur, end);
+                  cur += (b < 0x80 && asciiFast)
+                      ? 1
+                      : enc.length(str, cur, end);
                 }
               case Op.anycharMl:
                 while (cur < rr) {
                   final b = str[cur];
-                  cur += (b < 0x80 && asciiFast) ? 1 : enc.length(str, cur, end);
+                  cur += (b < 0x80 && asciiFast)
+                      ? 1
+                      : enc.length(str, cur, end);
                 }
               default:
                 while (cur < rr) {
@@ -1048,7 +1096,9 @@ class Executor {
           }
 
         default:
-          throw StateError('unimplemented opcode ${sc[base + FlatOps.oOpcode]}');
+          throw StateError(
+            'unimplemented opcode ${sc[base + FlatOps.oOpcode]}',
+          );
       }
 
       // fall-through == failure: backtrack.

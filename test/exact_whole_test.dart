@@ -39,7 +39,11 @@ void main() {
       expect(_c(r'lorem$').exactWholeMatch, isFalse, reason: 'trailing anchor');
       expect(_c(r'\blorem').exactWholeMatch, isFalse, reason: 'leading \\b');
       expect(_c('lorem+').exactWholeMatch, isFalse, reason: 'quantifier');
-      expect(_c('lo.em').exactWholeMatch, isFalse, reason: 'not a pure literal');
+      expect(
+        _c('lo.em').exactWholeMatch,
+        isFalse,
+        reason: 'not a pure literal',
+      );
     });
 
     test('match offsets', () {
@@ -61,8 +65,10 @@ void main() {
       final r = _c('(lorem)');
       final sb = Uint8List.fromList(utf8.encode('see lorem'));
       final region = OnigRegion();
-      expect(onigSearch(r, sb, sb.length, 0, sb.length, region),
-          greaterThanOrEqualTo(0));
+      expect(
+        onigSearch(r, sb, sb.length, 0, sb.length, region),
+        greaterThanOrEqualTo(0),
+      );
       expect([region.beg[0], region.end[0]], [4, 9]);
       expect([region.beg[1], region.end[1]], [4, 9]);
     });
@@ -72,8 +78,10 @@ void main() {
     });
     test('MATCH_WHOLE_STRING option', () {
       expect(_m('lorem', 'lorem', option: OnigOption.matchWholeString), (0, 5));
-      expect(_m('lorem', 'lorem yy', option: OnigOption.matchWholeString),
-          isNull);
+      expect(
+        _m('lorem', 'lorem yy', option: OnigOption.matchWholeString),
+        isNull,
+      );
     });
   });
 

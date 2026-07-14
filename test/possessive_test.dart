@@ -60,8 +60,10 @@ void main() {
       final r = onigNew(pb, pb.length, utf8Encoding, onigSyntaxOniguruma, 0);
       final sb = Uint8List.fromList(utf8.encode('aax'));
       final region = OnigRegion();
-      expect(onigSearch(r, sb, sb.length, 0, sb.length, region),
-          greaterThanOrEqualTo(0));
+      expect(
+        onigSearch(r, sb, sb.length, 0, sb.length, region),
+        greaterThanOrEqualTo(0),
+      );
       expect([region.beg[1], region.end[1]], [0, 2]); // group 1 = "aa"
       expect([region.beg[2], region.end[2]], [2, 3]); // group 2 = "x"
     });

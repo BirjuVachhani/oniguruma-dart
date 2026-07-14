@@ -52,17 +52,25 @@ void main() {
 
   group('\\w+@\\w+ matches (leftmost, boundaries)', () {
     test('basic', () => expect(_m(r'\w+@\w+', 'ab@cd'), (0, 5)));
-    test('leftmost start is the run head', () =>
-        expect(_m(r'\w+@\w+', 'xy name@host zz'), (3, 12)));
+    test(
+      'leftmost start is the run head',
+      () => expect(_m(r'\w+@\w+', 'xy name@host zz'), (3, 12)),
+    );
     test('@ at start (no \\w before) → skip to a real one', () {
       expect(_m(r'\w+@\w+', '@bad ok@yes'), (5, 11));
     });
-    test('@ at end (no \\w after) → no match', () =>
-        expect(_m(r'\w+@\w+', 'abc@'), isNull));
-    test('no @ at all → no match', () =>
-        expect(_m(r'\w+@\w+', 'no at sign here'), isNull));
-    test('multiple @ — first complete wins', () =>
-        expect(_m(r'\w+@\w+', 'a@ @ x@y'), (5, 8)));
+    test(
+      '@ at end (no \\w after) → no match',
+      () => expect(_m(r'\w+@\w+', 'abc@'), isNull),
+    );
+    test(
+      'no @ at all → no match',
+      () => expect(_m(r'\w+@\w+', 'no at sign here'), isNull),
+    );
+    test(
+      'multiple @ — first complete wins',
+      () => expect(_m(r'\w+@\w+', 'a@ @ x@y'), (5, 8)),
+    );
     test('mid-word start not chosen over run head', () {
       // "aaa@b": leftmost is index 0, not 1/2.
       expect(_m(r'\w+@\w+', 'aaa@b'), (0, 5));
@@ -82,13 +90,22 @@ void main() {
   });
 
   group('cclass and other separators', () {
-    test('[a-z]+ colon', () => expect(_m(r'[a-z]+:[a-z]+', 'go x:y z'), (3, 6)));
-    test(r'\d+\.\d+ decimal', () =>
-        expect(_m(r'\d+\.\d+', 'pi is 3.14 ish'), (6, 10)));
-    test('tail class mismatch → no match', () =>
-        expect(_m(r'\w+@\d+', 'name@host'), isNull)); // host isn't digits
-    test('tail class mismatch then a real one', () =>
-        expect(_m(r'\w+@\d+', 'name@host a@42'), (10, 14))); // "a@42"
+    test(
+      '[a-z]+ colon',
+      () => expect(_m(r'[a-z]+:[a-z]+', 'go x:y z'), (3, 6)),
+    );
+    test(
+      r'\d+\.\d+ decimal',
+      () => expect(_m(r'\d+\.\d+', 'pi is 3.14 ish'), (6, 10)),
+    );
+    test(
+      'tail class mismatch → no match',
+      () => expect(_m(r'\w+@\d+', 'name@host'), isNull),
+    ); // host isn't digits
+    test(
+      'tail class mismatch then a real one',
+      () => expect(_m(r'\w+@\d+', 'name@host a@42'), (10, 14)),
+    ); // "a@42"
   });
 
   // Independent oracle: leftmost (p, e) for `\w+@\w+` over ASCII computed by a

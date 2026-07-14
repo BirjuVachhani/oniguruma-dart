@@ -19,13 +19,19 @@ import 'package:test/test.dart';
 void _checkOffsets(String pat, String input) {
   final re = OnigRegex.compile(pat);
   for (final m in re.allMatches(input)) {
-    expect(input.substring(m.start, m.end), m.group(0),
-        reason: 'whole-match offsets for /$pat/ in "$input"');
+    expect(
+      input.substring(m.start, m.end),
+      m.group(0),
+      reason: 'whole-match offsets for /$pat/ in "$input"',
+    );
     for (var i = 0; i <= m.groupCount; i++) {
       final s = m.startOf(i), e = m.endOf(i);
       if (s >= 0 && e >= 0) {
-        expect(input.substring(s, e), m.group(i),
-            reason: 'group $i offsets for /$pat/ in "$input"');
+        expect(
+          input.substring(s, e),
+          m.group(i),
+          reason: 'group $i offsets for /$pat/ in "$input"',
+        );
       }
     }
   }
@@ -138,8 +144,11 @@ void main() {
           final re = RegExp(pat).allMatches(inp).toList();
           expect(og.length, re.length, reason: 'match count');
           for (var i = 0; i < og.length; i++) {
-            expect([og[i].start, og[i].end], [re[i].start, re[i].end],
-                reason: 'span $i');
+            expect(
+              [og[i].start, og[i].end],
+              [re[i].start, re[i].end],
+              reason: 'span $i',
+            );
             expect(og[i].group(0), re[i].group(0), reason: 'text $i');
           }
         });
@@ -179,19 +188,22 @@ void main() {
       expect(ms.map((m) => m.start), [2, 5]);
     });
 
-    test('group offsets queried out of order (forces backward cursor walk)', () {
-      // \w matches all of 東 a b é 京 (Unicode word chars); match starts at 0.
-      const s = '東abé京';
-      final m = OnigRegex.compile(r'(\w)(\w)(\w)').firstMatch(s)!;
-      // Query groups back-to-front so charAt must walk the cursor backward.
-      expect(m.group(3), 'b');
-      expect(m.group(2), 'a');
-      expect(m.group(1), '東');
-      for (var i = 1; i <= 3; i++) {
-        expect(s.substring(m.startOf(i), m.endOf(i)), m.group(i));
-      }
-      expect(s.substring(m.start, m.end), m.group(0));
-    });
+    test(
+      'group offsets queried out of order (forces backward cursor walk)',
+      () {
+        // \w matches all of 東 a b é 京 (Unicode word chars); match starts at 0.
+        const s = '東abé京';
+        final m = OnigRegex.compile(r'(\w)(\w)(\w)').firstMatch(s)!;
+        // Query groups back-to-front so charAt must walk the cursor backward.
+        expect(m.group(3), 'b');
+        expect(m.group(2), 'a');
+        expect(m.group(1), '東');
+        for (var i = 1; i <= 3; i++) {
+          expect(s.substring(m.startOf(i), m.endOf(i)), m.group(i));
+        }
+        expect(s.substring(m.start, m.end), m.group(0));
+      },
+    );
   });
 
   group('encode cache correctness', () {
@@ -204,33 +216,39 @@ void main() {
       for (final s in [a, a, b, a, c, b, b, a]) {
         final ms = re.allMatches(s).toList();
         for (final m in ms) {
-          expect(s.substring(m.start, m.end), m.group(0),
-              reason: 'scan of "$s"');
+          expect(
+            s.substring(m.start, m.end),
+            m.group(0),
+            reason: 'scan of "$s"',
+          );
         }
         expect(ms, isNotEmpty);
       }
     });
 
-    test('many matches with captures reuse the Executor without corruption', () {
-      // Long multi-match input + capture groups: every allMatches step reuses
-      // the cached Executor, so memStart/memEnd must reset per match. Compare
-      // exhaustively against RegExp (they agree on this pattern).
-      final buf = StringBuffer();
-      for (var i = 0; i < 500; i++) {
-        buf.write('a${i}b c${i}d ');
-      }
-      final s = buf.toString();
-      final pat = r'(\w)(\w+)(\w)';
-      final og = OnigRegex.compile(pat).allMatches(s).toList();
-      final re = RegExp(pat).allMatches(s).toList();
-      expect(og.length, re.length);
-      expect(og.length, greaterThan(500));
-      for (var i = 0; i < og.length; i++) {
-        for (var g = 0; g <= 3; g++) {
-          expect(og[i].group(g), re[i].group(g), reason: 'match $i group $g');
+    test(
+      'many matches with captures reuse the Executor without corruption',
+      () {
+        // Long multi-match input + capture groups: every allMatches step reuses
+        // the cached Executor, so memStart/memEnd must reset per match. Compare
+        // exhaustively against RegExp (they agree on this pattern).
+        final buf = StringBuffer();
+        for (var i = 0; i < 500; i++) {
+          buf.write('a${i}b c${i}d ');
         }
-      }
-    });
+        final s = buf.toString();
+        final pat = r'(\w)(\w+)(\w)';
+        final og = OnigRegex.compile(pat).allMatches(s).toList();
+        final re = RegExp(pat).allMatches(s).toList();
+        expect(og.length, re.length);
+        expect(og.length, greaterThan(500));
+        for (var i = 0; i < og.length; i++) {
+          for (var g = 0; g <= 3; g++) {
+            expect(og[i].group(g), re[i].group(g), reason: 'match $i group $g');
+          }
+        }
+      },
+    );
 
     test('firstMatch then allMatches on the same string agree', () {
       final re = OnigRegex.compile('京');

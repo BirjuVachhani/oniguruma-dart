@@ -76,7 +76,8 @@ void setOptimizeInfo(Regex reg, Node? root) {
     // The literal is the entire pattern (nothing after it, no capture, no
     // begin/other anchor) ⇒ a Sunday hit is the whole match; the driver can
     // fill the region directly and skip matchAt.
-    reg.exactWholeMatch = i == head.length - 1 &&
+    reg.exactWholeMatch =
+        i == head.length - 1 &&
         !otherLeadingAnchor &&
         reg.anchor == 0 &&
         reg.numMem == 0;
@@ -182,7 +183,11 @@ StrNode? _leadingIcStr(Node node) {
 /// proven complete — notably when the first char participates in a *multi-char*
 /// fold (`ß↔ss`), where a match could start with a different byte entirely.
 bool _icLeadingByteMap(
-    StrNode node, Uint8List map, OnigEncoding enc, int caseFoldFlag) {
+  StrNode node,
+  Uint8List map,
+  OnigEncoding enc,
+  int caseFoldFlag,
+) {
   final b = node.bytes;
   if (b.isEmpty) return false;
   final firstLen = enc.length(b, 0, b.length);

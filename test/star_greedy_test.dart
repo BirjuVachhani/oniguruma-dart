@@ -27,26 +27,29 @@ import 'package:test/test.dart';
 }
 
 void main() {
-  group('greedy give-back (single-char loop must backtrack one char at a time)', () {
-    test('[a-z]+ gives back so a following literal in-class can match', () {
-      // greedy takes "aaar", needs 'r', backs off to "aaa", 'r' matches -> [0,4]
-      expect(_m(r'[a-z]+r', 'aaar'), (0, 4));
-    });
-    test('\\w+ gives back for a following \\w literal', () {
-      expect(_m(r'(\w+)x', 'aaxbb x'), isNotNull);
-      expect(_m(r'\w+x', 'aaax'), (0, 4));
-    });
-    test('.* gives back to let the trailing literal match', () {
-      expect(_m(r'.*b', 'abcbxb'), (0, 6));
-      expect(_m(r'.*b', 'zzz'), isNull);
-    });
-    test('[0-9]+ then digit', () {
-      expect(_m(r'[0-9]+5', '12345'), (0, 5));
-    });
-    test('negated class give-back', () {
-      expect(_m(r'[^0-9]+ ', 'abc def'), (0, 4));
-    });
-  });
+  group(
+    'greedy give-back (single-char loop must backtrack one char at a time)',
+    () {
+      test('[a-z]+ gives back so a following literal in-class can match', () {
+        // greedy takes "aaar", needs 'r', backs off to "aaa", 'r' matches -> [0,4]
+        expect(_m(r'[a-z]+r', 'aaar'), (0, 4));
+      });
+      test('\\w+ gives back for a following \\w literal', () {
+        expect(_m(r'(\w+)x', 'aaxbb x'), isNotNull);
+        expect(_m(r'\w+x', 'aaax'), (0, 4));
+      });
+      test('.* gives back to let the trailing literal match', () {
+        expect(_m(r'.*b', 'abcbxb'), (0, 6));
+        expect(_m(r'.*b', 'zzz'), isNull);
+      });
+      test('[0-9]+ then digit', () {
+        expect(_m(r'[0-9]+5', '12345'), (0, 5));
+      });
+      test('negated class give-back', () {
+        expect(_m(r'[^0-9]+ ', 'abc def'), (0, 4));
+      });
+    },
+  );
 
   group('zero-width and lower bounds', () {
     test('[a-z]* matches empty at a non-matching position', () {
@@ -78,8 +81,10 @@ void main() {
       final r = onigNew(pb, pb.length, utf8Encoding, onigSyntaxOniguruma, 0);
       final sb = Uint8List.fromList(utf8.encode('aaaa'));
       final region = OnigRegion();
-      expect(onigSearch(r, sb, sb.length, 0, sb.length, region),
-          greaterThanOrEqualTo(0));
+      expect(
+        onigSearch(r, sb, sb.length, 0, sb.length, region),
+        greaterThanOrEqualTo(0),
+      );
       expect([region.beg[1], region.end[1]], [0, 3]); // first group: "aaa"
       expect([region.beg[2], region.end[2]], [3, 4]); // second: "a"
     });

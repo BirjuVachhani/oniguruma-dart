@@ -31,10 +31,14 @@ void main() {
     test('mixed-case subject', () => expect(_m(r'(?i)lorem', 'LoReM'), (0, 5)));
     test('lowercase subject', () => expect(_m(r'(?i)lorem', 'lorem'), (0, 5)));
     test('mid-string', () => expect(_m(r'(?i)abc', 'xxABCyy'), (2, 5)));
-    test('near-miss does not match', () =>
-        expect(_m(r'(?i)lorem', 'loren'), isNull));
-    test('digits/underscore unaffected', () =>
-        expect(_m(r'(?i)a1_b', 'A1_B'), (0, 4)));
+    test(
+      'near-miss does not match',
+      () => expect(_m(r'(?i)lorem', 'loren'), isNull),
+    );
+    test(
+      'digits/underscore unaffected',
+      () => expect(_m(r'(?i)a1_b', 'A1_B'), (0, 4)),
+    );
   });
 
   group('ASCII pattern char with NON-ASCII fold member (virtual fallback)', () {
@@ -110,14 +114,17 @@ void main() {
           final at = rand(subj.length + 1);
           final cased = StringBuffer();
           for (final cu in w.codeUnits) {
-            cased.writeCharCode(rand(2) == 0 && cu >= 0x61 && cu <= 0x7a
-                ? cu - 0x20
-                : cu);
+            cased.writeCharCode(
+              rand(2) == 0 && cu >= 0x61 && cu <= 0x7a ? cu - 0x20 : cu,
+            );
           }
           subj = subj.substring(0, at) + cased.toString() + subj.substring(at);
         }
-        expect(_m('(?i)$w', subj), ref(w, subj),
-            reason: 'needle=$w subj=«$subj»');
+        expect(
+          _m('(?i)$w', subj),
+          ref(w, subj),
+          reason: 'needle=$w subj=«$subj»',
+        );
       }
     });
   });

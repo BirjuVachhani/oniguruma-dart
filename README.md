@@ -172,10 +172,19 @@ and more. A runnable version is in
 
 ## Performance
 
-Pure-Dart, AOT-compiled, on a broad pattern mix it runs at **~2–3× the time of
-the hand-tuned C library** (median 2.4×, best 1.2×) and is **at parity on
-pattern compilation**. Full methodology and per-pattern numbers are in
-[`benchmark/REPORT.md`](benchmark/REPORT.md).
+Pure-Dart and AOT-compiled, `oniguruma_dart` is **competitive with — and on this
+benchmark suite, on average faster than — the native C library**, and it beats
+Dart's built-in `RegExp` on nearly every pattern:
+
+- **String API** (what you get from `OnigRegex`): **0.73× the C library's time**
+  on average (geometric mean over 13 patterns) — i.e. faster than native C across
+  the suite — beating C on 10 of 13 patterns and `dart:core`'s `RegExp` on
+  **12 of 13**.
+- The lower-level **byte API** is faster still — **0.59× C** on average.
+
+Throughput is workload-dependent, and a few pathological cases (heavy
+back-references) remain slower than C. Full methodology, per-pattern tables, and
+an interactive chart are in [`benchmarks.md`](benchmarks.md).
 
 ## Contributing
 

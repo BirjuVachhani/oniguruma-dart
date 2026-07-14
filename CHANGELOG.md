@@ -14,6 +14,7 @@ Initial release — a 1:1 Dart port of the Oniguruma 6.9.10 regex engine.
   ISO-8859-1..16, CP1251, KOI8-R/U, ASCII.
 - Byte API (`onigNew`/`onigSearch`), idiomatic `String` API
   (`OnigRegex`/`OnigMatch`), and multi-pattern `OnigRegSet`.
-- Verified byte-for-byte against the C library (differential + fuzz suites);
-  benchmarked at ~1.1–1.9× of hand-tuned C on typical patterns.
-- Known limitations documented in `benchmark/REPORT.md`.
+- Verified byte-for-byte against the C library (differential + fuzz suites).
+- Fast: on a broad pattern mix the `String` API averages ~0.73× the time of the
+  hand-tuned C library (i.e. faster than native C across the suite) and beats
+  Dart's built-in `RegExp` on nearly every pattern. See `benchmarks.md`.

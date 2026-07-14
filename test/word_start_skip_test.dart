@@ -32,14 +32,21 @@ import 'package:test/test.dart';
 
 void main() {
   group(r'\b\w{5}\b (the benchmark pattern)', () {
-    test('matches a 5-letter word at BOL', () => expect(_m(r'\b\w{5}\b', 'lorem ipsum'), (0, 5)));
-    test('matches a 5-letter word mid-buffer', () =>
-        expect(_m(r'\b\w{5}\b', 'a lorem b'), (2, 7)));
+    test(
+      'matches a 5-letter word at BOL',
+      () => expect(_m(r'\b\w{5}\b', 'lorem ipsum'), (0, 5)),
+    );
+    test(
+      'matches a 5-letter word mid-buffer',
+      () => expect(_m(r'\b\w{5}\b', 'a lorem b'), (2, 7)),
+    );
     test('no 5-letter word ⇒ no match', () {
       expect(_m(r'\b\w{5}\b', 'hi go fantastic'), isNull); // 2,3,9 lengths
     });
-    test('there is exactly 5 → matches', () =>
-        expect(_m(r'\b\w{5}\b', 'oh there go'), (3, 8)));
+    test(
+      'there is exactly 5 → matches',
+      () => expect(_m(r'\b\w{5}\b', 'oh there go'), (3, 8)),
+    );
     test('skips mid-word candidates but still finds the real start', () {
       // "xxlorem" — 'l' at index 2 is mid-word (prev 'x' is word); the real
       // 5-letter word "lorem" only appears after the space.
@@ -57,8 +64,10 @@ void main() {
     test('digit-letter is word|word (no boundary)', () {
       expect(_m(r'\bword\b', '1word'), isNull); // '1' before 'w' ⇒ no \b
     });
-    test('match at position 0 with no preceding char', () =>
-        expect(_m(r'\bword\b', 'word!'), (0, 4)));
+    test(
+      'match at position 0 with no preceding char',
+      () => expect(_m(r'\bword\b', 'word!'), (0, 4)),
+    );
   });
 
   group(r'\b after a multibyte char', () {
@@ -128,7 +137,10 @@ void main() {
       // several non-word separators.
       const alpha = 'abcdeXYZ_012 .,-!\t';
       for (final n in [3, 5]) {
-        final pat = r'\b\w{' '$n' r'}\b';
+        final pat =
+            r'\b\w{'
+            '$n'
+            r'}\b';
         for (var iter = 0; iter < 2000; iter++) {
           final len = rand(18);
           final sb = StringBuffer();
@@ -136,7 +148,11 @@ void main() {
             sb.write(alpha[rand(alpha.length)]);
           }
           final subj = sb.toString();
-          expect(_m(pat, subj), refWordN(subj, n), reason: 'pat=$pat subj=«$subj»');
+          expect(
+            _m(pat, subj),
+            refWordN(subj, n),
+            reason: 'pat=$pat subj=«$subj»',
+          );
         }
       }
     });

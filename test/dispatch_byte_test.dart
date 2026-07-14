@@ -62,11 +62,15 @@ void main() {
     // "logic" starts with 'l' but is not "lorem".
     test('l-word that is not lorem', () => expect(_m(pat, 'logic'), isNull));
     // "site" contains "sit" as a prefix → should match "sit".
-    test('prefix of a longer word still matches', () =>
-        expect(_m(pat, 'site'), (0, 3)));
+    test(
+      'prefix of a longer word still matches',
+      () => expect(_m(pat, 'site'), (0, 3)),
+    );
     // partial then real: "si sit" — first "si" fails, later "sit" matches.
-    test('partial before the real one', () =>
-        expect(_m(pat, 'si sit'), (3, 6)));
+    test(
+      'partial before the real one',
+      () => expect(_m(pat, 'si sit'), (3, 6)),
+    );
   });
 
   group('embedded switch with a continuation (give-back / backtrack)', () {
@@ -138,8 +142,24 @@ void main() {
   // IPC fuzzer can.
   group('dispatch vs independent oracle (fuzz)', () {
     const words = [
-      'lorem', 'ipsum', 'dolor', 'sit', 'amet', 'be', 'go', 'red', 'up',
-      'joy', 'fox', 'kit', 'wolf', 'nap', 'queue', 'via', 'zap', 'hi',
+      'lorem',
+      'ipsum',
+      'dolor',
+      'sit',
+      'amet',
+      'be',
+      'go',
+      'red',
+      'up',
+      'joy',
+      'fox',
+      'kit',
+      'wolf',
+      'nap',
+      'queue',
+      'via',
+      'zap',
+      'hi',
     ];
 
     // Independent reference: leftmost start of any word (distinct heads ⇒ at
@@ -184,13 +204,17 @@ void main() {
         var subj = sb.toString();
         if (rand(2) == 0) {
           final at = rand(subj.length + 1);
-          subj = subj.substring(0, at) +
+          subj =
+              subj.substring(0, at) +
               words[rand(words.length)] +
               subj.substring(at);
         }
 
-        expect(_m(pat, subj), refMatch(ws, subj),
-            reason: 'pat=$pat subj=${_escape(subj)}');
+        expect(
+          _m(pat, subj),
+          refMatch(ws, subj),
+          reason: 'pat=$pat subj=${_escape(subj)}',
+        );
         checked++;
       }
       expect(checked, greaterThan(3000)); // sanity: most iters ran

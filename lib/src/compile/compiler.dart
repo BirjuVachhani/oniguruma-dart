@@ -705,7 +705,9 @@ class _Compiler {
         }
         return any;
       case QuantNode():
-        if (node.lower < 1) return false; // optional head → first byte may shift
+        if (node.lower < 1) {
+          return false; // optional head → first byte may shift
+        }
         return _altFirstBytesInto(node.body!, bs);
       case BagNode():
         switch (node.type) {
@@ -738,7 +740,9 @@ class _Compiler {
     final seen = <int>{};
     for (var i = 0; i < branches.length; i++) {
       final b = _singleLeadByte(branches[i]);
-      if (b < 0 || !seen.add(b)) return null; // undeterminable or duplicate head
+      if (b < 0 || !seen.add(b)) {
+        return null; // undeterminable or duplicate head
+      }
       lead[i] = b;
     }
     return lead;
@@ -1881,8 +1885,13 @@ class _Compiler {
   bool _starPossessiveSafe(Operation body, Operation next) {
     if (next.opcode == Op.end) return true; // nothing follows the loop
     final nb = _firstLiteralByte(next);
-    if (nb < 0 || nb >= 0x80) return false; // only ASCII single-literal followers
-    return !_bodyMatchesByte(body, nb); // safe iff the follower ∉ loop's char set
+    if (nb < 0 || nb >= 0x80) {
+      return false; // only ASCII single-literal followers
+    }
+    return !_bodyMatchesByte(
+      body,
+      nb,
+    ); // safe iff the follower ∉ loop's char set
   }
 
   /// First byte of a plain (non-ignore-case) literal op, or -1.

@@ -156,8 +156,8 @@ class OnigMatch {
   final Map<String, List<int>> _names;
 
   OnigMatch._(this.input, OnigRegion region, this._map, this._names)
-      : numRegs = region.numRegs,
-        _regs = _snapshot(region);
+    : numRegs = region.numRegs,
+      _regs = _snapshot(region);
 
   static Int32List _snapshot(OnigRegion r) {
     final n = r.numRegs;
@@ -198,9 +198,8 @@ class OnigMatch {
   }
 
   /// Start code-unit index of group [i] (-1 if unset).
-  int startOf(int i) => (i < numRegs && _regs[i << 1] >= 0)
-      ? _map.charAt(_regs[i << 1])
-      : -1;
+  int startOf(int i) =>
+      (i < numRegs && _regs[i << 1] >= 0) ? _map.charAt(_regs[i << 1]) : -1;
 
   /// End code-unit index of group [i] (-1 if unset).
   int endOf(int i) => (i < numRegs && _regs[(i << 1) + 1] >= 0)

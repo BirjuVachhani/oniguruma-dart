@@ -1,8 +1,7 @@
-# Files excluded from the published pub.dev package (but kept in the git repo).
-# pub uses .pubignore instead of .gitignore when deciding what to publish, so
-# this file also re-lists the build artifacts that .gitignore already excludes.
+# Files kept in the git repo but excluded from the published pub.dev package.
+# pub uses .pubignore (falling back to .gitignore) to decide what to publish.
 
-# Build artifacts / tooling output.
+# Build artifacts / editor / OS cruft.
 .dart_tool/
 .idea/
 .vscode/
@@ -12,22 +11,17 @@
 # reference only, not part of the Dart package (~12 MB of C sources).
 oniguruma-master/
 
-# Compiled benchmark binaries — never ship build artifacts.
-benchmark/bench_dart
-benchmark/bench_vs_regexp
-benchmark/c/onig_cli
+# Dev-only tooling & docs — kept in the repo, not shipped to consumers:
+#   * benchmark/  harnesses, reports, corpora, and the C reference CLI; they
+#     can't run without the excluded corpora + C library anyway. The headline
+#     results live in benchmarks.md at the repo root (which IS published).
+#   * tool/       code generators for the Unicode data tables.
+#   * docs/       deep-dive investigation notes.
+benchmark/
+tool/
+docs/
 
-# Web-benchmark build artifacts (compiled JS + embedded corpus, ~6 MB).
-benchmark/web/bench_web.js
-benchmark/web/bench_web.js.deps
-benchmark/web/bench_web.js.map
-benchmark/web/corpus_data.g.dart
-
-# Large benchmark corpora (kept in the repo for reproducible benchmarks;
-# excluded here to keep the package lean — results are in benchmark/REPORT.md).
-benchmark/datasets/
-
-# Differential/fuzz harnesses require the C reference above, so they can't run
-# from the published package.
+# Differential / fuzz harnesses require the C reference above, so they can't
+# run from the published package.
 test/differential/
 test/oracle/

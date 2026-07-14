@@ -52,8 +52,11 @@ void main() {
         expect(regNfa.nfa, isNotNull, reason: '$pat should be NFA-eligible');
         final regBt = _compile(pat)..nfa = null; // force backtracking
         for (final s in subjects) {
-          expect(_search(regNfa, s), _search(regBt, s),
-              reason: 'divergence on /$pat/ against ${jsonEncode(s)}');
+          expect(
+            _search(regNfa, s),
+            _search(regBt, s),
+            reason: 'divergence on /$pat/ against ${jsonEncode(s)}',
+          );
         }
       });
     }
@@ -89,8 +92,11 @@ void main() {
     final (m, _, _) = _search(reg, subj);
     sw.stop();
     expect(m, OnigResult.mismatch);
-    expect(sw.elapsedMilliseconds, lessThan(500),
-        reason: 'NFA should be linear, not exponential');
+    expect(
+      sw.elapsedMilliseconds,
+      lessThan(500),
+      reason: 'NFA should be linear, not exponential',
+    );
   });
 
   group('unsupported constructs fall back but still match', () {

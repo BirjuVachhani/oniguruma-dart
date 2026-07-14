@@ -46,7 +46,10 @@ void main() {
     });
 
     test('negated-class branch [^a] is not filtered', () {
-      expect(_m(r'[^a]|b', 'a'), isNull); // only 'a' present -> [^a] can't, no b
+      expect(
+        _m(r'[^a]|b', 'a'),
+        isNull,
+      ); // only 'a' present -> [^a] can't, no b
       expect(_m(r'[^a]|b', 'ax'), (1, 2)); // 'x' matches [^a]
       expect(_m(r'[^a]|b', 'ab'), (1, 2)); // 'b' matches [^a] (b != a)
     });

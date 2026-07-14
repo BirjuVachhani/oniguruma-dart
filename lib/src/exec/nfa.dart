@@ -31,7 +31,8 @@ const int _cSplit = 1; // a = high-priority target, b = low-priority target
 const int _cJmp = 2; // → a
 const int _cSave = 3; // caps[a] = pos
 const int _cMatch = 4; // accept
-const int _cAssert = 5; // zero-width assertion: a = Anchor.* type, b = ascii?1:0
+const int _cAssert =
+    5; // zero-width assertion: a = Anchor.* type, b = ascii?1:0
 
 /// Cap on emitted instructions / per-repeat expansion, to bound compile size,
 /// memory, and the linear-time constant. Larger patterns fall back.
@@ -61,12 +62,13 @@ class _CC extends NfaMatcher {
   final bool not;
   final bool singleByteEnc;
   _CC(this.bs, this.mb, this.not, OnigEncoding enc)
-      : singleByteEnc = enc.isSingleByte;
+    : singleByteEnc = enc.isSingleByte;
   @override
   bool test(int code, bool _) {
     final single = code < 0x80 || (singleByteEnc && code < 0x100);
     final member =
-        (bs != null && single && bs!.at(code)) || (mb != null && mb!.contains(code));
+        (bs != null && single && bs!.at(code)) ||
+        (mb != null && mb!.contains(code));
     return not ? !member : member;
   }
 }
@@ -79,7 +81,9 @@ class _Ct extends NfaMatcher {
   _Ct(this.ctype, this.not, this.ascii, this.enc);
   @override
   bool test(int code, bool _) {
-    final m = ascii ? asciiIsCodeCtype(code, ctype) : enc.isCodeCtype(code, ctype);
+    final m = ascii
+        ? asciiIsCodeCtype(code, ctype)
+        : enc.isCodeCtype(code, ctype);
     return not ? !m : m;
   }
 }
@@ -260,8 +264,14 @@ class _Builder {
     }
   }
 
-  NfaProgram finish() => NfaProgram(Int32List.fromList(op), Int32List.fromList(a),
-      Int32List.fromList(b), m, 0, 2 * (numMem + 1));
+  NfaProgram finish() => NfaProgram(
+    Int32List.fromList(op),
+    Int32List.fromList(a),
+    Int32List.fromList(b),
+    m,
+    0,
+    2 * (numMem + 1),
+  );
 }
 
 /// True if [node] can match the empty string (used to reject quantifiers whose
@@ -310,7 +320,8 @@ bool _canBeEmpty(Node? node) {
 ///  - posixRegion      — a different region layout
 ///  - ignoreCase*      — case folding (incl. multi-char)
 ///  - checkValidity*   — input-encoding validation may reject/alter results
-const int nfaUnsafeOptions = OnigOption.findLongest |
+const int nfaUnsafeOptions =
+    OnigOption.findLongest |
     OnigOption.findNotEmpty |
     OnigOption.matchWholeString |
     OnigOption.posixRegion |
@@ -413,15 +424,24 @@ class _TL {
 /// filling [region] and returning the match-start byte offset, or
 /// [OnigResult.mismatch]. Behaviour matches the backtracking VM on the subset
 /// [buildNfa] accepts.
-int nfaSearch(NfaProgram prog, Regex reg, Uint8List str, int end, int start,
-    int range, OnigRegion? region, int option) {
+int nfaSearch(
+  NfaProgram prog,
+  Regex reg,
+  Uint8List str,
+  int end,
+  int start,
+  int range,
+  OnigRegion? region,
+  int option,
+) {
   final enc = reg.enc;
   final nSlots = prog.nSlots;
   final op = prog.op, pa = prog.a, pb = prog.b, mm = prog.m;
 
   int prevHead(int sp) => enc.leftAdjustCharHead(str, 0, sp - 1);
-  bool isWord(int code, bool ascii) =>
-      ascii ? asciiIsCodeCtype(code, CType.word) : enc.isCodeCtype(code, CType.word);
+  bool isWord(int code, bool ascii) => ascii
+      ? asciiIsCodeCtype(code, CType.word)
+      : enc.isCodeCtype(code, CType.word);
   bool wordBoundary(int sp, bool ascii) {
     final left = sp > 0 && isWord(enc.mbcToCode(str, prevHead(sp), end), ascii);
     final right = sp < end && isWord(enc.mbcToCode(str, sp, end), ascii);
@@ -445,7 +465,8 @@ int nfaSearch(NfaProgram prog, Regex reg, Uint8List str, int end, int start,
         if (sp == end) return (option & OnigOption.notEol) == 0;
         return enc.isMbcNewline(str, sp, end);
       case Anchor.semiEndBuf:
-        final okEnd = (option & OnigOption.notEol) == 0 &&
+        final okEnd =
+            (option & OnigOption.notEol) == 0 &&
             (option & OnigOption.notEndString) == 0;
         if (sp == end) return okEnd;
         if (enc.isMbcNewline(str, sp, end) &&
