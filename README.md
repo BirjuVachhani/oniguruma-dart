@@ -1,0 +1,202 @@
+# oniguruma_dart
+
+A **pure-Dart** port of the [Oniguruma](https://github.com/kkos/oniguruma)
+regular-expression engine — **no FFI, no native code**. It gives you Oniguruma's
+rich regex dialect (the one used by Ruby) with full Unicode support and ~28 text
+encodings, in a single portable package that runs anywhere Dart runs, including
+**Web/WASM**.
+
+- **Familiar, powerful syntax** — named groups, look-around, atomic groups,
+  possessive quantifiers, conditionals, back-references (incl. by name and
+  nesting level), subroutine calls `\g<>`, `\K`, `\R`, `\X`, callouts, and more.
+- **Unicode-correct** — `\p{Script}`/`\p{Category}`, `\w`/`\b`/`\X`/`\R`,
+  case-insensitive matching with multi-character folds (`ß` ↔ `ss`).
+- **Many syntaxes** — Oniguruma (default), Ruby, Perl, Java, Python, Grep,
+  Emacs, POSIX Basic/Extended, GNU.
+- **~28 encodings** — UTF-8/16/32, EUC-JP/KR/TW, Shift-JIS, Big5, GB18030,
+  ISO-8859-1…16, CP1251, KOI8-R/U, ASCII.
+- **Verified against the C library** — passes Oniguruma's entire own test suite
+  (5025/5025) with byte-identical results. See [Correctness](#correctness).
+
+## Install
+
+```console
+dart pub add oniguruma_dart
+```
+
+```dart
+import 'package:oniguruma_dart/oniguruma_dart.dart';
+```
+
+## Quick start
+
+Use the idiomatic **`OnigRegex`** API — it works like `dart:core`'s `RegExp`,
+with `String` in and `String` out (offsets are UTF-16 code-unit indices):
+
+```dart
+import 'package:oniguruma_dart/oniguruma_dart.dart';
+
+void main() {
+  final re = OnigRegex.compile(r'(?<user>\w+)@(?<host>[\w.]+)');
+
+  final m = re.firstMatch('contact bob@acme.com today');
+  print(m?.group(0));            // bob@acme.com
+  print(m?.namedGroup('user'));  // bob
+  print(m?.namedGroup('host'));  // acme.com
+  print(m?.start);               // 8
+}
+```
+
+## Usage
+
+### Find matches
+
+```dart
+final re = OnigRegex.compile(r'\d+');
+
+re.hasMatch('abc 42');                       // true
+re.stringMatch('abc 42');                    // "42"  (whole match, or null)
+re.firstMatch('a1 b22')?.group(0);           // "1"
+
+// All non-overlapping matches (lazy Iterable):
+re.allMatches('a1 b22 c333')
+  .map((m) => m.group(0))
+  .toList();                                 // ["1", "22", "333"]
+```
+
+### Groups & offsets
+
+`OnigMatch` mirrors `Match`: `group(i)` (0 = whole match), `namedGroup`,
+`groupCount`, `start`/`end`, and per-group `startOf(i)`/`endOf(i)`.
+
+```dart
+final m = OnigRegex.compile(r'(\d{4})-(\d{2})-(\d{2})').firstMatch('2026-07-13')!;
+m.groupCount;        // 3
+m.group(1);          // "2026"
+m.group(2);          // "07"
+m.startOf(3);        // 8
+m.endOf(3);          // 10
+```
+
+### Replace
+
+`replaceAll`/`replaceFirst` take a callback that receives the match:
+
+```dart
+OnigRegex.compile(r'\s+').replaceAll('a  b   c', (_) => '_');       // "a_b_c"
+
+OnigRegex.compile(r'(\w+)@(\w+)')
+  .replaceFirst('bob@acme', (m) => '${m.group(2)}/${m.group(1)}');  // "acme/bob"
+```
+
+### Options
+
+Pass flags to `compile` (either the booleans or `OnigOption.*`):
+
+```dart
+OnigRegex.compile(r'hello', ignoreCase: true).hasMatch('HELLO');   // true
+OnigRegex.compile(r'^b', multiLine: true).allMatches('a\nb\nc');   // 1 match
+OnigRegex.compile(r'\d+  # a number', extended: true);             // free-spacing
+```
+
+### A different regex syntax
+
+The default is the Oniguruma dialect. Choose another with `syntax:`:
+
+```dart
+// grep: \| is alternation.
+OnigRegex.compile(r'cat\|dog', syntax: onigSyntaxGrep).stringMatch('a dog'); // "dog"
+
+// POSIX Basic (BRE): + and ? are literal characters.
+OnigRegex.compile(r'a+', syntax: onigSyntaxPosixBasic).hasMatch('aaa'); // false
+OnigRegex.compile(r'a+', syntax: onigSyntaxPosixBasic).hasMatch('a+');  // true
+```
+
+Available: `onigSyntaxOniguruma` (default), `onigSyntaxRuby`, `onigSyntaxPerl`,
+`onigSyntaxPerlNg`, `onigSyntaxJava`, `onigSyntaxPython`, `onigSyntaxGrep`,
+`onigSyntaxEmacs`, `onigSyntaxPosixBasic`, `onigSyntaxPosixExtended`,
+`onigSyntaxGnuRegex`.
+
+### Unicode
+
+```dart
+OnigRegex.compile(r'\p{Han}+').stringMatch('東京タワー');           // "東京"
+OnigRegex.compile(r'\X').allMatches('a👨‍👩‍👧e').length;               // grapheme clusters
+OnigRegex.compile(r'(?i)straße').hasMatch('STRASSE');             // true (ß ↔ ss)
+```
+
+## Non-UTF-8 text & the low-level byte API
+
+For non-UTF-8 encodings, or when you need C-identical **byte offsets** and want
+to avoid `String` allocation, use the low-level API. It mirrors the C library
+(`onig_new` / `onig_search` / `OnigRegion`) and operates on `Uint8List`. Pick the
+encoding by passing a different encoding constant to `onigNew`:
+
+```dart
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:oniguruma_dart/oniguruma_dart.dart';
+
+void main() {
+  final pattern = Uint8List.fromList(utf8.encode(r'(\w+)@(\w+)'));
+  final subject = Uint8List.fromList(utf8.encode('bob@acme'));
+
+  // Swap utf8Encoding for eucJpEncoding, sjisEncoding, big5Encoding, … as needed.
+  final reg = onigNew(pattern, pattern.length, utf8Encoding, onigSyntaxDefault,
+      OnigOption.defaultOption);
+
+  final region = OnigRegion();
+  final r = onigSearch(reg, subject, subject.length, 0, subject.length, region);
+  if (r >= 0) {
+    for (var i = 0; i < region.numRegs; i++) {
+      print('group $i: bytes [${region.beg[i]}, ${region.end[i]})');
+    }
+  }
+}
+```
+
+Encodings include `utf8Encoding`, `utf16BeEncoding`, `utf16LeEncoding`,
+`eucJpEncoding`, `sjisEncoding`, `big5Encoding`, `gb18030Encoding`, the
+`iso88591Encoding`…`iso885916Encoding` family, `koi8REncoding`, `asciiEncoding`,
+and more. A runnable version is in
+[`example/`](example/oniguruma_dart_example.dart).
+
+## Correctness
+
+`oniguruma_dart` is a 1:1 port validated against the reference C library:
+
+- **5025 / 5025** of Oniguruma's own C test cases pass (all 8 suites).
+- **113** curated differential cases + **thousands** of randomized fuzz cases run
+  against the C CLI with **0 divergences** — byte-identical match offsets,
+  captures, and error codes.
+
+## Performance
+
+Pure-Dart, AOT-compiled, on a broad pattern mix it runs at **~2–3× the time of
+the hand-tuned C library** (median 2.4×, best 1.2×) and is **at parity on
+pattern compilation**. Full methodology and per-pattern numbers are in
+[`benchmark/REPORT.md`](benchmark/REPORT.md).
+
+## Contributing
+
+The unit tests (including the ported C suites) run with just:
+
+```console
+dart test
+```
+
+The **differential** and **fuzz** tests and the **benchmarks** compare against
+the real C library, so they additionally need Oniguruma built locally (it is not
+vendored in this repo):
+
+```console
+git clone --branch v6.9.10 https://github.com/kkos/oniguruma oniguruma-master
+cd oniguruma-master && cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
+cd .. && dart run test/differential/run_diff.dart   # then: python3 benchmark/run_bench.py
+```
+
+## License
+
+BSD 2-Clause. This is a source port of Oniguruma and is distributed under
+Oniguruma's original BSD 2-Clause license, retaining the original copyright
+(© 2002–2021 K.Kosako). See [LICENSE](LICENSE).
