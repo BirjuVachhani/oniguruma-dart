@@ -16,7 +16,7 @@ Each number is the **median wall-clock time to scan an entire corpus for every n
 | **V8 JIT** | the default Node.js `RegExp` — native-compiled Irregexp (fastest; shown for reference) |
 | **V8 interp** | that same engine forced to bytecode-interpret (`node --regexp-interpret-all`) — like-for-like with the other interpreters |
 | **Dart RegExp** | the Dart SDK's built-in `RegExp` (V8 Irregexp inside the Dart VM) |
-| **FFI · per-match** | the [`oniguruma_ffi`](../oniguruma_ffi) package — the *same* native C library, driven from Dart via `dart:ffi` through its real `OnigScanner.findNextMatch` API (one FFI crossing + one result object per match). Uses UTF-16LE so offsets line up with Dart `String` indices. |
+| **FFI · per-match** | the [`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi) package — the *same* native C library, driven from Dart via `dart:ffi` through its real `OnigScanner.findNextMatch` API (one FFI crossing + one result object per match). Uses UTF-16LE so offsets line up with Dart `String` indices. |
 | **FFI · bulk** | `oniguruma_ffi`'s `OnigScanner.scanCount` — the whole corpus scanned in a **single** FFI crossing (no per-match allocation): the native-from-Dart throughput ceiling, directly comparable to Oniguruma C. |
 | **port · byte** | this port's byte API — matches a `Uint8List` (UTF-8), returns byte offsets |
 | **port · String** | this port's idiomatic `String` API (`OnigRegex.allMatches`) — encodes + maps offsets back to UTF-16 |
@@ -91,7 +91,7 @@ Each number is the **median wall-clock time to scan an entire corpus for every n
 
 ## Primary comparison: `oniguruma_ffi` (native) vs the pure-Dart port
 
-The two packages in this repo solve the same problem two ways: [`oniguruma_ffi`](../oniguruma_ffi) binds the **real C library** through `dart:ffi`, while `oniguruma_dart` is a **pure-Dart** re-implementation. Same corpora, same patterns, identical match counts — so this is a direct apples-to-apples of the two ways to run Oniguruma from Dart.
+The two packages in this repo solve the same problem two ways: [`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi) binds the **real C library** through `dart:ffi`, while `oniguruma_dart` is a **pure-Dart** re-implementation. Same corpora, same patterns, identical match counts — so this is a direct apples-to-apples of the two ways to run Oniguruma from Dart.
 
 ![oniguruma_ffi (native FFI) vs the pure-Dart port — median time per full-corpus scan, log scale, shorter is faster](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 

@@ -46,7 +46,7 @@ This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
   back-references / catastrophic backtracking far better than a from-scratch
   backtracker (e.g. it is ~3× faster than the pure-Dart port on `backref-dup`).
 
-Reach for **[`oniguruma_dart`](../oniguruma_dart)** (pure Dart) instead when you
+Reach for **[`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)** (pure Dart) instead when you
 need **web / WASM** support (this package is IO-only), want **zero native
 setup** (no toolchain, build hooks, or prebuilt binaries), or are doing **bulk
 matching** — for scanning a whole input for every match, the pure-Dart port is
@@ -61,7 +61,7 @@ in one call.
 ![Per-pattern, per-full-corpus-scan time (log scale, shorter is faster): this package's FFI per-match and bulk paths (pink) vs oniguruma_dart's byte and String APIs (blue/green). The pure-Dart port is faster on 12 of 13 patterns; this package wins backref-dup, where the native engine handles pathological backtracking far better.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
 See the full head-to-head in
-[`../oniguruma_dart/benchmarks.md`](../oniguruma_dart/benchmarks.md).
+[`../oniguruma_dart/benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md).
 
 ## How the native build works
 

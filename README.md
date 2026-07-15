@@ -8,8 +8,8 @@ regular-expression engine (the dialect used by Ruby), organized as a
 
 | Package | Description |
 |---|---|
-| [`oniguruma_dart`](packages/oniguruma_dart) | **Pure-Dart** port — no FFI, no native code. Runs everywhere Dart runs, including Web/WASM. Full Unicode, ~28 encodings, an idiomatic `String` API. |
-| [`oniguruma_ffi`](packages/oniguruma_ffi) | **FFI bindings** to the native Oniguruma C library (built/bundled by a Dart build hook). vscode-oniguruma-compatible `OnigScanner` for TextMate/Shiki tokenizers. IO platforms only. |
+| [`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart) | **Pure-Dart** port — no FFI, no native code. Runs everywhere Dart runs, including Web/WASM. Full Unicode, ~28 encodings, an idiomatic `String` API. |
+| [`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi) | **FFI bindings** to the native Oniguruma C library (built/bundled by a Dart build hook). vscode-oniguruma-compatible `OnigScanner` for TextMate/Shiki tokenizers. IO platforms only. |
 
 See each package's own `README.md` for installation and usage.
 
@@ -52,8 +52,8 @@ package wins where the native engine's maturity matters — e.g. `backref-dup`
 (pathological backtracking), where it is ~3× faster than the port. This is a
 *bulk* benchmark, though; `oniguruma_ffi` is built for tokenizer workloads (one
 match per call). Full methodology, per-pattern tables, and an interactive chart:
-[`packages/oniguruma_dart/benchmarks.md`](packages/oniguruma_dart/benchmarks.md)
-and [`benchmark/index.html`](packages/oniguruma_dart/benchmark/index.html).
+[`packages/oniguruma_dart/benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md)
+and [`benchmark/index.html`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmark/index.html).
 
 ![Per-pattern comparison of the two packages: FFI per-match, FFI bulk, port byte, and port String — the pure-Dart port (blue/green) is shorter (faster) than native FFI (pink) on 12 of 13 patterns, the exception being backref-dup](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
@@ -77,4 +77,4 @@ dart test packages/oniguruma_dart     # run one package's tests
 
 BSD 2-Clause. These packages are derivative works of Oniguruma and are
 distributed under its original BSD 2-Clause license, retaining the original
-copyright (© 2002–2021 K.Kosako). See [LICENSE](LICENSE).
+copyright (© 2002–2021 K.Kosako). See [LICENSE](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/LICENSE).

@@ -159,7 +159,7 @@ Encodings include `utf8Encoding`, `utf16BeEncoding`, `utf16LeEncoding`,
 `eucJpEncoding`, `sjisEncoding`, `big5Encoding`, `gb18030Encoding`, the
 `iso88591Encoding`…`iso885916Encoding` family, `koi8REncoding`, `asciiEncoding`,
 and more. A runnable version is in
-[`example/`](example/oniguruma_dart_example.dart).
+[`example/`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/example/oniguruma_dart_example.dart).
 
 ## Correctness
 
@@ -184,7 +184,7 @@ Dart's built-in `RegExp` on nearly every pattern:
 
 It is even faster than the **native C library driven from Dart over FFI**: for
 bulk find-all-matches the String API is **~2× faster** than the sibling
-[`oniguruma_ffi`](../oniguruma_ffi) package (which pays a UTF-16LE scan and an
+[`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi) package (which pays a UTF-16LE scan and an
 FFI crossing per match), winning on 12 of 13 patterns.
 
 ![Geometric-mean scan time per engine, normalized to Oniguruma C (shorter is faster; dashed line = C). The port's byte (0.58×) and String (0.73×) APIs sit left of the C baseline; Dart RegExp and the FFI paths sit right of it.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
@@ -192,7 +192,7 @@ FFI crossing per match), winning on 12 of 13 patterns.
 Throughput is workload-dependent, and a few pathological cases (heavy
 back-references) remain slower than C — and than `oniguruma_ffi`. Full
 methodology, per-pattern tables, the FFI head-to-head, and an interactive chart
-are in [`benchmarks.md`](benchmarks.md).
+are in [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md).
 
 ## `oniguruma_dart` (pure Dart) vs `oniguruma_ffi` (native)
 
@@ -208,12 +208,12 @@ This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 - A **full idiomatic regex API**: named groups, captures, replace, and both
   `String` and byte offsets.
 
-Reach for **[`oniguruma_ffi`](../oniguruma_ffi)** instead when you need the real C
+Reach for **[`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi)** instead when you need the real C
 engine's exact behaviour — driving **TextMate grammars / Shiki** with
 vscode-oniguruma-compatible `OnigScanner` semantics, incremental tokenization
 (one match per call), or robustness on pathological backtracking — and you only
-target IO platforms (no web). See the [comparison in the root README](../../README.md#which-package-should-i-use)
-and [`benchmarks.md`](benchmarks.md) for the head-to-head.
+target IO platforms (no web). See the [comparison in the root README](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/README.md#which-package-should-i-use)
+and [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md) for the head-to-head.
 
 ## Contributing
 
@@ -237,4 +237,4 @@ cd .. && dart run test/differential/run_diff.dart   # then: python3 benchmark/ru
 
 BSD 2-Clause. This is a source port of Oniguruma and is distributed under
 Oniguruma's original BSD 2-Clause license, retaining the original copyright
-(© 2002–2021 K.Kosako). See [LICENSE](LICENSE).
+(© 2002–2021 K.Kosako). See [LICENSE](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/LICENSE).
