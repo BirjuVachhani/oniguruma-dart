@@ -43,6 +43,8 @@ native C library (lower is faster):
 | `oniguruma_ffi` · bulk (`scanCount`, one FFI crossing) | 1.39× |
 | `oniguruma_ffi` · per-match (`findNextMatch` API) | 1.49× |
 
+![Geometric-mean scan time per engine, normalized to Oniguruma C — the pure-Dart port's byte (0.58×) and String (0.73×) APIs are faster than native C, while driving the C library from Dart over FFI costs 1.39–1.49×](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
+
 For **bulk find-all-matches** the pure-Dart port is **~2× faster** than the FFI
 package (it wins 12 of 13 patterns): the FFI package scans UTF-16LE (≈2× the
 bytes of UTF-8 on ASCII) and crosses the FFI boundary once per match. The FFI
@@ -52,6 +54,8 @@ package wins where the native engine's maturity matters — e.g. `backref-dup`
 match per call). Full methodology, per-pattern tables, and an interactive chart:
 [`packages/oniguruma_dart/benchmarks.md`](packages/oniguruma_dart/benchmarks.md)
 and [`benchmark/index.html`](packages/oniguruma_dart/benchmark/index.html).
+
+![Per-pattern comparison of the two packages: FFI per-match, FFI bulk, port byte, and port String — the pure-Dart port (blue/green) is shorter (faster) than native FFI (pink) on 12 of 13 patterns, the exception being backref-dup](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
 > Measured on Apple M1 Pro, Dart 3.12.2 / Node 26.4.0 / Oniguruma 6.9.10; median
 > of 5 trials, all engines back-to-back. Absolute times carry machine-load noise;

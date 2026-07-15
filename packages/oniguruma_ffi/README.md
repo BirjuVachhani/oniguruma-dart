@@ -56,7 +56,11 @@ Why pure Dart wins bulk scanning: this package uses **UTF-16LE** (so offsets map
 1:1 to Dart `String` indices) — roughly 2× the bytes to scan on ASCII text — and
 its `findNextMatch` API costs one **FFI crossing per match**. Those are the right
 trade-offs for a tokenizer, not for enumerating hundreds of thousands of matches
-in one call. See the full head-to-head in
+in one call.
+
+![Per-pattern, per-full-corpus-scan time (log scale, shorter is faster): this package's FFI per-match and bulk paths (pink) vs oniguruma_dart's byte and String APIs (blue/green). The pure-Dart port is faster on 12 of 13 patterns; this package wins backref-dup, where the native engine handles pathological backtracking far better.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
+
+See the full head-to-head in
 [`../oniguruma_dart/benchmarks.md`](../oniguruma_dart/benchmarks.md).
 
 ## How the native build works

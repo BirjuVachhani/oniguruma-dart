@@ -187,6 +187,8 @@ bulk find-all-matches the String API is **~2× faster** than the sibling
 [`oniguruma_ffi`](../oniguruma_ffi) package (which pays a UTF-16LE scan and an
 FFI crossing per match), winning on 12 of 13 patterns.
 
+![Geometric-mean scan time per engine, normalized to Oniguruma C (shorter is faster; dashed line = C). The port's byte (0.58×) and String (0.73×) APIs sit left of the C baseline; Dart RegExp and the FFI paths sit right of it.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
+
 Throughput is workload-dependent, and a few pathological cases (heavy
 back-references) remain slower than C — and than `oniguruma_ffi`. Full
 methodology, per-pattern tables, the FFI head-to-head, and an interactive chart

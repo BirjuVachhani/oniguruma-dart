@@ -54,6 +54,8 @@ Each number is the **median wall-clock time to scan an entire corpus for every n
 | backref-dup | `(\w+) \1` | 15,606 | 41.14 ms | 15.03 ms | 96.00 ms | 149.75 ms | 42.07 ms | 40.09 ms | 133.32 ms | 133.34 ms |
 | greedy-dotstar | `.*lorem` | 6,518 | 10.09 ms | 86.17 ms | 266.50 ms | 382.09 ms | 11.67 ms | 11.58 ms | 5.71 ms | 5.95 ms |
 
+![Per-pattern scan time for every engine (log scale, shorter is faster)](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/absolute.png)
+
 ## Normalized to Oniguruma C  (×C — <1.00 faster than C, >1.00 slower)
 
 | pattern | V8 JIT | V8 interp | Dart RegExp | FFI · per-match | FFI · bulk | port · byte | port · String |
@@ -85,9 +87,13 @@ Each number is the **median wall-clock time to scan an entire corpus for every n
 | port · byte | 0.58×  **(faster than C on average)** |
 | port · String | 0.73×  **(faster than C on average)** |
 
+![Geometric mean of scan time vs Oniguruma C across all 13 patterns (shorter is faster; dashed line = the C baseline)](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
+
 ## Primary comparison: `oniguruma_ffi` (native) vs the pure-Dart port
 
 The two packages in this repo solve the same problem two ways: [`oniguruma_ffi`](../oniguruma_ffi) binds the **real C library** through `dart:ffi`, while `oniguruma_dart` is a **pure-Dart** re-implementation. Same corpora, same patterns, identical match counts — so this is a direct apples-to-apples of the two ways to run Oniguruma from Dart.
+
+![oniguruma_ffi (native FFI) vs the pure-Dart port — median time per full-corpus scan, log scale, shorter is faster](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
 | pattern | matches | FFI · per-match | FFI · bulk | port · String | port · byte | port·String ÷ FFI·per-match |
 |---|--:|--:|--:|--:|--:|--:|

@@ -11,6 +11,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JSON = os.path.join(ROOT, "benchmark/mainstream_results.json")
 OUT = os.path.join(ROOT, "benchmarks.md")
 
+# Absolute raw-GitHub base for chart images, so they render on pub.dev (and in
+# the published archive) regardless of the `repository` field. Charts live under
+# packages/oniguruma_dart/benchmark/charts/ on the main branch.
+CHARTS = ("https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/"
+          "main/packages/oniguruma_dart/benchmark/charts/")
+
 DATE = "2026-07-15"
 ENV = {
     "CPU": "Apple M1 Pro (10 cores)",
@@ -128,6 +134,8 @@ def main():
         cells = " | ".join(ms(d[k].get(p)) for k, _ in ENGINES)
         w(f"| {p} | `{rxd}` | {cnt[p]:,} | {cells} |")
     w("")
+    w("![Per-pattern scan time for every engine (log scale, shorter is faster)]"
+      f"({CHARTS}absolute.png)\n")
 
     # ---- Table 2: normalized to C ----
     w("## Normalized to Oniguruma C  (×C — <1.00 faster than C, >1.00 slower)\n")
@@ -149,6 +157,9 @@ def main():
             "  **(faster than C on average)**" if g < 1 else "")
         w(f"| {lbl} | {g:.2f}×{note} |")
     w("")
+    w("![Geometric mean of scan time vs Oniguruma C across all 13 patterns "
+      "(shorter is faster; dashed line = the C baseline)]"
+      f"({CHARTS}geomean.png)\n")
 
     # ---- Primary comparison: FFI vs pure-Dart port ----
     w("## Primary comparison: `oniguruma_ffi` (native) vs the pure-Dart port\n")
@@ -157,6 +168,9 @@ def main():
       "`dart:ffi`, while `oniguruma_dart` is a **pure-Dart** re-implementation. "
       "Same corpora, same patterns, identical match counts — so this is a direct "
       "apples-to-apples of the two ways to run Oniguruma from Dart.\n")
+    w("![oniguruma_ffi (native FFI) vs the pure-Dart port — median time per "
+      "full-corpus scan, log scale, shorter is faster]"
+      f"({CHARTS}ffi-vs-port.png)\n")
     w("| pattern | matches | FFI · per-match | FFI · bulk | port · String | port · byte | port·String ÷ FFI·per-match |")
     w("|---|--:|--:|--:|--:|--:|--:|")
     for p in ORDER:
