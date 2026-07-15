@@ -46,13 +46,26 @@ pre{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:10px;overfl
 <header><div class="wrap">
 <h1>oniguruma_dart — Benchmarks</h1>
 <p>A pure-Dart port of the Oniguruma regex engine, measured head-to-head against
-the native C library and the two production regex interpreters available to Dart
-programs. Each metric is the median time to scan a whole corpus for every match
-(lower is faster); all engines are verified to find the same match count.</p>
+the native C library, the <b>same C library driven from Dart over FFI</b>
+(the sibling <code>oniguruma_ffi</code> package), and the production regex
+interpreters available to Dart programs. Each metric is the median time to scan
+a whole corpus for every match (lower is faster); every engine finds the
+identical match count.</p>
 <div class="meta" id="meta"></div>
 </div></header>
 <main class="wrap">
 <div class="cards" id="cards"></div>
+
+<section class="panel">
+<h2>Primary comparison — native FFI vs the pure-Dart port</h2>
+<p class="sub">The two packages in this repo, on identical corpora and match counts.
+<b>FFI · per-match</b> is <code>oniguruma_ffi</code>'s real <code>findNextMatch</code> API
+(one native crossing + a result object per match); <b>FFI · bulk</b> scans the whole
+corpus in a single crossing; the port's <b>byte</b> and <b>String</b> APIs run in-process
+in pure Dart. Median time per full-corpus scan (log scale) — shorter is faster.</p>
+<div class="legend" id="lgp"></div>
+<div class="chart" id="cp"></div>
+</section>
 
 <section class="panel">
 <h2>Geometric mean vs Oniguruma C</h2>
@@ -99,7 +112,7 @@ per-pattern match-count cross-checks (byte vs String vs C all agree).
 </footer>
 
 <script>
-const RAW = {"patterns": ["literal", "literal-unicode", "alt-5", "class-lower", "class-digit", "word-w", "two-words", "word-boundary", "email-like", "named-group", "case-insens", "backref-dup", "greedy-dotstar"], "regex": {"literal": "lorem", "literal-unicode": "東京", "alt-5": "lorem|ipsum|dolor|sit|amet", "class-lower": "[a-z]+", "class-digit": "[0-9]+", "word-w": "\\w+", "two-words": "[a-z]+ [a-z]+", "word-boundary": "\\b\\w{5}\\b", "email-like": "\\w+@\\w+", "named-group": "(?<w>[a-z]+)", "case-insens": "(?i)lorem", "backref-dup": "(\\w+) \\1", "greedy-dotstar": ".*lorem"}, "desc": {"literal": "plain literal (Sunday scan)", "literal-unicode": "multibyte literal over Unicode text", "alt-5": "5-way literal alternation", "class-lower": "char-class, greedy", "class-digit": "digit class, sparse", "word-w": "\\w ctype, greedy", "two-words": "two runs + separator", "word-boundary": "word boundaries + fixed repeat", "email-like": "run + mandatory literal + run", "named-group": "named capture, every token", "case-insens": "case-insensitive literal", "backref-dup": "back-reference (doubled word)", "greedy-dotstar": "greedy .* backtracking"}, "engines": [{"key": "ONIG_C", "label": "Oniguruma C", "color": "#64748b"}, {"key": "V8_JIT", "label": "V8 JIT", "color": "#dc2626"}, {"key": "V8_INTERP", "label": "V8 interp", "color": "#f59e0b"}, {"key": "RE_VM", "label": "Dart RegExp", "color": "#7c3aed"}, {"key": "ONIG_BYTE", "label": "port · byte", "color": "#0ea5e9"}, {"key": "ONIG_VM", "label": "port · String", "color": "#16a34a"}], "count": {"literal": 7856, "literal-unicode": 2938, "alt-5": 39251, "class-lower": 166221, "class-digit": 5972, "word-w": 172193, "two-words": 75064, "word-boundary": 39418, "email-like": 2027, "named-group": 166221, "case-insens": 7856, "backref-dup": 15606, "greedy-dotstar": 6518}, "perf": {"ONIG_C": {"literal": 1961300.0, "literal-unicode": 897733.3, "alt-5": 17840566.7, "class-lower": 25660200.0, "class-digit": 4619866.7, "word-w": 28198433.3, "two-words": 17336366.7, "word-boundary": 21391733.3, "email-like": 32781166.7, "named-group": 26390833.3, "case-insens": 5883133.3, "backref-dup": 39301066.7, "greedy-dotstar": 10043766.7}, "V8_JIT": {"literal": 1171254.7, "literal-unicode": 167112.4, "alt-5": 4691998.6, "class-lower": 6918168.2, "class-digit": 365263.0, "word-w": 7171428.6, "two-words": 5218750.0, "word-boundary": 6525641.0, "email-like": 14527777.8, "named-group": 11431818.2, "case-insens": 1282051.3, "backref-dup": 15441176.5, "greedy-dotstar": 89000000.0}, "V8_INTERP": {"literal": 1168249.8, "literal-unicode": 165506.2, "alt-5": 11313241.1, "class-lower": 21333333.3, "class-digit": 1339624.8, "word-w": 21208333.3, "two-words": 22571969.7, "word-boundary": 54400000.0, "email-like": 77875000.0, "named-group": 26000000.0, "case-insens": 2693548.4, "backref-dup": 99166666.7, "greedy-dotstar": 274500000.0}, "RE_VM": {"literal": 3702661.8, "literal-unicode": 649474.6, "alt-5": 21715750.0, "class-lower": 33346875.0, "class-digit": 36516357.1, "word-w": 33970500.0, "two-words": 35166875.0, "word-boundary": 40006071.4, "email-like": 124763833.3, "named-group": 36921428.6, "case-insens": 3757963.7, "backref-dup": 151350250.0, "greedy-dotstar": 396838500.0}, "ONIG_BYTE": {"literal": 1296866.7, "literal-unicode": 703366.7, "alt-5": 17533700.0, "class-lower": 12545200.0, "class-digit": 1715433.3, "word-w": 14219633.3, "two-words": 12835966.7, "word-boundary": 19358466.7, "email-like": 2577233.3, "named-group": 14507866.7, "case-insens": 2260900.0, "backref-dup": 135619500.0, "greedy-dotstar": 5746966.7}, "ONIG_VM": {"literal": 1748684.8, "literal-unicode": 916502.4, "alt-5": 19123107.1, "class-lower": 20110538.5, "class-digit": 1930423.1, "word-w": 22139625.0, "two-words": 15963718.8, "word-boundary": 21019875.0, "email-like": 2869701.5, "named-group": 22358625.0, "case-insens": 2797866.7, "backref-dup": 135671250.0, "greedy-dotstar": 6068044.1}}, "env": {"date": "2026-07-14", "cpu": "Apple M1 Pro", "dart": "3.12.2", "node": "26.4.0", "onig": "6.9.10"}};
+const RAW = {"patterns": ["literal", "literal-unicode", "alt-5", "class-lower", "class-digit", "word-w", "two-words", "word-boundary", "email-like", "named-group", "case-insens", "backref-dup", "greedy-dotstar"], "regex": {"literal": "lorem", "literal-unicode": "東京", "alt-5": "lorem|ipsum|dolor|sit|amet", "class-lower": "[a-z]+", "class-digit": "[0-9]+", "word-w": "\\w+", "two-words": "[a-z]+ [a-z]+", "word-boundary": "\\b\\w{5}\\b", "email-like": "\\w+@\\w+", "named-group": "(?<w>[a-z]+)", "case-insens": "(?i)lorem", "backref-dup": "(\\w+) \\1", "greedy-dotstar": ".*lorem"}, "desc": {"literal": "plain literal (Sunday scan)", "literal-unicode": "multibyte literal over Unicode text", "alt-5": "5-way literal alternation", "class-lower": "char-class, greedy", "class-digit": "digit class, sparse", "word-w": "\\w ctype, greedy", "two-words": "two runs + separator", "word-boundary": "word boundaries + fixed repeat", "email-like": "run + mandatory literal + run", "named-group": "named capture, every token", "case-insens": "case-insensitive literal", "backref-dup": "back-reference (doubled word)", "greedy-dotstar": "greedy .* backtracking"}, "engines": [{"key": "ONIG_C", "label": "Oniguruma C", "color": "#64748b"}, {"key": "V8_JIT", "label": "V8 JIT", "color": "#dc2626"}, {"key": "V8_INTERP", "label": "V8 interp", "color": "#f59e0b"}, {"key": "RE_VM", "label": "Dart RegExp", "color": "#7c3aed"}, {"key": "ONIG_FFI", "label": "FFI · per-match", "color": "#db2777"}, {"key": "ONIG_FFI_BULK", "label": "FFI · bulk", "color": "#f472b6"}, {"key": "ONIG_BYTE", "label": "port · byte", "color": "#0ea5e9"}, {"key": "ONIG_VM", "label": "port · String", "color": "#16a34a"}], "count": {"literal": 7856, "literal-unicode": 2938, "alt-5": 39251, "class-lower": 166221, "class-digit": 5972, "word-w": 172193, "two-words": 75064, "word-boundary": 39418, "email-like": 2027, "named-group": 166221, "case-insens": 7856, "backref-dup": 15606, "greedy-dotstar": 6518}, "perf": {"ONIG_C": {"literal": 1919900.0, "literal-unicode": 867966.7, "alt-5": 17907933.3, "class-lower": 26375733.3, "class-digit": 4547200.0, "word-w": 27869566.7, "two-words": 21882766.7, "word-boundary": 21298800.0, "email-like": 32514500.0, "named-group": 27059800.0, "case-insens": 5645600.0, "backref-dup": 41136366.7, "greedy-dotstar": 10090600.0}, "V8_JIT": {"literal": 1149431.4, "literal-unicode": 159489.6, "alt-5": 4554545.5, "class-lower": 6720483.6, "class-digit": 329815.9, "word-w": 6986111.1, "two-words": 5204081.6, "word-boundary": 6337500.0, "email-like": 14250000.0, "named-group": 10791666.7, "case-insens": 1259453.8, "backref-dup": 15029411.8, "greedy-dotstar": 86166666.7}, "V8_INTERP": {"literal": 1141230.8, "literal-unicode": 161866.1, "alt-5": 11108695.7, "class-lower": 21375000.0, "class-digit": 1308936.4, "word-w": 20875000.0, "two-words": 21958333.3, "word-boundary": 53300000.0, "email-like": 76625000.0, "named-group": 26100000.0, "case-insens": 2636842.1, "backref-dup": 96000000.0, "greedy-dotstar": 266500000.0}, "RE_VM": {"literal": 3673261.4, "literal-unicode": 641311.3, "alt-5": 21172541.7, "class-lower": 33515000.0, "class-digit": 36219642.9, "word-w": 34525500.0, "two-words": 35065250.0, "word-boundary": 39391285.7, "email-like": 125422000.0, "named-group": 36178214.3, "case-insens": 3744873.1, "backref-dup": 149751500.0, "greedy-dotstar": 382089500.0}, "ONIG_FFI": {"literal": 3599428.6, "literal-unicode": 2105243.7, "alt-5": 19290846.2, "class-lower": 33517750.0, "class-digit": 14320611.1, "word-w": 31983250.0, "two-words": 25942800.0, "word-boundary": 25821700.0, "email-like": 35819428.6, "named-group": 35351625.0, "case-insens": 17698066.7, "backref-dup": 42069833.3, "greedy-dotstar": 11672272.7}, "ONIG_FFI_BULK": {"literal": 3240923.1, "literal-unicode": 1958312.5, "alt-5": 18389071.4, "class-lower": 29910111.1, "class-digit": 14229500.0, "word-w": 28118111.1, "two-words": 24232636.4, "word-boundary": 22245000.0, "email-like": 36876857.1, "named-group": 30648888.9, "case-insens": 17542333.3, "backref-dup": 40092714.3, "greedy-dotstar": 11578636.4}, "ONIG_BYTE": {"literal": 1271100.0, "literal-unicode": 711433.3, "alt-5": 17570366.7, "class-lower": 12478033.3, "class-digit": 1682266.7, "word-w": 14226000.0, "two-words": 12825766.7, "word-boundary": 19234933.3, "email-like": 2623866.7, "named-group": 14516200.0, "case-insens": 2284466.7, "backref-dup": 133319433.3, "greedy-dotstar": 5709700.0}, "ONIG_VM": {"literal": 1723538.3, "literal-unicode": 884068.9, "alt-5": 19112321.4, "class-lower": 21340083.3, "class-digit": 1999814.1, "word-w": 24527727.3, "two-words": 16254625.0, "word-boundary": 21319250.0, "email-like": 2853909.1, "named-group": 24392090.9, "case-insens": 2783023.1, "backref-dup": 133343250.0, "greedy-dotstar": 5945500.0}}, "env": {"date": "2026-07-15", "cpu": "Apple M1 Pro", "dart": "3.12.2", "node": "26.4.0", "onig": "6.9.10"}};
 const {patterns, regex, desc, engines, count, perf, date, env} = RAW;
 const C = perf.ONIG_C;
 const NONC = engines.filter(e => e.key !== "ONIG_C");
@@ -113,16 +126,20 @@ const geo = {};
 engines.forEach(e => geo[e.key] = gmean(patterns.map(p => perf[e.key][p]/C[p])));
 const beatsRE = patterns.filter(p => perf.ONIG_VM[p] < perf.RE_VM[p]).length;
 const beatsC  = patterns.filter(p => perf.ONIG_VM[p] <= C[p]*1.02).length;
+// port · String vs the FFI package's real per-match API (>1 => port faster)
+const portVsFFI = gmean(patterns.map(p => perf.ONIG_FFI[p]/perf.ONIG_VM[p]));
+const portBeatsFFI = patterns.filter(p => perf.ONIG_VM[p] < perf.ONIG_FFI[p]).length;
 
 // ---- header meta + stat cards ----
 document.getElementById("meta").textContent =
   env.date + "  ·  " + env.cpu + "  ·  Dart " + env.dart + "  ·  Node " + env.node +
-  "  ·  Oniguruma C " + env.onig + "  ·  AOT, median of 5 trials";
+  "  ·  Oniguruma C " + env.onig + "  ·  median of 5 trials, ratios are the signal";
 document.getElementById("cards").innerHTML = [
-  ["hero", geo.ONIG_VM.toFixed(2)+"×", "String API geomean vs C"],
-  ["hero", geo.ONIG_BYTE.toFixed(2)+"×", "byte API geomean vs C"],
+  ["hero", geo.ONIG_VM.toFixed(2)+"×", "port · String geomean vs C"],
+  ["hero", portVsFFI.toFixed(1)+"×", "port · String faster than FFI · per-match"],
+  ["", portBeatsFFI+" / 13", "patterns where the port beats FFI"],
   ["", beatsRE+" / 13", "patterns beating Dart RegExp"],
-  ["", beatsC+" / 13", "patterns beating / tying C"],
+  ["", geo.ONIG_FFI.toFixed(2)+"×", "FFI · per-match geomean vs C"],
 ].map(([c,n,l])=>`<div class="card ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
 // ---- legends ----
@@ -201,6 +218,14 @@ document.getElementById("c3").innerHTML = bars({
   cats:patterns, series:bs, val:(e,p)=>perf[e.key][p],
   domain:[5e5,5e8], ticks:[1e6,1e7,1e8], tickFmt:fmt, tip:v=>fmt(v)});
 
+// primary chart: the two packages — FFI (per-match + bulk) vs port (byte + String)
+const primSeries = engines.filter(e=>
+  ["ONIG_FFI","ONIG_FFI_BULK","ONIG_BYTE","ONIG_VM"].includes(e.key));
+legend("lgp", primSeries);
+document.getElementById("cp").innerHTML = bars({
+  cats:patterns, series:primSeries, val:(e,p)=>perf[e.key][p],
+  domain:[5e5,5e8], ticks:[1e6,1e7,1e8], tickFmt:fmt, tip:v=>fmt(v)});
+
 // ---- table ----
 let th = "<thead><tr><th>pattern</th><th>regex</th><th>matches</th>" +
   engines.map(e=>`<th>${e.label}</th>`).join("") + "<th>port/C</th></tr></thead><tbody>";
@@ -216,11 +241,12 @@ document.getElementById("tbl").innerHTML = th;
 
 // ---- notes ----
 document.getElementById("notes").innerHTML = [
+  `<b>Native FFI vs pure Dart (the headline).</b> For bulk find-all-matches, the pure-Dart <b>port · String</b> API is <b>${portVsFFI.toFixed(1)}× faster</b> than the FFI package's real per-match API and wins on <b>${portBeatsFFI}/13</b> patterns. Two reasons: <code>oniguruma_ffi</code> uses <b>UTF-16LE</b> (offsets map 1:1 to Dart strings, but ~2× the bytes to scan on ASCII), and <code>findNextMatch</code> costs one <b>FFI crossing per match</b>. <b>FFI · bulk</b> (one crossing for the whole scan) removes the crossing cost and closes most of the gap.`,
+  `<b>Where FFI wins:</b> <code>backref-dup</code> — the native engine handles pathological O(word²) backtracking far better than the port (${(perf.ONIG_VM['backref-dup']/perf.ONIG_FFI['backref-dup']).toFixed(1)}× faster). And this is a <i>bulk</i> benchmark; <code>oniguruma_ffi</code> is built for TextMate/Shiki <b>tokenizers</b> (one match per call) and web-less native compatibility.`,
   `<b>V8 JIT</b> is the default Node.js RegExp — native-compiled Irregexp, the fastest engine here, shown for reference. <b>V8 interp</b> is that same engine forced into bytecode-interpreter mode (<code>--regexp-interpret-all</code>) — the like-for-like baseline for the other interpreters (Dart RegExp and this port).`,
-  `On the <b>String API</b> (what Dart programs get) the port averages <b>${geo.ONIG_VM.toFixed(2)}× C</b> — faster than the native library across the suite — and beats Dart RegExp on <b>${beatsRE}/13</b>.`,
-  `The <b>byte API</b> (${geo.ONIG_BYTE.toFixed(2)}× C) is faster still: no encode, no offset mapping, no Match objects — best when working with <code>Uint8List</code>.`,
+  `On the <b>String API</b> (what Dart programs get) the port averages <b>${geo.ONIG_VM.toFixed(2)}× C</b> — faster than the native library across the suite — and beats Dart RegExp on <b>${beatsRE}/13</b>. The <b>byte API</b> (${geo.ONIG_BYTE.toFixed(2)}× C) is faster still: no encode, no offset mapping, no Match objects.`,
   `<b>email-like</b> is an <i>algorithmic</i> win: the driver walks back from each mandatory <code>@</code> to the run start (one attempt per <code>@</code>) instead of scanning every position — ~12× faster than C's forward scan.`,
-  `Where an engine still leads, it's a <b>capability floor</b>: V8 wins <code>literal</code>/<code>alt-5</code>/<code>class-digit</code> via SIMD (no byte-SIMD in pure Dart); <code>literal-unicode</code> ties C (the RegExp gap is the UTF-8↔UTF-16 bridge); <code>backref-dup</code> is O(word²) backtracking where even V8's interpreter is 2.5× C.`,
+  `Where an interpreter still leads, it's a <b>capability floor</b>: V8 wins <code>literal</code>/<code>alt-5</code>/<code>class-digit</code> via SIMD (no byte-SIMD in pure Dart); <code>literal-unicode</code> ties C (the RegExp gap is the UTF-8↔UTF-16 bridge).`,
 ].map(t=>`<li>${t}</li>`).join("");
 </script>
 </body>

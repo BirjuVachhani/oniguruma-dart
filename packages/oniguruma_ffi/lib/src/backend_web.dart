@@ -44,5 +44,7 @@ class OnigScanner {
   OnigMatch? findNextMatch(OnigString string, int startPosition) =>
       _unsupported();
 
+  int scanCount(OnigString string) => _unsupported();
+
   void dispose() {}
 }

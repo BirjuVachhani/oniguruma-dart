@@ -32,6 +32,13 @@ test/
 benchmark/
 tool/
 
+# Dev-only: the mainstream benchmark harness (built via `dart build cli` and
+# driven by ../oniguruma_dart/benchmark/ffi_bench.py); not a package executable.
+bin/
+
+# `dart build cli` output bundle.
+build/
+
 # CI infrastructure that produces prebuilt/ (kept in git, built by GitHub
 # Actions) — not needed by consumers. Note: tool/ above already covers
 # tool/prebuilt/; listed explicitly for clarity.

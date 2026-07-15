@@ -1,6 +1,6 @@
 // FFI bindings to the C shim (src/oniguruma_shim.c), resolved against the
-// `package:oniguruma/oniguruma_ffi` code asset produced by hook/build.dart.
-@DefaultAsset('package:oniguruma/oniguruma_ffi')
+// `package:oniguruma_ffi/oniguruma_ffi` code asset produced by hook/build.dart.
+@DefaultAsset('package:oniguruma_ffi/oniguruma_ffi')
 library;
 
 import 'dart:ffi';
@@ -34,6 +34,12 @@ external int shimFind(
   Pointer<Int32> end,
   int capacity,
 );
+
+@Native<Int32 Function(Pointer<ShimScanner>, Pointer<Uint8>, Int32)>(
+  symbol: 'onig_shim_scan_count',
+)
+external int shimScanCount(
+    Pointer<ShimScanner> sc, Pointer<Uint8> str, int endByte);
 
 @Native<Pointer<Char> Function()>(symbol: 'onig_shim_version')
 external Pointer<Char> shimVersion();

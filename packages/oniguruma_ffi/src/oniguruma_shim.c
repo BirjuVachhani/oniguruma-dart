@@ -109,5 +109,51 @@ int onig_shim_find(ShimScanner* sc, const unsigned char* str, int endByte,
   return bestIdx;
 }
 
+// Scans the whole [str, str+endByte) for every non-overlapping match in a
+// SINGLE FFI crossing and returns the total count. At each position it picks
+// the winning pattern exactly as onig_shim_find does (exact-start wins, else
+// left-most, ties -> earliest pattern), then advances past the whole match.
+//
+// Offsets are deliberately NOT marshalled back: this measures native scan
+// throughput with one boundary crossing, directly comparable to the C
+// benchmark loop (which also only counts). It is the "native-from-Dart
+// ceiling" for a find-all-matches scan; use onig_shim_find when you need the
+// per-match offsets.
+SHIM_EXPORT
+int onig_shim_scan_count(ShimScanner* sc, const unsigned char* str,
+                         int endByte) {
+  const unsigned char* s = str;
+  const unsigned char* e = str + endByte;
+  OnigRegion* region = sc->region;
+
+  int count = 0;
+  int startByte = 0;
+  while (startByte <= endByte) {
+    const unsigned char* start = str + startByte;
+    int bestBeg = -1, bestEnd = -1, bestStart = 0x7fffffff;
+    for (int i = 0; i < sc->count; i++) {
+      regex_t* reg = sc->regs[i];
+      if (!reg) continue;
+      int r = onig_search(reg, s, e, start, e, region, ONIG_OPTION_NONE);
+      if (r >= 0) {
+        int ms = region->beg[0];
+        if (ms == startByte) { // exact-start match wins immediately
+          bestBeg = ms; bestEnd = region->end[0];
+          break;
+        }
+        if (ms < bestStart) {
+          bestStart = ms; bestBeg = ms; bestEnd = region->end[0];
+        }
+      }
+    }
+    if (bestBeg < 0) break;
+    count++;
+    int next = bestEnd;
+    if (next == startByte) next += 2; // zero-width: advance one UTF-16 unit
+    startByte = next;
+  }
+  return count;
+}
+
 SHIM_EXPORT
 const char* onig_shim_version(void) { return onig_version(); }

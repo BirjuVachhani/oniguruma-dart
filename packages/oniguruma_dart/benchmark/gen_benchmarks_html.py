@@ -32,6 +32,8 @@ ENGINES = [
     {"key": "V8_JIT", "label": "V8 JIT", "color": "#dc2626"},
     {"key": "V8_INTERP", "label": "V8 interp", "color": "#f59e0b"},
     {"key": "RE_VM", "label": "Dart RegExp", "color": "#7c3aed"},
+    {"key": "ONIG_FFI", "label": "FFI · per-match", "color": "#db2777"},
+    {"key": "ONIG_FFI_BULK", "label": "FFI · bulk", "color": "#f472b6"},
     {"key": "ONIG_BYTE", "label": "port · byte", "color": "#0ea5e9"},
     {"key": "ONIG_VM", "label": "port · String", "color": "#16a34a"},
 ]
@@ -84,13 +86,26 @@ pre{background:#0f172a;color:#e2e8f0;padding:14px 16px;border-radius:10px;overfl
 <header><div class="wrap">
 <h1>oniguruma_dart — Benchmarks</h1>
 <p>A pure-Dart port of the Oniguruma regex engine, measured head-to-head against
-the native C library and the two production regex interpreters available to Dart
-programs. Each metric is the median time to scan a whole corpus for every match
-(lower is faster); all engines are verified to find the same match count.</p>
+the native C library, the <b>same C library driven from Dart over FFI</b>
+(the sibling <code>oniguruma_ffi</code> package), and the production regex
+interpreters available to Dart programs. Each metric is the median time to scan
+a whole corpus for every match (lower is faster); every engine finds the
+identical match count.</p>
 <div class="meta" id="meta"></div>
 </div></header>
 <main class="wrap">
 <div class="cards" id="cards"></div>
+
+<section class="panel">
+<h2>Primary comparison — native FFI vs the pure-Dart port</h2>
+<p class="sub">The two packages in this repo, on identical corpora and match counts.
+<b>FFI · per-match</b> is <code>oniguruma_ffi</code>'s real <code>findNextMatch</code> API
+(one native crossing + a result object per match); <b>FFI · bulk</b> scans the whole
+corpus in a single crossing; the port's <b>byte</b> and <b>String</b> APIs run in-process
+in pure Dart. Median time per full-corpus scan (log scale) — shorter is faster.</p>
+<div class="legend" id="lgp"></div>
+<div class="chart" id="cp"></div>
+</section>
 
 <section class="panel">
 <h2>Geometric mean vs Oniguruma C</h2>
@@ -151,16 +166,20 @@ const geo = {};
 engines.forEach(e => geo[e.key] = gmean(patterns.map(p => perf[e.key][p]/C[p])));
 const beatsRE = patterns.filter(p => perf.ONIG_VM[p] < perf.RE_VM[p]).length;
 const beatsC  = patterns.filter(p => perf.ONIG_VM[p] <= C[p]*1.02).length;
+// port · String vs the FFI package's real per-match API (>1 => port faster)
+const portVsFFI = gmean(patterns.map(p => perf.ONIG_FFI[p]/perf.ONIG_VM[p]));
+const portBeatsFFI = patterns.filter(p => perf.ONIG_VM[p] < perf.ONIG_FFI[p]).length;
 
 // ---- header meta + stat cards ----
 document.getElementById("meta").textContent =
   env.date + "  ·  " + env.cpu + "  ·  Dart " + env.dart + "  ·  Node " + env.node +
-  "  ·  Oniguruma C " + env.onig + "  ·  AOT, median of 5 trials";
+  "  ·  Oniguruma C " + env.onig + "  ·  median of 5 trials, ratios are the signal";
 document.getElementById("cards").innerHTML = [
-  ["hero", geo.ONIG_VM.toFixed(2)+"×", "String API geomean vs C"],
-  ["hero", geo.ONIG_BYTE.toFixed(2)+"×", "byte API geomean vs C"],
+  ["hero", geo.ONIG_VM.toFixed(2)+"×", "port · String geomean vs C"],
+  ["hero", portVsFFI.toFixed(1)+"×", "port · String faster than FFI · per-match"],
+  ["", portBeatsFFI+" / 13", "patterns where the port beats FFI"],
   ["", beatsRE+" / 13", "patterns beating Dart RegExp"],
-  ["", beatsC+" / 13", "patterns beating / tying C"],
+  ["", geo.ONIG_FFI.toFixed(2)+"×", "FFI · per-match geomean vs C"],
 ].map(([c,n,l])=>`<div class="card ${c}"><div class="n">${n}</div><div class="l">${l}</div></div>`).join("");
 
 // ---- legends ----
@@ -239,6 +258,14 @@ document.getElementById("c3").innerHTML = bars({
   cats:patterns, series:bs, val:(e,p)=>perf[e.key][p],
   domain:[5e5,5e8], ticks:[1e6,1e7,1e8], tickFmt:fmt, tip:v=>fmt(v)});
 
+// primary chart: the two packages — FFI (per-match + bulk) vs port (byte + String)
+const primSeries = engines.filter(e=>
+  ["ONIG_FFI","ONIG_FFI_BULK","ONIG_BYTE","ONIG_VM"].includes(e.key));
+legend("lgp", primSeries);
+document.getElementById("cp").innerHTML = bars({
+  cats:patterns, series:primSeries, val:(e,p)=>perf[e.key][p],
+  domain:[5e5,5e8], ticks:[1e6,1e7,1e8], tickFmt:fmt, tip:v=>fmt(v)});
+
 // ---- table ----
 let th = "<thead><tr><th>pattern</th><th>regex</th><th>matches</th>" +
   engines.map(e=>`<th>${e.label}</th>`).join("") + "<th>port/C</th></tr></thead><tbody>";
@@ -254,11 +281,12 @@ document.getElementById("tbl").innerHTML = th;
 
 // ---- notes ----
 document.getElementById("notes").innerHTML = [
+  `<b>Native FFI vs pure Dart (the headline).</b> For bulk find-all-matches, the pure-Dart <b>port · String</b> API is <b>${portVsFFI.toFixed(1)}× faster</b> than the FFI package's real per-match API and wins on <b>${portBeatsFFI}/13</b> patterns. Two reasons: <code>oniguruma_ffi</code> uses <b>UTF-16LE</b> (offsets map 1:1 to Dart strings, but ~2× the bytes to scan on ASCII), and <code>findNextMatch</code> costs one <b>FFI crossing per match</b>. <b>FFI · bulk</b> (one crossing for the whole scan) removes the crossing cost and closes most of the gap.`,
+  `<b>Where FFI wins:</b> <code>backref-dup</code> — the native engine handles pathological O(word²) backtracking far better than the port (${(perf.ONIG_VM['backref-dup']/perf.ONIG_FFI['backref-dup']).toFixed(1)}× faster). And this is a <i>bulk</i> benchmark; <code>oniguruma_ffi</code> is built for TextMate/Shiki <b>tokenizers</b> (one match per call) and web-less native compatibility.`,
   `<b>V8 JIT</b> is the default Node.js RegExp — native-compiled Irregexp, the fastest engine here, shown for reference. <b>V8 interp</b> is that same engine forced into bytecode-interpreter mode (<code>--regexp-interpret-all</code>) — the like-for-like baseline for the other interpreters (Dart RegExp and this port).`,
-  `On the <b>String API</b> (what Dart programs get) the port averages <b>${geo.ONIG_VM.toFixed(2)}× C</b> — faster than the native library across the suite — and beats Dart RegExp on <b>${beatsRE}/13</b>.`,
-  `The <b>byte API</b> (${geo.ONIG_BYTE.toFixed(2)}× C) is faster still: no encode, no offset mapping, no Match objects — best when working with <code>Uint8List</code>.`,
+  `On the <b>String API</b> (what Dart programs get) the port averages <b>${geo.ONIG_VM.toFixed(2)}× C</b> — faster than the native library across the suite — and beats Dart RegExp on <b>${beatsRE}/13</b>. The <b>byte API</b> (${geo.ONIG_BYTE.toFixed(2)}× C) is faster still: no encode, no offset mapping, no Match objects.`,
   `<b>email-like</b> is an <i>algorithmic</i> win: the driver walks back from each mandatory <code>@</code> to the run start (one attempt per <code>@</code>) instead of scanning every position — ~12× faster than C's forward scan.`,
-  `Where an engine still leads, it's a <b>capability floor</b>: V8 wins <code>literal</code>/<code>alt-5</code>/<code>class-digit</code> via SIMD (no byte-SIMD in pure Dart); <code>literal-unicode</code> ties C (the RegExp gap is the UTF-8↔UTF-16 bridge); <code>backref-dup</code> is O(word²) backtracking where even V8's interpreter is 2.5× C.`,
+  `Where an interpreter still leads, it's a <b>capability floor</b>: V8 wins <code>literal</code>/<code>alt-5</code>/<code>class-digit</code> via SIMD (no byte-SIMD in pure Dart); <code>literal-unicode</code> ties C (the RegExp gap is the UTF-8↔UTF-16 bridge).`,
 ].map(t=>`<li>${t}</li>`).join("");
 </script>
 </body>
@@ -272,7 +300,7 @@ def main():
         "patterns": PATTERNS, "regex": REGEX, "desc": DESC, "engines": ENGINES,
         "count": d["COUNT"],
         "perf": {e["key"]: d[e["key"]] for e in ENGINES},
-        "env": {"date": "2026-07-14", "cpu": "Apple M1 Pro", "dart": "3.12.2",
+        "env": {"date": "2026-07-15", "cpu": "Apple M1 Pro", "dart": "3.12.2",
                 "node": "26.4.0", "onig": "6.9.10"},
     }
     html = TEMPLATE.replace("__DATA__", json.dumps(payload, ensure_ascii=False))

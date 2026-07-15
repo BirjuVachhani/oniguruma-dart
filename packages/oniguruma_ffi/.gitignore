@@ -5,3 +5,6 @@
 
 # Dart / build-hook artifacts.
 .dart_tool/
+
+# `dart build cli` output (the AOT benchmark bundle).
+/build/

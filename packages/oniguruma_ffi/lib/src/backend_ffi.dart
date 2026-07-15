@@ -93,6 +93,17 @@ class OnigScanner {
     return OnigMatch(idx, caps);
   }
 
+  /// Counts every non-overlapping match of these patterns across the whole of
+  /// [string] in a single native call (one FFI crossing, regardless of how many
+  /// matches there are). At each position the winning pattern is chosen exactly
+  /// as [findNextMatch] chooses it, then the scan advances past the whole match.
+  ///
+  /// This is the fast path when you only need *how many* matches there are (or
+  /// to measure native scan throughput): it never allocates a Dart object per
+  /// match. Use [findNextMatch] when you need the match offsets themselves.
+  int scanCount(OnigString string) =>
+      onig.shimScanCount(_sc, string.ptr, string.byteLength);
+
   void dispose() {
     onig.shimScannerFree(_sc);
     malloc.free(_numRegs);

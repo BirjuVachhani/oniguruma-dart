@@ -24,7 +24,9 @@ Notes:
 """
 import json, os, sys, re, math, subprocess, statistics
 
-ROOT = "/Users/birjuvachhani/Documents/Projects/oniguruma"
+# .../packages/oniguruma_dart (parent of benchmark/) — resolves correctly
+# regardless of where the repo lives (pub-workspace move safe).
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JSON = os.path.join(ROOT, "benchmark/mainstream_results.json")
 NODE = "node"
 
@@ -99,6 +101,10 @@ def collect():
     re_i, _og, _ = _parse_pair(_run([NODE, "--regexp-interpret-all",
                                      os.path.join(ROOT, "benchmark/web/bench_web.js")]))
     data["V8_INTERP"] = re_i
+    print("[V8 JIT] node bench_web.js ...", flush=True)
+    re_j, _ogj, _ = _parse_pair(_run([NODE,
+                                      os.path.join(ROOT, "benchmark/web/bench_web.js")]))
+    data["V8_JIT"] = re_j
     data["COUNT"] = count
     json.dump(data, open(JSON, "w"), indent=2)
     print(f"cached -> {JSON}")

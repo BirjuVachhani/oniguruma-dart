@@ -180,11 +180,38 @@ Dart's built-in `RegExp` on nearly every pattern:
   on average (geometric mean over 13 patterns) — i.e. faster than native C across
   the suite — beating C on 10 of 13 patterns and `dart:core`'s `RegExp` on
   **12 of 13**.
-- The lower-level **byte API** is faster still — **0.59× C** on average.
+- The lower-level **byte API** is faster still — **0.58× C** on average.
+
+It is even faster than the **native C library driven from Dart over FFI**: for
+bulk find-all-matches the String API is **~2× faster** than the sibling
+[`oniguruma_ffi`](../oniguruma_ffi) package (which pays a UTF-16LE scan and an
+FFI crossing per match), winning on 12 of 13 patterns.
 
 Throughput is workload-dependent, and a few pathological cases (heavy
-back-references) remain slower than C. Full methodology, per-pattern tables, and
-an interactive chart are in [`benchmarks.md`](benchmarks.md).
+back-references) remain slower than C — and than `oniguruma_ffi`. Full
+methodology, per-pattern tables, the FFI head-to-head, and an interactive chart
+are in [`benchmarks.md`](benchmarks.md).
+
+## `oniguruma_dart` (pure Dart) vs `oniguruma_ffi` (native)
+
+This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
+(`oniguruma_dart`, pure Dart) when you want:
+
+- **Web / WASM support** — runs anywhere Dart runs (dart2js, dart2wasm); FFI does not.
+- **Zero native setup** — no C toolchain, no build hooks, no prebuilt binaries to
+  ship, no `flutter config --enable-native-assets`.
+- **Bulk matching** — `firstMatch` / `allMatches` / `replace` over `String` or
+  `Uint8List`; it's ~2× faster than the FFI package here and often faster than C
+  itself.
+- A **full idiomatic regex API**: named groups, captures, replace, and both
+  `String` and byte offsets.
+
+Reach for **[`oniguruma_ffi`](../oniguruma_ffi)** instead when you need the real C
+engine's exact behaviour — driving **TextMate grammars / Shiki** with
+vscode-oniguruma-compatible `OnigScanner` semantics, incremental tokenization
+(one match per call), or robustness on pathological backtracking — and you only
+target IO platforms (no web). See the [comparison in the root README](../../README.md#which-package-should-i-use)
+and [`benchmarks.md`](benchmarks.md) for the head-to-head.
 
 ## Contributing
 

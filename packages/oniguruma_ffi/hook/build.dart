@@ -1,4 +1,4 @@
-// Build hook for the `package:oniguruma/oniguruma_ffi` code asset that the
+// Build hook for the `package:oniguruma_ffi/oniguruma_ffi` code asset that the
 // FFI `@Native` bindings in lib/src/bindings.dart resolve against.
 //
 // Two strategies, in order:
