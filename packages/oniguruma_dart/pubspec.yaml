@@ -1,0 +1,28 @@
+name: oniguruma_dart
+
+description: >-
+  A pure-Dart port of the Oniguruma regex engine (backtracking bytecode VM).
+  Full Unicode, ~28 encodings, an idiomatic String API. No FFI; verified
+  against the C library.
+
+version: 1.0.0
+
+repository: https://github.com/BirjuVachhani/oniguruma_dart
+issue_tracker: https://github.com/BirjuVachhani/oniguruma_dart/issues
+
+topics:
+  - regex
+  - regexp
+  - oniguruma
+  - regular-expression
+  - unicode
+
+environment:
+  sdk: ^3.12.0
+
+# Resolved as part of the pub workspace at the repo root (shared lockfile).
+resolution: workspace
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.31.0

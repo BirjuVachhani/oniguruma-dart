@@ -1,10 +1,12 @@
+# Workspace-wide ignores. Package-specific ignores live in each package's own
+# .gitignore (e.g. packages/oniguruma_dart/.gitignore).
+
 # Dart & pub build artifacts — https://dart.dev/tools/private-files
 .dart_tool/
 .packages
 build/
 
-# Library package: don't commit the resolved lock file.
-# https://dart.dev/tools/pub/private-files#pubspec-lock
+# Shared workspace lockfile (this repo is a set of library packages).
 pubspec.lock
 
 # Editors / OS junk
@@ -12,21 +14,3 @@ pubspec.lock
 .vscode/
 *.iml
 .DS_Store
-
-# Compiled benchmark binaries (regenerate: `dart compile exe` / `cc`).
-/benchmark/bench_dart
-/benchmark/bench_vs_regexp
-/benchmark/c/onig_cli
-
-# Web-benchmark build artifacts (regenerate: `dart run gen_corpus_data.dart`,
-# `dart compile js`). The embedded corpus + compiled JS are ~6 MB combined.
-/benchmark/web/bench_web.js
-/benchmark/web/bench_web.js.deps
-/benchmark/web/bench_web.js.map
-/benchmark/web/corpus_data.g.dart
-
-# Vendored Oniguruma C library (v6.9.10) — used only as the differential-test
-# and benchmark oracle, not part of the Dart package. Fetch & build it locally
-# to run those (see README → "Contributing"). Remove this line if you'd rather
-# vendor the C sources in the repo.
-/oniguruma-master/

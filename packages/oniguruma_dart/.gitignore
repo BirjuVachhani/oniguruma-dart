@@ -1,0 +1,19 @@
+# Package-specific ignores (paths are relative to this package directory).
+# Workspace-wide artifacts (.dart_tool/, pubspec.lock, …) are in the root
+# .gitignore.
+
+# Compiled benchmark binaries (regenerate: `dart compile exe` / `cc`).
+/benchmark/bench_dart
+/benchmark/bench_vs_regexp
+/benchmark/c/onig_cli
+
+# Web-benchmark build artifacts (~6 MB compiled JS + embedded corpus).
+/benchmark/web/bench_web.js
+/benchmark/web/bench_web.js.deps
+/benchmark/web/bench_web.js.map
+/benchmark/web/corpus_data.g.dart
+
+# Vendored Oniguruma C library (v6.9.10) — differential-test and benchmark
+# oracle only, not part of the Dart package. Fetch & build it locally to run
+# those (see README → "Contributing").
+/oniguruma-master/
