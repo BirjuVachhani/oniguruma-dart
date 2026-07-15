@@ -10,6 +10,8 @@ version: 1.0.0
 repository: https://github.com/BirjuVachhani/oniguruma_dart
 issue_tracker: https://github.com/BirjuVachhani/oniguruma_dart/issues
 
+resolution: workspace
+
 topics:
   - regex
   - regexp
@@ -19,9 +21,6 @@ topics:
 
 environment:
   sdk: ^3.12.0
-
-# Resolved as part of the pub workspace at the repo root (shared lockfile).
-resolution: workspace
 
 dev_dependencies:
   lints: ^6.1.0

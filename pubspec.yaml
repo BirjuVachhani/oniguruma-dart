@@ -1,11 +1,9 @@
-# Pub workspace root — NOT a published package. It resolves all member packages
-# together, sharing a single lockfile and .dart_tool/.
-# https://dart.dev/tools/pub/workspaces
 name: oniguruma_workspace
+
 publish_to: none
 
 environment:
   sdk: ^3.12.0
 
 workspace:
-  - packages/oniguruma_dart
+  - packages/*
