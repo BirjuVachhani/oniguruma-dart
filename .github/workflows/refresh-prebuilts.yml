@@ -1,0 +1,225 @@
+name: refresh-prebuilts
+
+# Same builds as prebuild-oniguruma.yml, but instead of only uploading artifacts
+# for manual download, this workflow COMMITS the refreshed prebuilts back to the
+# branch it was dispatched on:
+#   * builds the self-contained oniguruma_native library for every platform/arch
+#     and the wasm32-wasi module,
+#   * installs them into packages/oniguruma_native/prebuilt/ (replacing the old
+#     binaries — no stale files left behind),
+#   * regenerates the embedded wasm (lib/src/web/oniguruma_wasm.g.dart) and the
+#     SHA-256 manifest,
+#   * commits and pushes to the dispatched branch.
+#
+# Manual only. Dispatch it from the branch that carries the source you want baked
+# in (CI compiles the shim from that ref). The follow-up test workflow then runs
+# on the pushed commit and validates the new binaries.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  # Where the hook expects each library, relative to the repo root.
+  PKG_DIR: packages/oniguruma_native
+
+jobs:
+  build:
+    name: ${{ matrix.id }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # --- macOS ---
+          - { id: macos-arm64,        runner: macos-14,       dest: macos/arm64,          lib: liboniguruma_native.dylib, args: "-DCMAKE_OSX_ARCHITECTURES=arm64" }
+          - { id: macos-x64,          runner: macos-14,       dest: macos/x64,            lib: liboniguruma_native.dylib, args: "-DCMAKE_OSX_ARCHITECTURES=x86_64" }
+          # --- iOS (device + simulator) ---
+          - { id: ios-device-arm64,   runner: macos-14,       dest: ios/device/arm64,     lib: liboniguruma_native.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
+          - { id: ios-sim-arm64,      runner: macos-14,       dest: ios/simulator/arm64,  lib: liboniguruma_native.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
+          - { id: ios-sim-x64,        runner: macos-14,       dest: ios/simulator/x64,    lib: liboniguruma_native.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
+          # --- Linux ---
+          - { id: linux-x64,          runner: ubuntu-latest,  dest: linux/x64,            lib: liboniguruma_native.so,    args: "" }
+          - { id: linux-arm64,        runner: ubuntu-latest,  dest: linux/arm64,          lib: liboniguruma_native.so,    args: "-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc", setup: linux-cross }
+          # --- Android (NDK) ---
+          - { id: android-arm64,      runner: ubuntu-latest,  dest: android/arm64,        lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21" }
+          - { id: android-arm,        runner: ubuntu-latest,  dest: android/arm,          lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-21" }
+          - { id: android-x64,        runner: ubuntu-latest,  dest: android/x64,          lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=x86_64 -DANDROID_PLATFORM=android-21" }
+          - { id: android-ia32,       runner: ubuntu-latest,  dest: android/ia32,         lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=x86 -DANDROID_PLATFORM=android-21" }
+          # --- Windows ---
+          - { id: windows-x64,        runner: windows-latest, dest: windows/x64,          lib: oniguruma_native.dll,      args: "-A x64" }
+          - { id: windows-arm64,      runner: windows-latest, dest: windows/arm64,        lib: oniguruma_native.dll,      args: "-A ARM64" }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake + Ninja
+        uses: lukka/get-cmake@latest
+
+      - name: Install aarch64 cross toolchain
+        if: matrix.setup == 'linux-cross'
+        run: sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+
+      - name: Fetch + verify Oniguruma source
+        shell: bash
+        run: cmake -DDEST="$RUNNER_TEMP/onig" -P "$PKG_DIR/tool/prebuilt/fetch_onig.cmake"
+
+      - name: Configure
+        shell: bash
+        run: >-
+          cmake -S "$PKG_DIR/tool/prebuilt" -B "$RUNNER_TEMP/build"
+          -DCMAKE_BUILD_TYPE=Release
+          -DONIG_SRC_DIR="$RUNNER_TEMP/onig/onig-6.9.10"
+          ${{ matrix.args }}
+
+      - name: Build
+        shell: bash
+        run: cmake --build "$RUNNER_TEMP/build" --config Release -j
+
+      - name: Stage artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="staging/prebuilt/${{ matrix.dest }}"
+          mkdir -p "$out"
+          found=$(find "$RUNNER_TEMP/build" -name "${{ matrix.lib }}" -type f | head -1)
+          if [ -z "$found" ]; then
+            echo "::error::built library ${{ matrix.lib }} not found under $RUNNER_TEMP/build"
+            find "$RUNNER_TEMP/build" -maxdepth 3 -type f -name '*oniguruma_native*' || true
+            exit 1
+          fi
+          cp "$found" "$out/${{ matrix.lib }}"
+          ls -l "$out"
+
+      - name: Upload individual artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oniguruma-${{ matrix.id }}
+          path: staging
+          if-no-files-found: error
+
+  # WebAssembly build for the web backend: Oniguruma + our shim compiled to one
+  # self-contained wasm32-wasi "reactor" module (see tool/prebuilt/build_wasm.sh).
+  wasm:
+    name: wasm
+    runs-on: ubuntu-latest
+    env:
+      WASI_SDK_VERSION: "33"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake (for fetch_onig.cmake)
+        uses: lukka/get-cmake@latest
+
+      - name: Install wasi-sdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz"
+          mkdir -p "$RUNNER_TEMP/wasi-sdk"
+          curl -fL --retry 3 "$url" | tar -xz -C "$RUNNER_TEMP/wasi-sdk" --strip-components=1
+          "$RUNNER_TEMP/wasi-sdk/bin/clang" --version | head -1
+
+      - name: Fetch + verify Oniguruma source
+        shell: bash
+        run: cmake -DDEST="$RUNNER_TEMP/onig" -P "$PKG_DIR/tool/prebuilt/fetch_onig.cmake"
+
+      - name: Build wasm
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="staging/prebuilt/web"
+          mkdir -p "$out"
+          WASI_SDK="$RUNNER_TEMP/wasi-sdk" \
+          ONIG_SRC="$RUNNER_TEMP/onig/onig-6.9.10" \
+          OUT="$PWD/$out/oniguruma_native.wasm" \
+            bash "$PKG_DIR/tool/prebuilt/build_wasm.sh"
+          ls -l "$out"
+
+      - name: Upload wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oniguruma-wasm
+          path: staging
+          if-no-files-found: error
+
+  # Assemble every artifact into the package's prebuilt/ tree, regenerate the
+  # embedded wasm + checksum manifest, and commit the result to the branch this
+  # workflow was dispatched from.
+  commit:
+    name: commit
+    needs: [build, wasm]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout the dispatched branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Dart
+        uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.12.2"
+
+      - name: Download every build artifact
+        uses: actions/download-artifact@v4
+        with:
+          pattern: oniguruma-*
+          path: merged
+          merge-multiple: true
+
+      - name: Install prebuilt binaries into the package
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d merged/prebuilt || { echo "::error::no merged/prebuilt tree downloaded"; exit 1; }
+          n=$(find merged/prebuilt -type f \
+            \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' -o -name '*.wasm' \) | wc -l)
+          echo "downloaded $n binaries"
+          [ "$n" -ge 14 ] || { echo "::error::expected >=14 binaries, got $n — refusing to replace"; exit 1; }
+
+          dst="$PKG_DIR/prebuilt"
+          # Replace properly: drop the old binaries first so a shrunk matrix can
+          # never leave orphans behind, then copy the freshly built ones in.
+          find "$dst" -type f \
+            \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' -o -name '*.wasm' \) -delete
+          rsync -a --exclude='.DS_Store' --exclude='checksums.sha256' \
+            merged/prebuilt/ "$dst"/
+
+      - name: Regenerate wasm embed
+        shell: bash
+        # Direct file run (not `dart run`) → no native-asset build hook, no pub get.
+        run: dart "$PKG_DIR/tool/gen_wasm_embed.dart"
+
+      - name: Regenerate checksum manifest
+        shell: bash
+        run: bash "$PKG_DIR/tool/prebuilt/gen_checksums.sh"
+
+      - name: Verify integrity
+        shell: bash
+        run: cd "$PKG_DIR/prebuilt" && sha256sum -c checksums.sha256
+
+      - name: Commit and push to the dispatched branch
+        shell: bash
+        # Pass context values through env (never interpolate ${{ }} into the
+        # script body): a branch name can legally contain shell metacharacters,
+        # so inlining it would be a command-injection vector.
+        env:
+          TARGET_BRANCH: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$PKG_DIR/prebuilt" "$PKG_DIR/lib/src/web/oniguruma_wasm.g.dart"
+          if git diff --cached --quiet; then
+            echo "Prebuilts already up to date — nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore: refresh oniguruma_native prebuilt binaries (run ${RUN_ID})"
+          # Push to the branch this workflow was dispatched from.
+          git push origin "HEAD:${TARGET_BRANCH}"
