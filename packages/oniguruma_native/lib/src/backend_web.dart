@@ -36,7 +36,8 @@ const bool isOnigurumaSupported = true;
 /// unconditionally.
 Future<void> loadWasm({Uint8List? bytes, String? url}) async {
   if (OnigWasmModule.isLoaded) return;
-  final wasm = bytes ??
+  final wasm =
+      bytes ??
       (url != null ? await OnigWasmModule.fetchBytes(url) : onigWasmBytes());
   await OnigWasmModule.load(wasm);
 }
@@ -71,9 +72,9 @@ class OnigString {
 /// (never match), mirroring the FFI backend and the pure-Dart scanner.
 class OnigScanner {
   OnigScanner(List<String> patterns)
-      : _numRegs = OnigWasmModule.instance.malloc(4),
-        _beg = OnigWasmModule.instance.malloc(_cap * 4),
-        _end = OnigWasmModule.instance.malloc(_cap * 4) {
+    : _numRegs = OnigWasmModule.instance.malloc(4),
+      _beg = OnigWasmModule.instance.malloc(_cap * 4),
+      _end = OnigWasmModule.instance.malloc(_cap * 4) {
     final m = OnigWasmModule.instance;
     final n = patterns.length;
     final patsPtr = m.malloc((n == 0 ? 1 : n) * 4);
@@ -112,8 +113,16 @@ class OnigScanner {
   /// or null if none. A match exactly at [startPosition] wins immediately.
   OnigMatch? findNextMatch(OnigString string, int startPosition) {
     final m = OnigWasmModule.instance;
-    final idx = m.find(_sc, string.ptr, string.byteLength, startPosition * 2,
-        _numRegs, _beg, _end, _cap);
+    final idx = m.find(
+      _sc,
+      string.ptr,
+      string.byteLength,
+      startPosition * 2,
+      _numRegs,
+      _beg,
+      _end,
+      _cap,
+    );
     if (idx < 0) return null;
     final n = m.readInt32(_numRegs);
     final beg = m.readInt32List(_beg, n);

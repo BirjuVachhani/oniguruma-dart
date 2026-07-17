@@ -10,14 +10,22 @@ import 'dart:convert';
 import 'dart:io';
 
 void main() {
-  final toolDir = File.fromUri(Platform.script).parent; // .../oniguruma_native/tool
+  final toolDir = File.fromUri(
+    Platform.script,
+  ).parent; // .../oniguruma_native/tool
   final pkg = toolDir.parent;
-  final wasm = File.fromUri(pkg.uri.resolve('prebuilt/web/oniguruma_native.wasm'));
-  final out = File.fromUri(pkg.uri.resolve('lib/src/web/oniguruma_wasm.g.dart'));
+  final wasm = File.fromUri(
+    pkg.uri.resolve('prebuilt/web/oniguruma_native.wasm'),
+  );
+  final out = File.fromUri(
+    pkg.uri.resolve('lib/src/web/oniguruma_wasm.g.dart'),
+  );
 
   if (!wasm.existsSync()) {
-    stderr.writeln('missing ${wasm.path}\n'
-        'Build it first: WASI_SDK=… ONIG_SRC=… tool/prebuilt/build_wasm.sh');
+    stderr.writeln(
+      'missing ${wasm.path}\n'
+      'Build it first: WASI_SDK=… ONIG_SRC=… tool/prebuilt/build_wasm.sh',
+    );
     exit(1);
   }
 
@@ -54,6 +62,8 @@ const String _wasmBase64 =
 ${buf.toString().trimRight()};
 ''');
 
-  print('wrote ${out.path} '
-      '(${bytes.length} wasm bytes -> ${b64.length} base64 chars)');
+  print(
+    'wrote ${out.path} '
+    '(${bytes.length} wasm bytes -> ${b64.length} base64 chars)',
+  );
 }

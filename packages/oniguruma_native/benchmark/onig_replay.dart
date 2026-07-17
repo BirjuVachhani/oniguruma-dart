@@ -62,7 +62,9 @@ void main() {
 
     // Lines -> reusable OnigStrings (encoded once, like vscode-oniguruma).
     final nLines = r.i32();
-    final strings = <OnigString>[for (var i = 0; i < nLines; i++) OnigString(r.str())];
+    final strings = <OnigString>[
+      for (var i = 0; i < nLines; i++) OnigString(r.str()),
+    ];
 
     // Ops: [scannerId, lineId, from, recIdx, recStart, recEnd].
     final nOps = r.i32();
@@ -94,8 +96,10 @@ void main() {
     final medMs = times[times.length ~/ 2] / 1000.0;
     final opsPerSec = (nOps / (medMs / 1000)).round();
 
-    print('[$size] ops=$nOps matched=$matched  '
-        'oniguruma(FFI)=${medMs.toStringAsFixed(1)}ms  =$opsPerSec ops/s');
+    print(
+      '[$size] ops=$nOps matched=$matched  '
+      'oniguruma(FFI)=${medMs.toStringAsFixed(1)}ms  =$opsPerSec ops/s',
+    );
 
     for (final s in scanners) {
       s.dispose();

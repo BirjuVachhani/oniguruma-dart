@@ -189,30 +189,32 @@ void main() {
       expect(m.captureIndices[2].end, -1);
     });
 
-    test('multi-pattern tokenize: left-most wins, advancing through the input',
-        () {
-      final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
-      final s = OnigString('ab 12');
-      addTearDown(() {
-        s.dispose();
-        scanner.dispose();
-      });
-      final seen = <(int, int, int)>[]; // (patternIndex, start, end)
-      var start = 0;
-      while (true) {
-        final m = scanner.findNextMatch(s, start);
-        if (m == null) break;
-        final c = m.captureIndices[0];
-        seen.add((m.index, c.start, c.end));
-        start = c.end > start ? c.end : start + 1;
-      }
-      expect(seen, [
-        (1, 0, 2), // "ab"  -> [a-z]+
-        (2, 2, 3), // " "   -> \s+
-        (0, 3, 5), // "12"  -> \d+
-      ]);
-      expect(scanner.scanCount(s), 3);
-    });
+    test(
+      'multi-pattern tokenize: left-most wins, advancing through the input',
+      () {
+        final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
+        final s = OnigString('ab 12');
+        addTearDown(() {
+          s.dispose();
+          scanner.dispose();
+        });
+        final seen = <(int, int, int)>[]; // (patternIndex, start, end)
+        var start = 0;
+        while (true) {
+          final m = scanner.findNextMatch(s, start);
+          if (m == null) break;
+          final c = m.captureIndices[0];
+          seen.add((m.index, c.start, c.end));
+          start = c.end > start ? c.end : start + 1;
+        }
+        expect(seen, [
+          (1, 0, 2), // "ab"  -> [a-z]+
+          (2, 2, 3), // " "   -> \s+
+          (0, 3, 5), // "12"  -> \d+
+        ]);
+        expect(scanner.scanCount(s), 3);
+      },
+    );
   });
 
   group('edge cases', () {

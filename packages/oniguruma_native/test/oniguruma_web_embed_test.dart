@@ -30,55 +30,73 @@ void main() {
     final bytes = onigWasmBytes();
     expect(bytes, isNotEmpty);
     // "\0asm" magic + version 1 — the 8-byte WebAssembly preamble.
-    expect(bytes.sublist(0, 8), [0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00]);
+    expect(bytes.sublist(0, 8), [
+      0x00,
+      0x61,
+      0x73,
+      0x6d,
+      0x01,
+      0x00,
+      0x00,
+      0x00,
+    ]);
   });
 
-  test('embedded wasm is byte-identical to prebuilt/web/oniguruma_native.wasm',
-      () async {
-    final file = await _pkgFile('prebuilt/web/oniguruma_native.wasm');
-    if (!file.existsSync()) {
-      // The raw blob is committed for provenance but not published; skip if a
-      // stripped checkout removed it (the checksum test below still guards).
-      markTestSkipped('prebuilt/web/oniguruma_native.wasm not present');
-      return;
-    }
-    final onDisk = await file.readAsBytes();
-    final embedded = onigWasmBytes();
-    expect(
-      embedded.length,
-      onDisk.length,
-      reason: 'embedded base64 is stale — re-run tool/gen_wasm_embed.dart',
-    );
-    expect(
-      embedded,
-      orderedEquals(onDisk),
-      reason: 'embedded base64 differs from the prebuilt wasm — '
-          're-run tool/gen_wasm_embed.dart',
-    );
-  });
+  test(
+    'embedded wasm is byte-identical to prebuilt/web/oniguruma_native.wasm',
+    () async {
+      final file = await _pkgFile('prebuilt/web/oniguruma_native.wasm');
+      if (!file.existsSync()) {
+        // The raw blob is committed for provenance but not published; skip if a
+        // stripped checkout removed it (the checksum test below still guards).
+        markTestSkipped('prebuilt/web/oniguruma_native.wasm not present');
+        return;
+      }
+      final onDisk = await file.readAsBytes();
+      final embedded = onigWasmBytes();
+      expect(
+        embedded.length,
+        onDisk.length,
+        reason: 'embedded base64 is stale — re-run tool/gen_wasm_embed.dart',
+      );
+      expect(
+        embedded,
+        orderedEquals(onDisk),
+        reason:
+            'embedded base64 differs from the prebuilt wasm — '
+            're-run tool/gen_wasm_embed.dart',
+      );
+    },
+  );
 
-  test('embedded wasm SHA-256 matches the committed checksum manifest',
-      () async {
-    final manifest = await _pkgFile('prebuilt/checksums.sha256');
-    if (!manifest.existsSync()) {
-      markTestSkipped('prebuilt/checksums.sha256 not present');
-      return;
-    }
-    // Manifest lines: "<sha256>␠␠web/oniguruma_native.wasm".
-    final line = (await manifest.readAsLines()).firstWhere(
-      (l) => l.trimRight().endsWith('web/oniguruma_native.wasm'),
-      orElse: () => '',
-    );
-    expect(line, isNotEmpty,
-        reason: 'no web/oniguruma_native.wasm entry in checksums.sha256');
-    final expected = line.split(RegExp(r'\s+')).first.toLowerCase();
+  test(
+    'embedded wasm SHA-256 matches the committed checksum manifest',
+    () async {
+      final manifest = await _pkgFile('prebuilt/checksums.sha256');
+      if (!manifest.existsSync()) {
+        markTestSkipped('prebuilt/checksums.sha256 not present');
+        return;
+      }
+      // Manifest lines: "<sha256>␠␠web/oniguruma_native.wasm".
+      final line = (await manifest.readAsLines()).firstWhere(
+        (l) => l.trimRight().endsWith('web/oniguruma_native.wasm'),
+        orElse: () => '',
+      );
+      expect(
+        line,
+        isNotEmpty,
+        reason: 'no web/oniguruma_native.wasm entry in checksums.sha256',
+      );
+      final expected = line.split(RegExp(r'\s+')).first.toLowerCase();
 
-    final actual = sha256.convert(onigWasmBytes()).toString().toLowerCase();
-    expect(
-      actual,
-      expected,
-      reason: 'embedded wasm SHA-256 does not match the audited artifact — '
-          'refresh prebuilt/web + re-run tool/gen_wasm_embed.dart',
-    );
-  });
+      final actual = sha256.convert(onigWasmBytes()).toString().toLowerCase();
+      expect(
+        actual,
+        expected,
+        reason:
+            'embedded wasm SHA-256 does not match the audited artifact — '
+            'refresh prebuilt/web + re-run tool/gen_wasm_embed.dart',
+      );
+    },
+  );
 }

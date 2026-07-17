@@ -21,16 +21,26 @@ const minMatchMs = 250; // per timed run
 class Case {
   final String label, category, onigPat, rePat, corpus;
   final bool ignoreCase;
-  const Case(this.label, this.category, this.onigPat, this.rePat,
-      {this.corpus = 'ascii', this.ignoreCase = false});
+  const Case(
+    this.label,
+    this.category,
+    this.onigPat,
+    this.rePat, {
+    this.corpus = 'ascii',
+    this.ignoreCase = false,
+  });
 }
 
 // EXACTLY the cases from benchmark/bench_vs_regexp.dart, in the same order.
 const cases = <Case>[
   Case('literal', 'literal', 'lorem', 'lorem'),
   Case('literal-unicode', 'literal', '東京', '東京', corpus: 'uni'),
-  Case('alt-5', 'alternation', 'lorem|ipsum|dolor|sit|amet',
-      'lorem|ipsum|dolor|sit|amet'),
+  Case(
+    'alt-5',
+    'alternation',
+    'lorem|ipsum|dolor|sit|amet',
+    'lorem|ipsum|dolor|sit|amet',
+  ),
   Case('class-lower', 'char-class', '[a-z]+', '[a-z]+'),
   Case('class-digit', 'char-class', '[0-9]+', '[0-9]+'),
   Case('word-w', 'class/quant', r'\w+', r'\w+'),
@@ -77,8 +87,8 @@ double _medianOf(int minMs, int Function() f) =>
 String _fmt(double ns) => ns >= 1e6
     ? '${(ns / 1e6).toStringAsFixed(2)}ms'
     : ns >= 1e3
-        ? '${(ns / 1e3).toStringAsFixed(1)}µs'
-        : '${ns.toStringAsFixed(0)}ns';
+    ? '${(ns / 1e3).toStringAsFixed(1)}µs'
+    : '${ns.toStringAsFixed(0)}ns';
 
 double _gmean(List<double> xs) {
   if (xs.isEmpty) return 0;
@@ -93,9 +103,13 @@ void main() {
   final ascii = utf8.decode(base64.decode(asciiB64));
   final uni = utf8.decode(base64.decode(uniB64));
 
-  print('# oniguruma_dart (OnigRegex) vs SDK RegExp on WEB (dart2js @ Node/V8)');
+  print(
+    '# oniguruma_dart (OnigRegex) vs SDK RegExp on WEB (dart2js @ Node/V8)',
+  );
   print('# trials=$trials, adaptive timing (>= ${minMatchMs}ms/run)\n');
-  print('| pattern | category | matches | RegExp | oniguruma_dart | onig / RegExp |');
+  print(
+    '| pattern | category | matches | RegExp | oniguruma_dart | onig / RegExp |',
+  );
   print('|---|---|--:|--:|--:|--:|');
 
   final matchRatios = <double>[];
@@ -118,14 +132,20 @@ void main() {
     final ratio = ogNs / reNs;
     matchRatios.add(ratio);
 
-    print('| ${c.label} | ${c.category} | ${agree ? on : "$on≠$rn ⚠"} '
-        '| ${_fmt(reNs)} | ${_fmt(ogNs)} | ${ratio.toStringAsFixed(1)}× |');
+    print(
+      '| ${c.label} | ${c.category} | ${agree ? on : "$on≠$rn ⚠"} '
+      '| ${_fmt(reNs)} | ${_fmt(ogNs)} | ${ratio.toStringAsFixed(1)}× |',
+    );
     // machine-parseable full-precision line: RAW <label> <matches> <agree> <reNs> <ogNs>
-    print('RAW\t${c.label}\t$on\t$agree\t${reNs.toStringAsFixed(1)}'
-        '\t${ogNs.toStringAsFixed(1)}');
+    print(
+      'RAW\t${c.label}\t$on\t$agree\t${reNs.toStringAsFixed(1)}'
+      '\t${ogNs.toStringAsFixed(1)}',
+    );
   }
 
-  print('\n**geomean match onig / RegExp = ${_gmean(matchRatios).toStringAsFixed(1)}× '
-      '· median = ${_median([...matchRatios]).toStringAsFixed(1)}×**');
+  print(
+    '\n**geomean match onig / RegExp = ${_gmean(matchRatios).toStringAsFixed(1)}× '
+    '· median = ${_median([...matchRatios]).toStringAsFixed(1)}×**',
+  );
   print('// checksum=$_sinkGuard');
 }

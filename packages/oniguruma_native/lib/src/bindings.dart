@@ -9,21 +9,29 @@ import 'dart:ffi';
 final class ShimScanner extends Opaque {}
 
 @Native<
-    Pointer<ShimScanner> Function(
-        Pointer<Pointer<Uint8>>, Pointer<Int32>, Int32)>(
-  symbol: 'onig_shim_scanner_new',
-)
+  Pointer<ShimScanner> Function(Pointer<Pointer<Uint8>>, Pointer<Int32>, Int32)
+>(symbol: 'onig_shim_scanner_new')
 external Pointer<ShimScanner> shimScannerNew(
-    Pointer<Pointer<Uint8>> patterns, Pointer<Int32> patLens, int count);
+  Pointer<Pointer<Uint8>> patterns,
+  Pointer<Int32> patLens,
+  int count,
+);
 
 @Native<Void Function(Pointer<ShimScanner>)>(symbol: 'onig_shim_scanner_free')
 external void shimScannerFree(Pointer<ShimScanner> sc);
 
 @Native<
-    Int32 Function(Pointer<ShimScanner>, Pointer<Uint8>, Int32, Int32,
-        Pointer<Int32>, Pointer<Int32>, Pointer<Int32>, Int32)>(
-  symbol: 'onig_shim_find',
-)
+  Int32 Function(
+    Pointer<ShimScanner>,
+    Pointer<Uint8>,
+    Int32,
+    Int32,
+    Pointer<Int32>,
+    Pointer<Int32>,
+    Pointer<Int32>,
+    Int32,
+  )
+>(symbol: 'onig_shim_find')
 external int shimFind(
   Pointer<ShimScanner> sc,
   Pointer<Uint8> str,
@@ -39,7 +47,10 @@ external int shimFind(
   symbol: 'onig_shim_scan_count',
 )
 external int shimScanCount(
-    Pointer<ShimScanner> sc, Pointer<Uint8> str, int endByte);
+  Pointer<ShimScanner> sc,
+  Pointer<Uint8> str,
+  int endByte,
+);
 
 @Native<Pointer<Char> Function()>(symbol: 'onig_shim_version')
 external Pointer<Char> shimVersion();

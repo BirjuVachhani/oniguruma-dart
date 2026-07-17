@@ -7,8 +7,8 @@ description: >-
 
 version: 1.0.0
 
-repository: https://github.com/BirjuVachhani/oniguruma_dart
-issue_tracker: https://github.com/BirjuVachhani/oniguruma_dart/issues
+repository: https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart
+issue_tracker: https://github.com/BirjuVachhani/oniguruma-dart/issues
 
 resolution: workspace
 

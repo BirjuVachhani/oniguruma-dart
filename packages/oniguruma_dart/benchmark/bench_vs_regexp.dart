@@ -21,15 +21,25 @@ const minCompileMs = 200;
 class Case {
   final String label, category, onigPat, rePat, corpus;
   final bool ignoreCase;
-  const Case(this.label, this.category, this.onigPat, this.rePat,
-      {this.corpus = 'ascii', this.ignoreCase = false});
+  const Case(
+    this.label,
+    this.category,
+    this.onigPat,
+    this.rePat, {
+    this.corpus = 'ascii',
+    this.ignoreCase = false,
+  });
 }
 
 const cases = <Case>[
   Case('literal', 'literal', 'lorem', 'lorem'),
   Case('literal-unicode', 'literal', '東京', '東京', corpus: 'uni'),
-  Case('alt-5', 'alternation', 'lorem|ipsum|dolor|sit|amet',
-      'lorem|ipsum|dolor|sit|amet'),
+  Case(
+    'alt-5',
+    'alternation',
+    'lorem|ipsum|dolor|sit|amet',
+    'lorem|ipsum|dolor|sit|amet',
+  ),
   Case('class-lower', 'char-class', '[a-z]+', '[a-z]+'),
   Case('class-digit', 'char-class', '[0-9]+', '[0-9]+'),
   Case('word-w', 'class/quant', r'\w+', r'\w+'),
@@ -76,8 +86,8 @@ double _medianOf(int minMs, int Function() f) =>
 String _fmt(double ns) => ns >= 1e6
     ? '${(ns / 1e6).toStringAsFixed(2)}ms'
     : ns >= 1e3
-        ? '${(ns / 1e3).toStringAsFixed(1)}µs'
-        : '${ns.toStringAsFixed(0)}ns';
+    ? '${(ns / 1e3).toStringAsFixed(1)}µs'
+    : '${ns.toStringAsFixed(0)}ns';
 
 double _gmean(List<double> xs) {
   if (xs.isEmpty) return 0;
@@ -92,10 +102,15 @@ void main() {
   final ascii = File('benchmark/datasets/corpus.txt').readAsStringSync();
   final uni = File('benchmark/datasets/unicode_corpus.txt').readAsStringSync();
 
-  stdout.writeln('# oniguruma_dart (OnigRegex) vs SDK RegExp — match throughput');
-  stdout.writeln('# trials=$trials, adaptive timing (>= ${minMatchMs}ms/run)\n');
   stdout.writeln(
-      '| pattern | category | matches | RegExp | oniguruma_dart | onig / RegExp |');
+    '# oniguruma_dart (OnigRegex) vs SDK RegExp — match throughput',
+  );
+  stdout.writeln(
+    '# trials=$trials, adaptive timing (>= ${minMatchMs}ms/run)\n',
+  );
+  stdout.writeln(
+    '| pattern | category | matches | RegExp | oniguruma_dart | onig / RegExp |',
+  );
   stdout.writeln('|---|---|--:|--:|--:|--:|');
 
   final matchRatios = <double>[];
@@ -122,27 +137,36 @@ void main() {
     final ratio = ogNs / reNs;
     matchRatios.add(ratio);
 
-    stdout.writeln('| ${c.label} | ${c.category} | ${agree ? on : "$on≠$rn ⚠"} '
-        '| ${_fmt(reNs)} | ${_fmt(ogNs)} | ${ratio.toStringAsFixed(1)}× |');
+    stdout.writeln(
+      '| ${c.label} | ${c.category} | ${agree ? on : "$on≠$rn ⚠"} '
+      '| ${_fmt(reNs)} | ${_fmt(ogNs)} | ${ratio.toStringAsFixed(1)}× |',
+    );
     // machine-parseable full-precision line: RAW <label> <matches> <agree> <reNs> <ogNs>
-    stdout.writeln('RAW\t${c.label}\t$on\t$agree\t${reNs.toStringAsFixed(1)}'
-        '\t${ogNs.toStringAsFixed(1)}');
+    stdout.writeln(
+      'RAW\t${c.label}\t$on\t$agree\t${reNs.toStringAsFixed(1)}'
+      '\t${ogNs.toStringAsFixed(1)}',
+    );
 
     // compile time: onig compiles eagerly; force RegExp to compile via a match.
-    final ogc = _medianOf(minCompileMs,
-        () => OnigRegex.compile(c.onigPat, ignoreCase: c.ignoreCase).hashCode);
+    final ogc = _medianOf(
+      minCompileMs,
+      () => OnigRegex.compile(c.onigPat, ignoreCase: c.ignoreCase).hashCode,
+    );
     final rec = _medianOf(minCompileMs, () {
       final r = RegExp(c.rePat, caseSensitive: !c.ignoreCase);
       return r.hasMatch('a') ? 1 : 0;
     });
     compileRatios.add(ogc / rec);
-    compileRows.add('| ${c.label} | ${_fmt(rec)} | ${_fmt(ogc)} '
-        '| ${(ogc / rec).toStringAsFixed(1)}× |');
+    compileRows.add(
+      '| ${c.label} | ${_fmt(rec)} | ${_fmt(ogc)} '
+      '| ${(ogc / rec).toStringAsFixed(1)}× |',
+    );
   }
 
   stdout.writeln(
-      '\n**geomean match onig / RegExp = ${_gmean(matchRatios).toStringAsFixed(1)}× '
-      '· median = ${_median([...matchRatios]).toStringAsFixed(1)}×**');
+    '\n**geomean match onig / RegExp = ${_gmean(matchRatios).toStringAsFixed(1)}× '
+    '· median = ${_median([...matchRatios]).toStringAsFixed(1)}×**',
+  );
 
   stdout.writeln('\n## Compile time (construct + first use)\n');
   stdout.writeln('| pattern | RegExp | oniguruma_dart | onig / RegExp |');
@@ -151,5 +175,6 @@ void main() {
     stdout.writeln(r);
   }
   stdout.writeln(
-      '\n**geomean compile onig / RegExp = ${_gmean(compileRatios).toStringAsFixed(1)}×**');
+    '\n**geomean compile onig / RegExp = ${_gmean(compileRatios).toStringAsFixed(1)}×**',
+  );
 }

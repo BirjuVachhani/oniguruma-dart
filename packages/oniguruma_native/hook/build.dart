@@ -52,17 +52,54 @@ const _onigRoot = 'onig-$_onigVersion';
 // libonig_la_SOURCES), plus our shim. The `unicode_*_data.c` files are
 // #included by unicode.c, so they are present on disk but not compiled here.
 const _onigSources = [
-  'regparse.c', 'regcomp.c', 'regexec.c', 'regenc.c', 'regerror.c', 'regext.c',
-  'regsyntax.c', 'regtrav.c', 'regversion.c', 'st.c', 'reggnu.c', 'onig_init.c',
-  'unicode.c', 'unicode_unfold_key.c', 'unicode_fold1_key.c',
-  'unicode_fold2_key.c', 'unicode_fold3_key.c',
-  'ascii.c', 'utf8.c', 'utf16_be.c', 'utf16_le.c', 'utf32_be.c', 'utf32_le.c',
-  'euc_jp.c', 'euc_jp_prop.c', 'sjis.c', 'sjis_prop.c',
-  'iso8859_1.c', 'iso8859_2.c', 'iso8859_3.c', 'iso8859_4.c', 'iso8859_5.c',
-  'iso8859_6.c', 'iso8859_7.c', 'iso8859_8.c', 'iso8859_9.c', 'iso8859_10.c',
-  'iso8859_11.c', 'iso8859_13.c', 'iso8859_14.c', 'iso8859_15.c',
+  'regparse.c',
+  'regcomp.c',
+  'regexec.c',
+  'regenc.c',
+  'regerror.c',
+  'regext.c',
+  'regsyntax.c',
+  'regtrav.c',
+  'regversion.c',
+  'st.c',
+  'reggnu.c',
+  'onig_init.c',
+  'unicode.c',
+  'unicode_unfold_key.c',
+  'unicode_fold1_key.c',
+  'unicode_fold2_key.c',
+  'unicode_fold3_key.c',
+  'ascii.c',
+  'utf8.c',
+  'utf16_be.c',
+  'utf16_le.c',
+  'utf32_be.c',
+  'utf32_le.c',
+  'euc_jp.c',
+  'euc_jp_prop.c',
+  'sjis.c',
+  'sjis_prop.c',
+  'iso8859_1.c',
+  'iso8859_2.c',
+  'iso8859_3.c',
+  'iso8859_4.c',
+  'iso8859_5.c',
+  'iso8859_6.c',
+  'iso8859_7.c',
+  'iso8859_8.c',
+  'iso8859_9.c',
+  'iso8859_10.c',
+  'iso8859_11.c',
+  'iso8859_13.c',
+  'iso8859_14.c',
+  'iso8859_15.c',
   'iso8859_16.c',
-  'euc_tw.c', 'euc_kr.c', 'big5.c', 'gb18030.c', 'koi8_r.c', 'cp1251.c',
+  'euc_tw.c',
+  'euc_kr.c',
+  'big5.c',
+  'gb18030.c',
+  'koi8_r.c',
+  'cp1251.c',
 ];
 
 void main(List<String> args) async {
@@ -98,8 +135,10 @@ void main(List<String> args) async {
     }
 
     // --- C. Build from downloaded, SHA-verified source -----------------------
-    stderr.writeln('oniguruma: no prebuilt for $os/${arch.name}'
-        '${fromSource ? ' (from_source)' : ''}; building from source');
+    stderr.writeln(
+      'oniguruma: no prebuilt for $os/${arch.name}'
+      '${fromSource ? ' (from_source)' : ''}; building from source',
+    );
     final srcRoot = await _fetchVerifiedSource(input, output);
     _installConfigHeader(input, os, arch, srcRoot);
 
@@ -126,11 +165,14 @@ void main(List<String> args) async {
 /// fallback runs). This is also the key used in `prebuilt/checksums.sha256`.
 ///
 /// Layout (produced by the prebuild-oniguruma workflow):
-///   prebuilt/macos/<arch>/liboniguruma_native.dylib
-///   prebuilt/linux/<arch>/liboniguruma_native.so
-///   prebuilt/windows/<arch>/oniguruma_native.dll
-///   prebuilt/android/<arch>/liboniguruma_native.so
-///   prebuilt/ios/{device,simulator}/<arch>/liboniguruma_native.dylib
+///
+/// ```
+/// prebuilt/macos/<arch>/liboniguruma_native.dylib
+/// prebuilt/linux/<arch>/liboniguruma_native.so
+/// prebuilt/windows/<arch>/oniguruma_native.dll
+/// prebuilt/android/<arch>/liboniguruma_native.so
+/// prebuilt/ios/{device,simulator}/<arch>/liboniguruma_native.dylib
+/// ```
 String? _prebuiltRelPath(BuildInput input, OS os, Architecture arch) {
   final archDir = _archDir(arch);
   if (archDir == null) return null;
@@ -161,7 +203,11 @@ String? _prebuiltRelPath(BuildInput input, OS os, Architecture arch) {
 /// missing manifest. This makes tampering with (or corruption of) a bundled
 /// binary a hard build failure rather than a silent bundle.
 void _verifyPrebuilt(
-    BuildInput input, BuildOutputBuilder output, Uri libUri, String rel) {
+  BuildInput input,
+  BuildOutputBuilder output,
+  Uri libUri,
+  String rel,
+) {
   final manifestUri = input.packageRoot.resolve('prebuilt/checksums.sha256');
   // Re-run the hook if the manifest changes.
   output.dependencies.add(manifestUri);
@@ -184,8 +230,9 @@ void _verifyPrebuilt(
     );
   }
 
-  final actual =
-      sha256.convert(File.fromUri(libUri).readAsBytesSync()).toString();
+  final actual = sha256
+      .convert(File.fromUri(libUri).readAsBytesSync())
+      .toString();
   if (actual != expected) {
     throw StateError(
       'Prebuilt integrity check failed for "$rel":\n'
@@ -206,7 +253,9 @@ Map<String, String> _parseChecksums(String content) {
     final trimmed = raw.trim();
     if (trimmed.isEmpty || trimmed.startsWith('#')) continue;
     final match = line.firstMatch(trimmed);
-    if (match != null) result[match.group(2)!.trim()] = match.group(1)!.toLowerCase();
+    if (match != null) {
+      result[match.group(2)!.trim()] = match.group(1)!.toLowerCase();
+    }
   }
   return result;
 }
@@ -224,7 +273,11 @@ String? _archDir(Architecture arch) {
 /// The release tarball ships only `config.h.in`; we supply per-platform
 /// variants from src/config/ so the fallback never needs autotools/cmake.
 void _installConfigHeader(
-    BuildInput input, OS os, Architecture arch, Uri srcRoot) {
+  BuildInput input,
+  OS os,
+  Architecture arch,
+  Uri srcRoot,
+) {
   final variant = os == OS.windows
       ? (arch == Architecture.ia32 ? 'config.h.win32' : 'config.h.win64')
       : 'config.h';
@@ -238,7 +291,9 @@ void _installConfigHeader(
 /// builds via a `.verified` marker. Returns the extracted `onig-<version>/`
 /// root URI.
 Future<Uri> _fetchVerifiedSource(
-    BuildInput input, BuildOutputBuilder output) async {
+  BuildInput input,
+  BuildOutputBuilder output,
+) async {
   final shared = input.outputDirectoryShared;
   final srcRoot = shared.resolve('$_onigRoot/');
   final marker = File.fromUri(srcRoot.resolve('.verified'));
@@ -288,15 +343,18 @@ Future<Uint8List> _downloadWithRetry(Uri url, {int attempts = 3}) async {
         return builder.takeBytes();
       } catch (error) {
         lastError = error;
-        stderr.writeln('oniguruma: download attempt $attempt/$attempts '
-            'failed: $error');
+        stderr.writeln(
+          'oniguruma: download attempt $attempt/$attempts '
+          'failed: $error',
+        );
         if (attempt < attempts) {
           await Future<void>.delayed(Duration(seconds: attempt));
         }
       }
     }
     throw StateError(
-        'Failed to download $url after $attempts attempts: $lastError');
+      'Failed to download $url after $attempts attempts: $lastError',
+    );
   } finally {
     client.close(force: true);
   }

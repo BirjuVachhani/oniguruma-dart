@@ -16,8 +16,11 @@
 ///
 /// Built as an AOT bundle (so the native code asset is bundled, unlike a plain
 /// `dart run`) and invoked by `oniguruma_dart/benchmark/ffi_bench.py`:
-///   dart build cli -t bin/mainstream_bench.dart -o build/bench_ffi
-///   build/bench_ffi/bundle/bin/mainstream_bench <ascii-corpus> <unicode-corpus>
+///
+/// ```
+/// dart build cli -t bin/mainstream_bench.dart -o build/bench_ffi
+/// build/bench_ffi/bundle/bin/mainstream_bench <ascii-corpus> <unicode-corpus>
+/// ```
 ///
 /// ignore_for_file: avoid_print
 library;
@@ -85,8 +88,8 @@ double _medianOf(int Function() f) =>
 String _fmt(double ns) => ns >= 1e6
     ? '${(ns / 1e6).toStringAsFixed(2)}ms'
     : ns >= 1e3
-        ? '${(ns / 1e3).toStringAsFixed(1)}µs'
-        : '${ns.toStringAsFixed(0)}ns';
+    ? '${(ns / 1e3).toStringAsFixed(1)}µs'
+    : '${ns.toStringAsFixed(0)}ns';
 
 void main(List<String> args) {
   if (args.length < 2) {
@@ -97,7 +100,9 @@ void main(List<String> args) {
   final uni = File(args[1]).readAsStringSync();
 
   print('# oniguruma_native (native Oniguruma via FFI) — mainstream benchmark');
-  print('# ${onigVersion()}  ·  trials=$trials, adaptive (>= ${minMs}ms/run)\n');
+  print(
+    '# ${onigVersion()}  ·  trials=$trials, adaptive (>= ${minMs}ms/run)\n',
+  );
   print('| pattern | matches | per-match (findNextMatch) | bulk (scanCount) |');
   print('|---|--:|--:|--:|');
 
@@ -120,11 +125,15 @@ void main(List<String> args) {
     final perNs = _medianOf(() => _perMatchScan(sc, s));
     final bulkNs = _medianOf(() => sc.scanCount(s));
 
-    print('| $label | ${agree ? cPer : "$cPer≠$cBulk ⚠"} '
-        '| ${_fmt(perNs)} | ${_fmt(bulkNs)} |');
+    print(
+      '| $label | ${agree ? cPer : "$cPer≠$cBulk ⚠"} '
+      '| ${_fmt(perNs)} | ${_fmt(bulkNs)} |',
+    );
     // machine-parseable: RAW <label> <matches> <perMatchNs> <bulkNs>
-    print('RAW\t$label\t$cPer\t${perNs.toStringAsFixed(1)}'
-        '\t${bulkNs.toStringAsFixed(1)}');
+    print(
+      'RAW\t$label\t$cPer\t${perNs.toStringAsFixed(1)}'
+      '\t${bulkNs.toStringAsFixed(1)}',
+    );
 
     s.dispose();
     sc.dispose();

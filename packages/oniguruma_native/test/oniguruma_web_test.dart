@@ -199,30 +199,32 @@ void main() {
       expect(m.captureIndices[2].end, -1);
     });
 
-    test('multi-pattern tokenize: left-most wins, advancing through the input',
-        () {
-      final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
-      final s = OnigString('ab 12');
-      addTearDown(() {
-        s.dispose();
-        scanner.dispose();
-      });
-      final seen = <(int, int, int)>[];
-      var start = 0;
-      while (true) {
-        final m = scanner.findNextMatch(s, start);
-        if (m == null) break;
-        final c = m.captureIndices[0];
-        seen.add((m.index, c.start, c.end));
-        start = c.end > start ? c.end : start + 1;
-      }
-      expect(seen, [
-        (1, 0, 2), // "ab"  -> [a-z]+
-        (2, 2, 3), // " "   -> \s+
-        (0, 3, 5), // "12"  -> \d+
-      ]);
-      expect(scanner.scanCount(s), 3);
-    });
+    test(
+      'multi-pattern tokenize: left-most wins, advancing through the input',
+      () {
+        final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
+        final s = OnigString('ab 12');
+        addTearDown(() {
+          s.dispose();
+          scanner.dispose();
+        });
+        final seen = <(int, int, int)>[];
+        var start = 0;
+        while (true) {
+          final m = scanner.findNextMatch(s, start);
+          if (m == null) break;
+          final c = m.captureIndices[0];
+          seen.add((m.index, c.start, c.end));
+          start = c.end > start ? c.end : start + 1;
+        }
+        expect(seen, [
+          (1, 0, 2), // "ab"  -> [a-z]+
+          (2, 2, 3), // " "   -> \s+
+          (0, 3, 5), // "12"  -> \d+
+        ]);
+        expect(scanner.scanCount(s), 3);
+      },
+    );
   });
 
   group('edge cases', () {
@@ -268,18 +270,20 @@ void main() {
       }
     });
 
-    test('Unicode property classes work (full tables linked into the wasm)',
-        () {
-      final scanner = OnigScanner([r'\p{Han}+']);
-      final s = OnigString('東京タワー'); // 東京 are Han; タワー are not
-      addTearDown(() {
-        s.dispose();
-        scanner.dispose();
-      });
-      final m = scanner.findNextMatch(s, 0)!;
-      expect(m.captureIndices[0].start, 0);
-      expect(m.captureIndices[0].end, 2);
-    });
+    test(
+      'Unicode property classes work (full tables linked into the wasm)',
+      () {
+        final scanner = OnigScanner([r'\p{Han}+']);
+        final s = OnigString('東京タワー'); // 東京 are Han; タワー are not
+        addTearDown(() {
+          s.dispose();
+          scanner.dispose();
+        });
+        final m = scanner.findNextMatch(s, 0)!;
+        expect(m.captureIndices[0].start, 0);
+        expect(m.captureIndices[0].end, 2);
+      },
+    );
   });
 
   // The web backend marshals through the wasm heap, which grows when a subject

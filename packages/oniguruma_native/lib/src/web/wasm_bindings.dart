@@ -22,7 +22,9 @@ import 'dart:typed_data';
 
 @JS('WebAssembly.instantiate')
 external JSPromise<JSObject> _wasmInstantiate(
-    JSUint8Array bytes, JSObject importObject);
+  JSUint8Array bytes,
+  JSObject importObject,
+);
 
 @JS('fetch')
 external JSPromise<_Response> _fetch(JSString url);
@@ -53,8 +55,16 @@ extension type _Exports._(JSObject _) implements JSObject {
   @JS('onig_shim_scanner_free')
   external void scannerFree(int sc);
   @JS('onig_shim_find')
-  external int find(int sc, int str, int endByte, int startByte, int outNumRegs,
-      int beg, int end, int capacity);
+  external int find(
+    int sc,
+    int str,
+    int endByte,
+    int startByte,
+    int outNumRegs,
+    int beg,
+    int end,
+    int capacity,
+  );
   @JS('onig_shim_scan_count')
   external int scanCount(int sc, int str, int endByte);
   @JS('onig_shim_version')
@@ -137,7 +147,10 @@ class OnigWasmModule {
   /// Idempotent: a second call is a no-op (the first winning instance stays).
   static Future<void> load(Uint8List bytes) async {
     if (_instance != null) return;
-    final resultObj = await _wasmInstantiate(bytes.toJS, _buildImports()).toDart;
+    final resultObj = await _wasmInstantiate(
+      bytes.toJS,
+      _buildImports(),
+    ).toDart;
     final exports = _InstantiateResult(resultObj).instance.exports;
     // Reactor modules export `_initialize`; call it once to run libc ctors.
     exports.initialize?.callAsFunction();
@@ -157,9 +170,25 @@ class OnigWasmModule {
   int scannerNew(int patterns, int patLens, int count) =>
       _exports.scannerNew(patterns, patLens, count);
   void scannerFree(int sc) => _exports.scannerFree(sc);
-  int find(int sc, int str, int endByte, int startByte, int outNumRegs, int beg,
-          int end, int capacity) =>
-      _exports.find(sc, str, endByte, startByte, outNumRegs, beg, end, capacity);
+  int find(
+    int sc,
+    int str,
+    int endByte,
+    int startByte,
+    int outNumRegs,
+    int beg,
+    int end,
+    int capacity,
+  ) => _exports.find(
+    sc,
+    str,
+    endByte,
+    startByte,
+    outNumRegs,
+    beg,
+    end,
+    capacity,
+  );
   int scanCount(int sc, int str, int endByte) =>
       _exports.scanCount(sc, str, endByte);
   int version() => _exports.version();
@@ -191,7 +220,7 @@ class OnigWasmModule {
   String readCString(int ptr) {
     final dv = _DataView(_exports.memory.buffer);
     final sb = StringBuffer();
-    for (var i = ptr;; i++) {
+    for (var i = ptr; ; i++) {
       final c = dv.getUint8(i);
       if (c == 0) break;
       sb.writeCharCode(c);

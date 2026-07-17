@@ -2,8 +2,8 @@
 ///
 /// For a fixed pattern+corpus it times, in isolation:
 ///   [encode]  utf8.encode(input)                         (String -> bytes)
-///   [c2b]     build the dense code-unit->byte List<int>  (one runes pass)
-///   [b2c]     build the byte->code-unit Map<int,int>     (one runes pass)  <-- suspected killer
+///   [c2b]     build the dense code-unit->byte `List<int>`  (one runes pass)
+///   [b2c]     build the byte->code-unit `Map<int,int>`     (one runes pass, suspected killer)
 ///   [match]   the raw byte-API onigSearch scan loop over the prebuilt bytes
 ///   [strAPI]  OnigRegex.allMatches(input) end-to-end     (encode+maps+match+result)
 ///   [regexp]  RegExp.allMatches(input)                   (reference)
@@ -20,10 +20,10 @@ import 'package:oniguruma_dart/oniguruma_dart.dart';
 int _utf8Len(int rune) => rune < 0x80
     ? 1
     : rune < 0x800
-        ? 2
-        : rune < 0x10000
-            ? 3
-            : 4;
+    ? 2
+    : rune < 0x10000
+    ? 3
+    : 4;
 
 double _timeMs(int minMs, void Function() f) {
   var iters = 0;
@@ -39,13 +39,15 @@ double _timeMs(int minMs, void Function() f) {
 void main() {
   final input = File('benchmark/datasets/corpus.txt').readAsStringSync();
   final asciiOnly = input.codeUnits.every((c) => c < 0x80);
-  stdout.writeln('corpus: ${input.length} code units, '
-      'ascii-only=$asciiOnly\n');
+  stdout.writeln(
+    'corpus: ${input.length} code units, '
+    'ascii-only=$asciiOnly\n',
+  );
 
   // --- component: encode ---
   final encMs = _timeMs(300, () {
     final b = Uint8List.fromList(utf8.encode(input));
-    if (b.length == -1) stdout.write('');
+    if (b.isEmpty) stdout.write('');
   });
 
   // --- component: build c2b dense List<int> (faithful copy of _Utf8Index) ---
@@ -62,7 +64,7 @@ void main() {
       cu += ru;
     }
     c2b[cu] = bytePos;
-    if (c2b.length == -1) stdout.write('');
+    if (c2b.isEmpty) stdout.write('');
   });
 
   // --- component: build b2c Map<int,int> (faithful copy of _Utf8Index) ---
@@ -75,7 +77,7 @@ void main() {
       c += rune > 0xffff ? 2 : 1;
     }
     b2c[bp] = c;
-    if (b2c.length == -1) stdout.write('');
+    if (b2c.isEmpty) stdout.write('');
   });
 
   // --- component: raw byte-API scan (bytes prebuilt, no maps) ---
@@ -124,14 +126,30 @@ void main() {
   // the ASCII identity fast path (no maps), so "String API end-to-end" no longer
   // includes them — that is the point of the comparison.
   final oldSetup = encMs + c2bMs + b2cMs;
-  stdout.writeln('| encode (String->UTF-8)       | ${f(encMs)} | reference only |');
-  stdout.writeln('| c2b dense List<int>          | ${f(c2bMs)} | reference only |');
-  stdout.writeln('| b2c Map<int,int> HASHMAP     | ${f(b2cMs)} | reference only (old path) |');
-  stdout.writeln('| OLD setup (encode+c2b+b2c)   | ${f(oldSetup)} | what S1/S2 removed |');
-  stdout.writeln('| match (byte API, no maps)    | ${f(matchMs)} | onigSearch scan only |');
-  stdout.writeln('| **String API end-to-end (now)** | **${f(strApiMs)}** | ASCII fast path, no maps |');
-  stdout.writeln('| RegExp (reference)           | ${f(reMs)} | native, zero setup |');
-  stdout.writeln('\nString API now = ${f(strApiMs)} vs RegExp ${f(reMs)} '
-      '(${(strApiMs / reMs).toStringAsFixed(2)}x); '
-      'old path would have added ${f(oldSetup)} of setup.');
+  stdout.writeln(
+    '| encode (String->UTF-8)       | ${f(encMs)} | reference only |',
+  );
+  stdout.writeln(
+    '| c2b dense List<int>          | ${f(c2bMs)} | reference only |',
+  );
+  stdout.writeln(
+    '| b2c Map<int,int> HASHMAP     | ${f(b2cMs)} | reference only (old path) |',
+  );
+  stdout.writeln(
+    '| OLD setup (encode+c2b+b2c)   | ${f(oldSetup)} | what S1/S2 removed |',
+  );
+  stdout.writeln(
+    '| match (byte API, no maps)    | ${f(matchMs)} | onigSearch scan only |',
+  );
+  stdout.writeln(
+    '| **String API end-to-end (now)** | **${f(strApiMs)}** | ASCII fast path, no maps |',
+  );
+  stdout.writeln(
+    '| RegExp (reference)           | ${f(reMs)} | native, zero setup |',
+  );
+  stdout.writeln(
+    '\nString API now = ${f(strApiMs)} vs RegExp ${f(reMs)} '
+    '(${(strApiMs / reMs).toStringAsFixed(2)}x); '
+    'old path would have added ${f(oldSetup)} of setup.',
+  );
 }

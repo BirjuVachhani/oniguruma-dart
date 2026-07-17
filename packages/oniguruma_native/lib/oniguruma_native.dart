@@ -32,5 +32,4 @@ export 'src/types.dart';
 
 // Default to the web backend (no dart:ffi); upgrade to the native FFI backend
 // wherever dart:ffi is available.
-export 'src/backend_web.dart'
-    if (dart.library.ffi) 'src/backend_ffi.dart';
+export 'src/backend_web.dart' if (dart.library.ffi) 'src/backend_ffi.dart';

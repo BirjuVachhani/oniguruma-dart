@@ -87,8 +87,16 @@ class OnigScanner {
   /// Finds the left-most match at or after [startPosition] (UTF-16 code units),
   /// or null if none. A match exactly at [startPosition] wins immediately.
   OnigMatch? findNextMatch(OnigString string, int startPosition) {
-    final idx = onig.shimFind(_sc, string.ptr, string.byteLength,
-        startPosition * 2, _numRegs, _beg, _end, _cap);
+    final idx = onig.shimFind(
+      _sc,
+      string.ptr,
+      string.byteLength,
+      startPosition * 2,
+      _numRegs,
+      _beg,
+      _end,
+      _cap,
+    );
     if (idx < 0) return null;
     final n = _numRegs.value;
     final caps = List<OnigCapture>.generate(n, (g) {
