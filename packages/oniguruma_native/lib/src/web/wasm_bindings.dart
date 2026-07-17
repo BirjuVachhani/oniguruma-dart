@@ -10,8 +10,8 @@
 /// There is no shared memory between Dart and the module, so subjects/patterns
 /// are marshalled into the module's linear memory through its exported
 /// `malloc`/`free`, exactly as the FFI backend marshals into native memory.
-/// Strings are UTF-16LE (wasm memory is little-endian), so match offsets map
-/// 1:1 to Dart `String` indices after dividing byte offsets by 2.
+/// Strings are UTF-8 (see utf8_offsets.dart); Oniguruma reports UTF-8 byte
+/// offsets which backend_web.dart maps back to UTF-16 (Dart `String`) indices.
 library;
 
 import 'dart:js_interop';
@@ -226,16 +226,5 @@ class OnigWasmModule {
       sb.writeCharCode(c);
     }
     return sb.toString();
-  }
-
-  /// Encodes [text] as UTF-16LE bytes (matching the shim's UTF16_LE encoding).
-  static Uint8List encodeUtf16le(String text) {
-    final units = text.codeUnits;
-    final bytes = Uint8List(units.length * 2);
-    final bd = ByteData.view(bytes.buffer);
-    for (var i = 0; i < units.length; i++) {
-      bd.setUint16(i * 2, units[i], Endian.little);
-    }
-    return bytes;
   }
 }

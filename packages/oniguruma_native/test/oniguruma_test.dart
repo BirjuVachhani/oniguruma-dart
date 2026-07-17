@@ -93,7 +93,8 @@ void main() {
   });
 
   // The package's premise is that offsets are UTF-16 code units matching Dart
-  // String indices. These pin that down through the native (UTF-16LE) boundary.
+  // String indices. Oniguruma runs in UTF-8 and reports byte offsets; these pin
+  // down that the byte→UTF-16 offset map restores Dart String indices exactly.
   group('UTF-16 offset correctness', () {
     test('multibyte BMP (CJK) offsets are code-unit indices', () {
       final scanner = OnigScanner([r'[a-z]+']);
@@ -136,6 +137,61 @@ void main() {
       expect(m.captureIndices[0].start, 0);
       expect(m.captureIndices[0].end, 2);
       expect(text.substring(0, 2), '\u{1F600}');
+    });
+  });
+
+  // These are the cases the old UTF-16LE encoding got wrong: `\xHH` is a RAW
+  // BYTE in Oniguruma, and TextMate/VS Code grammars author those bytes as
+  // UTF-8. Under UTF-16LE they matched the wrong character or failed to compile
+  // (and were silently skipped). Running Oniguruma in UTF-8 fixes the parity.
+  group(r'\xHH grammar parity (UTF-8)', () {
+    ({int start, int end})? first(String pattern, String subject) {
+      final sc = OnigScanner([pattern]);
+      final s = OnigString(subject);
+      addTearDown(() {
+        s.dispose();
+        sc.dispose();
+      });
+      final m = sc.findNextMatch(s, 0);
+      if (m == null) return null;
+      final c = m.captureIndices[0];
+      return (start: c.start, end: c.end);
+    }
+
+    test(r'\x41 matches ASCII "A"', () {
+      final m = first(r'\x41', 'zzAzz');
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (2, 3));
+    });
+
+    test(r'\xC3\xA9 (UTF-8 bytes of é) matches é', () {
+      final m = first(r'\xC3\xA9', 'abécd'); // é at UTF-16 index 2
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (2, 3));
+    });
+
+    test('char class with wide-hex code-point range matches accented chars', () {
+      // The correct UTF-8 idiom for an accented-identifier class (raw \xHH would
+      // be incomplete high bytes); this is how real CSS/HTML grammars write it.
+      final m = first(
+        r'[a-zA-Z\x{00C0}-\x{00FF}][a-zA-Z0-9\x{00C0}-\x{00FF}]*',
+        'café {',
+      );
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (0, 4)); // "café"
+    });
+
+    test(r'\x{...} wide-hex still matches (BMP + non-BMP)', () {
+      expect(first(r'\x{00E9}', 'abécd')?.start, 2); // é
+      final emoji = first(r'\x{1F600}', 'x\u{1F600}y');
+      expect(emoji, isNotNull);
+      expect((emoji!.start, emoji.end), (1, 3)); // surrogate pair
+    });
+
+    test('a literal non-ASCII pattern matches its character', () {
+      final m = first('é', 'abécd');
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (2, 3));
     });
   });
 

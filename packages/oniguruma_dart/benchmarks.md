@@ -4,6 +4,8 @@ Pure-Dart port of the [Oniguruma](https://github.com/kkos/oniguruma) regex engin
 
 **Measured:** 2026-07-15 · median of 5 trials, all engines back-to-back in one session. Absolute ms carry some machine-load noise; the **ratios** (normalized to C, geomeans, and the FFI-vs-port head-to-head) are the intended signal and are stable across runs because every engine pays the same contention.
 
+> **Note:** the `FFI` and `wasm` rows below were measured against the previous **UTF-16LE** build of `oniguruma_native`. That package now runs Oniguruma in **UTF-8** (to fix `\xHH` grammar parity — see its CHANGELOG). The change mainly *reduces* bytes scanned on ASCII text (UTF-8 is ~half the size of UTF-16LE there), so the FFI/wasm figures shift — generally in their favour — and will be refreshed on the next full run. The pure-Dart (`port`), C, and `RegExp` figures are unaffected.
+
 ## What is measured
 
 Each number is the **median wall-clock time to scan an entire corpus for every non-overlapping match** of a pattern (compile once, then find all matches). Lower is faster. All engines run the identical scan loop over the identical input, and every run is cross-checked to report the **same match count** before timing, so no comparison is made across diverging behaviour.

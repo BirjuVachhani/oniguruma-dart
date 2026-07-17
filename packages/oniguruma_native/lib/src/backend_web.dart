@@ -17,6 +17,7 @@ library;
 import 'dart:typed_data';
 
 import 'types.dart';
+import 'utf8_offsets.dart';
 import 'web/oniguruma_wasm.g.dart';
 import 'web/wasm_bindings.dart';
 
@@ -45,21 +46,25 @@ String onigVersion() {
   return m.readCString(m.version());
 }
 
-/// An input string encoded once as UTF-16LE in the wasm heap, reusable across
-/// many [OnigScanner.findNextMatch] calls. Call [dispose] when done.
+/// An input string encoded once as UTF-8 in the wasm heap (with the byte↔UTF-16
+/// offset map it needs), reusable across many [OnigScanner.findNextMatch] calls.
+/// Call [dispose] when done.
 class OnigString {
-  OnigString(this.text) {
+  OnigString(this.text) : _enc = encodeWithMap(text) {
     final m = OnigWasmModule.instance;
-    final bytes = OnigWasmModule.encodeUtf16le(text);
-    length = bytes.length >> 1; // UTF-16 code units
-    byteLength = bytes.length;
-    ptr = m.malloc(bytes.isEmpty ? 2 : bytes.length);
-    m.writeBytes(ptr, bytes);
+    length = _enc.u16Length;
+    byteLength = _enc.byteLength;
+    ptr = m.malloc(byteLength == 0 ? 1 : byteLength);
+    m.writeBytes(ptr, _enc.bytes);
   }
 
   final String text;
+
+  /// UTF-8 bytes + byte↔UTF-16 offset maps for this string.
+  final Utf8Encoded _enc;
+
   late final int length; // UTF-16 code units
-  late final int byteLength;
+  late final int byteLength; // UTF-8 bytes
   late final int ptr; // offset into the wasm heap
 
   void dispose() => OnigWasmModule.instance.free(ptr);
@@ -79,8 +84,8 @@ class OnigScanner {
     final tmp = <int>[];
     try {
       for (var i = 0; i < n; i++) {
-        final bytes = OnigWasmModule.encodeUtf16le(patterns[i]);
-        final p = m.malloc(bytes.isEmpty ? 2 : bytes.length);
+        final bytes = encodeWithMap(patterns[i]).bytes;
+        final p = m.malloc(bytes.isEmpty ? 1 : bytes.length);
         m.writeBytes(p, bytes);
         m.writeUint32(patsPtr + i * 4, p);
         m.writeInt32(lensPtr + i * 4, bytes.length);
@@ -110,11 +115,12 @@ class OnigScanner {
   /// or null if none. A match exactly at [startPosition] wins immediately.
   OnigMatch? findNextMatch(OnigString string, int startPosition) {
     final m = OnigWasmModule.instance;
+    final enc = string._enc;
     final idx = m.find(
       _sc,
       string.ptr,
       string.byteLength,
-      startPosition * 2,
+      enc.u16ToByte(startPosition), // UTF-16 index -> UTF-8 byte offset
       _numRegs,
       _beg,
       _end,
@@ -125,9 +131,8 @@ class OnigScanner {
     final beg = m.readInt32List(_beg, n);
     final end = m.readInt32List(_end, n);
     final caps = List<OnigCapture>.generate(n, (g) {
-      final b = beg[g];
-      final e = end[g];
-      return OnigCapture(b < 0 ? -1 : b >> 1, e < 0 ? -1 : e >> 1);
+      // Oniguruma reports UTF-8 byte offsets; map back to UTF-16 indices.
+      return OnigCapture(enc.byteToU16(beg[g]), enc.byteToU16(end[g]));
     });
     return OnigMatch(idx, caps);
   }

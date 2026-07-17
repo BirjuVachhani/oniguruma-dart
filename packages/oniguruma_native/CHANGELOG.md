@@ -24,8 +24,11 @@ platform**, behind one vscode-oniguruma-compatible API (`OnigScanner`,
   there is exactly one boundary crossing per query.
 - `OnigScanner.scanCount` counts every non-overlapping match across an input in a
   single crossing (no per-match allocation).
-- UTF-16LE encoding, so match offsets line up 1:1 with Dart `String` indices with
-  no remapping.
+- Runs Oniguruma in **UTF-8** — the encoding TextMate/VS Code grammars are
+  authored against — so `\xHH` byte escapes in those grammars match exactly as
+  they do under vscode-oniguruma. Match offsets are still reported as UTF-16 code
+  units (Dart `String` indices): each string carries a byte↔UTF-16 offset map,
+  skipped entirely for pure-ASCII input so the common case stays allocation-free.
 - Native library provided by a Dart build hook (`hook/build.dart`): bundles a
   SHA-256-verified prebuilt for the target when one ships under `prebuilt/`,
   otherwise downloads the pinned Oniguruma source (SHA-256 verified) and compiles

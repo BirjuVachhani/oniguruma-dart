@@ -5,8 +5,10 @@
 // These exercise the SHIPPED wasm artifact (prebuilt/web/oniguruma_native.wasm —
 // the exact bytes embedded as base64 into lib/src/web/oniguruma_wasm.g.dart;
 // oniguruma_web_embed_test.dart proves they are byte-identical) through the SAME
-// WebAssembly API + UTF-16LE marshalling that lib/src/web/backend_web.dart uses.
-// So a failure here is a real bug in the wasm module or the marshalling contract,
+// WebAssembly API + UTF-8 marshalling that lib/src/web/backend_web.dart uses
+// (Oniguruma runs in UTF-8; byte offsets are mapped back to UTF-16 code-unit
+// indices via a per-string offset map — see lib/src/utf8_offsets.dart). So a
+// failure here is a real bug in the wasm module or the marshalling contract,
 // caught headlessly — no browser required, unlike test/oniguruma_web_test.dart.
 //
 // The behavioural cases mirror the IO/FFI suite (test/oniguruma_test.dart) so the
@@ -32,15 +34,70 @@ const EXPECTED_WASI_IMPORTS = ['fd_close', 'fd_seek', 'fd_write'];
 // malloc that grows the memory detaches previously-created views. This mirrors
 // OnigWasmModule exactly; if the wasm or this contract drifts, tests fail.
 
-function encodeUtf16le(str) {
+// Encode to UTF-8 and (unless pure ASCII) build the byte<->UTF-16 offset maps.
+// Mirrors lib/src/utf8_offsets.dart exactly.
+function encodeUtf8WithMap(str) {
   const n = str.length;
-  const u8 = new Uint8Array(n * 2);
+  let byteLen = 0;
+  let ascii = true;
   for (let i = 0; i < n; i++) {
     const c = str.charCodeAt(i);
-    u8[i * 2] = c & 0xff;
-    u8[i * 2 + 1] = c >>> 8;
+    if (c < 0x80) { byteLen += 1; continue; }
+    ascii = false;
+    if (c < 0x800) byteLen += 2;
+    else if (c >= 0xd800 && c <= 0xdbff && i + 1 < n &&
+             str.charCodeAt(i + 1) >= 0xdc00 && str.charCodeAt(i + 1) <= 0xdfff) {
+      byteLen += 4; i++;
+    } else byteLen += 3;
   }
-  return u8;
+  if (ascii) {
+    const bytes = new Uint8Array(n);
+    for (let i = 0; i < n; i++) bytes[i] = str.charCodeAt(i);
+    return { bytes, u16Length: n, ascii: true, byteToU16: null, u16ToByte: null };
+  }
+  const bytes = new Uint8Array(byteLen);
+  const byteToU16 = new Int32Array(byteLen + 1);
+  const u16ToByte = new Int32Array(n + 1);
+  let b = 0;
+  let u = 0;
+  while (u < n) {
+    const c = str.charCodeAt(u);
+    const startByte = b;
+    if (c < 0x80) {
+      byteToU16[b] = u; bytes[b++] = c;
+      u16ToByte[u] = startByte; u += 1;
+    } else if (c < 0x800) {
+      byteToU16[b] = u; bytes[b++] = 0xc0 | (c >> 6);
+      byteToU16[b] = u; bytes[b++] = 0x80 | (c & 0x3f);
+      u16ToByte[u] = startByte; u += 1;
+    } else if (c >= 0xd800 && c <= 0xdbff && u + 1 < n &&
+               str.charCodeAt(u + 1) >= 0xdc00 && str.charCodeAt(u + 1) <= 0xdfff) {
+      const cp = 0x10000 + ((c - 0xd800) << 10) + (str.charCodeAt(u + 1) - 0xdc00);
+      byteToU16[b] = u; bytes[b++] = 0xf0 | (cp >> 18);
+      byteToU16[b] = u; bytes[b++] = 0x80 | ((cp >> 12) & 0x3f);
+      byteToU16[b] = u; bytes[b++] = 0x80 | ((cp >> 6) & 0x3f);
+      byteToU16[b] = u; bytes[b++] = 0x80 | (cp & 0x3f);
+      u16ToByte[u] = startByte; u16ToByte[u + 1] = startByte; u += 2;
+    } else {
+      byteToU16[b] = u; bytes[b++] = 0xe0 | (c >> 12);
+      byteToU16[b] = u; bytes[b++] = 0x80 | ((c >> 6) & 0x3f);
+      byteToU16[b] = u; bytes[b++] = 0x80 | (c & 0x3f);
+      u16ToByte[u] = startByte; u += 1;
+    }
+  }
+  byteToU16[b] = u; u16ToByte[u] = b;
+  return { bytes, u16Length: n, ascii: false, byteToU16, u16ToByte };
+}
+
+function u16ToByteOffset(enc, u16) {
+  if (u16 <= 0) return 0;
+  if (u16 >= enc.u16Length) return enc.bytes.length;
+  return enc.ascii ? u16 : enc.u16ToByte[u16];
+}
+
+function byteToU16Offset(enc, b) {
+  if (b < 0) return -1;
+  return enc.ascii ? b : enc.byteToU16[b];
 }
 
 class OnigWasm {
@@ -79,16 +136,17 @@ class OnigWasm {
     this.ex.free(p);
   }
 
-  // Allocate + write a UTF-16LE subject/pattern; returns {p, byteLen, units}.
+  // Allocate + write a UTF-8 subject/pattern; returns {p, byteLen, units, enc}.
   writeString(str) {
-    const bytes = encodeUtf16le(str);
+    const enc = encodeUtf8WithMap(str);
+    const bytes = enc.bytes;
     const byteLen = bytes.length;
-    const p = this.malloc(byteLen === 0 ? 2 : byteLen);
+    const p = this.malloc(byteLen === 0 ? 1 : byteLen);
     if (byteLen !== 0) {
       // View derived AFTER malloc (growth-safe), one crossing — as backend_web.
       new Uint8Array(this.ex.memory.buffer, p, byteLen).set(bytes);
     }
-    return { p, byteLen, units: str.length };
+    return { p, byteLen, units: str.length, enc };
   }
 
   newScanner(patterns) {
@@ -112,9 +170,10 @@ class OnigWasm {
 
   // Returns {index, caps:[[start,end],...]} in UTF-16 code-unit indices, or null.
   find(sc, str, startUnit) {
+    const enc = str.enc;
     const idx = this.ex.onig_shim_find(
-      sc, str.p, str.byteLen, startUnit * 2, this.numRegs, this.beg, this.end,
-      this.cap,
+      sc, str.p, str.byteLen, u16ToByteOffset(enc, startUnit),
+      this.numRegs, this.beg, this.end, this.cap,
     );
     if (idx < 0) return null;
     const dv = new DataView(this.ex.memory.buffer);
@@ -123,7 +182,7 @@ class OnigWasm {
     for (let g = 0; g < nr; g++) {
       const b = dv.getInt32(this.beg + g * 4, true);
       const e = dv.getInt32(this.end + g * 4, true);
-      caps.push([b < 0 ? -1 : b >> 1, e < 0 ? -1 : e >> 1]);
+      caps.push([byteToU16Offset(enc, b), byteToU16Offset(enc, e)]);
     }
     return { index: idx, caps };
   }
@@ -335,6 +394,43 @@ describe('UTF-16 offset correctness', () => {
     assert.deepEqual(m.caps[0], [0, 2]);
     onig.free(s.p);
     onig.ex.onig_shim_scanner_free(sc);
+  });
+});
+
+describe('\\xHH grammar parity (UTF-8)', () => {
+  // The cases the old UTF-16LE marshalling got wrong: \xHH is a raw byte, and
+  // TextMate grammars author those bytes as UTF-8. Running Oniguruma in UTF-8
+  // fixes the parity while offsets stay UTF-16 code-unit indices.
+  function first(pattern, subject) {
+    const sc = onig.newScanner([pattern]);
+    const s = onig.writeString(subject);
+    const m = onig.find(sc, s, 0);
+    onig.free(s.p);
+    onig.ex.onig_shim_scanner_free(sc);
+    return m === null ? null : m.caps[0];
+  }
+
+  test('\\x41 matches ASCII "A"', () => {
+    assert.deepEqual(first(String.raw`\x41`, 'zzAzz'), [2, 3]);
+  });
+
+  test('\\xC3\\xA9 (UTF-8 bytes of é) matches é', () => {
+    assert.deepEqual(first(String.raw`\xC3\xA9`, 'abécd'), [2, 3]);
+  });
+
+  test('wide-hex code-point class matches accented chars', () => {
+    assert.deepEqual(
+      first(String.raw`[a-zA-Z\x{00C0}-\x{00FF}]+`, 'café {'), [0, 4],
+    );
+  });
+
+  test('\\x{...} wide-hex still matches BMP + non-BMP', () => {
+    assert.deepEqual(first(String.raw`\x{00E9}`, 'abécd'), [2, 3]);
+    assert.deepEqual(first(String.raw`\x{1F600}`, 'x\u{1F600}y'), [1, 3]);
+  });
+
+  test('a literal non-ASCII pattern matches its character', () => {
+    assert.deepEqual(first('é', 'abécd'), [2, 3]);
   });
 });
 

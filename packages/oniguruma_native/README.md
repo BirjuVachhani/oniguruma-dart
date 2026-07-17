@@ -130,8 +130,10 @@ Future<void> main() async {
 ```
 
 After `loadWasm()` resolves, every call is synchronous on all platforms. Offsets
-are UTF-16 code units (matching Dart `String` indices); the engine uses
-Oniguruma's UTF-16LE encoding, so no offset remapping is needed.
+are UTF-16 code units (matching Dart `String` indices). The engine runs Oniguruma
+in **UTF-8** — the encoding TextMate/VS Code grammars are authored against, so
+`\xHH` byte escapes match as intended — and maps the reported byte offsets back
+to UTF-16 indices via a per-string offset map (skipped entirely for ASCII).
 
 `OnigString` and `OnigScanner` hold native memory — call `dispose()` on each when
 you're done. A runnable version of the above is in
@@ -158,11 +160,13 @@ matching** — for scanning a whole input for every match, the pure-Dart port is
 about **2× faster** than this package and works everywhere Dart runs. Both
 packages run on web; on web `oniguruma_dart` is the lighter, faster choice.
 
-Why pure Dart wins bulk scanning: this package uses **UTF-16LE** (so offsets map
-1:1 to Dart `String` indices) — roughly 2× the bytes to scan on ASCII text — and
-its `findNextMatch` API costs one **FFI crossing per match**. Those are the right
-trade-offs for a tokenizer, not for enumerating hundreds of thousands of matches
-in one call.
+Why pure Dart wins bulk scanning: this package's `findNextMatch` API costs one
+**FFI crossing per match**, and each non-ASCII result is translated through a
+byte→UTF-16 offset map. Those are the right trade-offs for a tokenizer scanning
+short lines, not for enumerating hundreds of thousands of matches in one call.
+(The benchmark numbers linked below were measured against the previous UTF-16LE
+build; the switch to UTF-8 mainly affects ASCII byte counts and shifts the FFI
+figures somewhat — the overall picture is unchanged.)
 
 ![Per-pattern, per-full-corpus-scan time (log scale, shorter is faster): this package's FFI per-match and bulk paths (pink) vs oniguruma_dart's byte and String APIs (blue/green). The pure-Dart port is faster on 12 of 13 patterns; this package wins backref-dup, where the native engine handles pathological backtracking far better.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
@@ -198,7 +202,7 @@ On web the same Oniguruma + shim is compiled to a self-contained wasm32-wasi
 module and driven over `dart:js_interop`; it works under both dart2js and
 dart2wasm. There is no shared memory between Dart and the module, so subjects and
 patterns are marshalled into its heap through the module's own `malloc`/`free` —
-the same UTF-16LE bytes the FFI backend passes natively — so results are
+the same UTF-8 bytes the FFI backend passes natively — so results are
 byte-identical to the native engine.
 
 - **Call `await loadWasm()` once** before constructing a scanner. Instantiation

@@ -6,8 +6,8 @@ import 'package:test/test.dart';
 
 /// The web (WebAssembly) backend runs the same Oniguruma + shim as the FFI
 /// backend, so these mirror the IO suite's behavioural assertions — offsets and
-/// semantics must be byte-identical through the wasm/UTF-16LE boundary. Run
-/// under both compilers:
+/// semantics must be byte-identical through the wasm boundary (UTF-8 in the
+/// module, mapped back to UTF-16 Dart String indices). Run under both compilers:
 ///   dart test test/oniguruma_web_test.dart -p chrome
 ///   dart test test/oniguruma_web_test.dart -p chrome -c dart2wasm
 void main() {
@@ -148,6 +148,58 @@ void main() {
       expect(m.captureIndices[0].start, 0);
       expect(m.captureIndices[0].end, 2);
       expect(text.substring(0, 2), '\u{1F600}');
+    });
+  });
+
+  // The cases the old UTF-16LE marshalling got wrong: `\xHH` is a raw byte, and
+  // TextMate grammars author those bytes as UTF-8. Running Oniguruma in UTF-8
+  // fixes the parity while offsets stay UTF-16 code-unit indices.
+  group(r'\xHH grammar parity (UTF-8)', () {
+    ({int start, int end})? first(String pattern, String subject) {
+      final sc = OnigScanner([pattern]);
+      final s = OnigString(subject);
+      addTearDown(() {
+        s.dispose();
+        sc.dispose();
+      });
+      final m = sc.findNextMatch(s, 0);
+      if (m == null) return null;
+      final c = m.captureIndices[0];
+      return (start: c.start, end: c.end);
+    }
+
+    test(r'\x41 matches ASCII "A"', () {
+      final m = first(r'\x41', 'zzAzz');
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (2, 3));
+    });
+
+    test(r'\xC3\xA9 (UTF-8 bytes of é) matches é', () {
+      final m = first(r'\xC3\xA9', 'abécd');
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (2, 3));
+    });
+
+    test('char class with wide-hex code-point range matches accented chars', () {
+      final m = first(
+        r'[a-zA-Z\x{00C0}-\x{00FF}][a-zA-Z0-9\x{00C0}-\x{00FF}]*',
+        'café {',
+      );
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (0, 4));
+    });
+
+    test(r'\x{...} wide-hex still matches (BMP + non-BMP)', () {
+      expect(first(r'\x{00E9}', 'abécd')?.start, 2);
+      final emoji = first(r'\x{1F600}', 'x\u{1F600}y');
+      expect(emoji, isNotNull);
+      expect((emoji!.start, emoji.end), (1, 3));
+    });
+
+    test('a literal non-ASCII pattern matches its character', () {
+      final m = first('é', 'abécd');
+      expect(m, isNotNull);
+      expect((m!.start, m.end), (2, 3));
     });
   });
 

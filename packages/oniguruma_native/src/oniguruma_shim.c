@@ -1,13 +1,15 @@
 // Thin C shim over Oniguruma for the Dart FFI bridge.
 //
 // It encapsulates the parts that are awkward to bind directly from Dart:
-//   * the global encoding/syntax pointers (ONIG_ENCODING_UTF16_LE, etc.),
+//   * the global encoding/syntax pointers (ONIG_ENCODING_UTF8, etc.),
 //   * OnigRegion struct field access, and
 //   * the multi-pattern "scanner" scan loop (kept in C so there is exactly one
 //     FFI crossing per findNextMatch, like vscode-oniguruma).
 //
-// Strings are UTF-16LE so offsets line up 1:1 with Dart's UTF-16 String indices
-// (Oniguruma reports byte offsets; the Dart side divides by 2).
+// Strings are UTF-8 — the encoding TextMate/VS Code grammars are authored
+// against, so `\xHH` byte escapes in those grammars match as intended. Oniguruma
+// reports UTF-8 byte offsets; the Dart side maps them back to UTF-16 code-unit
+// (Dart String) indices via a per-string offset map (see utf8_offsets.dart).
 
 #include <stdlib.h>
 #include <string.h>
@@ -24,7 +26,7 @@ static int g_inited = 0;
 static void ensure_init(void) {
   if (g_inited) return;
   OnigEncoding encs[1];
-  encs[0] = ONIG_ENCODING_UTF16_LE;
+  encs[0] = ONIG_ENCODING_UTF8;
   onig_initialize(encs, 1);
   g_inited = 1;
 }
@@ -35,7 +37,7 @@ typedef struct {
   OnigRegion* region;
 } ShimScanner;
 
-// patterns: `count` UTF-16LE byte buffers; patLens: their byte lengths.
+// patterns: `count` UTF-8 byte buffers; patLens: their byte lengths.
 // Patterns that fail to compile become NULL (skipped), mirroring the Dart
 // engine's forgiving behavior.
 SHIM_EXPORT
@@ -51,7 +53,7 @@ ShimScanner* onig_shim_scanner_new(const unsigned char** patterns,
     regex_t* reg = NULL;
     const unsigned char* p = patterns[i];
     int r = onig_new(&reg, p, p + patLens[i], ONIG_OPTION_CAPTURE_GROUP,
-                     ONIG_ENCODING_UTF16_LE, ONIG_SYNTAX_ONIGURUMA, &einfo);
+                     ONIG_ENCODING_UTF8, ONIG_SYNTAX_ONIGURUMA, &einfo);
     sc->regs[i] = (r == ONIG_NORMAL) ? reg : NULL;
   }
   return sc;
@@ -149,7 +151,12 @@ int onig_shim_scan_count(ShimScanner* sc, const unsigned char* str,
     if (bestBeg < 0) break;
     count++;
     int next = bestEnd;
-    if (next == startByte) next += 2; // zero-width: advance one UTF-16 unit
+    if (next == startByte) {
+      // Zero-width match: advance one whole UTF-8 character so we never split a
+      // multibyte sequence (mirrors how onig_search advances internally).
+      int clen = ONIGENC_MBC_ENC_LEN(ONIG_ENCODING_UTF8, s + startByte);
+      next += (clen > 0 ? clen : 1);
+    }
     startByte = next;
   }
   return count;
