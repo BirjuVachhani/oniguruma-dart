@@ -1,34 +1,96 @@
 # oniguruma_dart
 
 A **pure-Dart** port of the [Oniguruma](https://github.com/kkos/oniguruma)
-regular-expression engine — **no FFI, no native code**. It gives you Oniguruma's
-rich regex dialect (the one used by Ruby) with full Unicode support and ~28 text
-encodings, in a single portable package that runs anywhere Dart runs, including
-**Web/WASM**.
+regular-expression engine — the rich, Ruby-flavoured regex dialect — with **no
+FFI and no native code**. It runs anywhere Dart runs (VM, AOT, Flutter, and
+**Web/WASM**), needs zero toolchain or build setup, and is verified byte-for-byte
+against the reference C library.
 
-- **Familiar, powerful syntax** — named groups, look-around, atomic groups,
-  possessive quantifiers, conditionals, back-references (incl. by name and
-  nesting level), subroutine calls `\g<>`, `\K`, `\R`, `\X`, callouts, and more.
-- **Unicode-correct** — `\p{Script}`/`\p{Category}`, `\w`/`\b`/`\X`/`\R`,
-  case-insensitive matching with multi-character folds (`ß` ↔ `ss`).
-- **Many syntaxes** — Oniguruma (default), Ruby, Perl, Java, Python, Grep,
-  Emacs, POSIX Basic/Extended, GNU.
-- **~28 encodings** — UTF-8/16/32, EUC-JP/KR/TW, Shift-JIS, Big5, GB18030,
-  ISO-8859-1…16, CP1251, KOI8-R/U, ASCII.
-- **Verified against the C library** — passes Oniguruma's entire own test suite
-  (5025/5025) with byte-identical results. See [Correctness](#correctness).
+You get Oniguruma's full feature set — named groups, look-around, atomic groups,
+possessive quantifiers, conditionals, subroutine calls, `\K`, `\R`, `\X`,
+callouts, `\p{Script}`, multi-character case folds, ~28 text encodings, and a
+choice of regex dialects (Ruby, Perl, Java, Python, grep, POSIX, …) — behind an
+idiomatic `String` API that works just like `dart:core`'s `RegExp`.
 
-## Install
+## Features
+
+### Why this over the built-in `RegExp`?
+
+Dart's built-in `RegExp` is an ECMAScript engine (V8's Irregexp). It's fast and
+perfectly fine for everyday patterns, but its dialect is comparatively small.
+`oniguruma_dart` gives you the far richer Oniguruma/Ruby dialect — the same one
+Ruby, TextMate grammars, and many editors are written for — while keeping a
+`RegExp`-like surface. Reach for it when you need:
+
+- **Regex constructs ECMAScript doesn't have** — atomic groups, possessive
+  quantifiers, conditionals, subroutine/recursion `\g<>`, `\K`, `\R`, `\X`,
+  POSIX classes, inline modifiers, free-spacing mode, and more (see the table).
+- **True Unicode case-insensitivity** — multi-character folds such as `ß` ↔ `ss`
+  and `ﬁ` ↔ `fi`, which `RegExp` does not perform.
+- **Unicode properties without a flag** — `\p{Han}`, `\p{L}`, `\p{Greek}` work by
+  default; in `RegExp` they require `unicode: true`.
+- **Non-UTF-8 / non-Unicode text** — match over Shift-JIS, EUC-JP/KR/TW, Big5,
+  GB18030, the ISO-8859 family, KOI8, and ~28 encodings, directly on bytes.
+- **A specific regex dialect** — run patterns written for Ruby, Perl, Java,
+  Python, grep, Emacs, or POSIX BRE/ERE with those exact semantics.
+- **Byte offsets** — C-identical byte positions, alongside the usual `String`
+  (UTF-16) offsets.
+
+### Supported patterns vs. `dart:core` `RegExp`
+
+Both engines share the everyday syntax; the differences are where Oniguruma's
+dialect pulls ahead. `✅` = supported, `⚠️` = supported with a caveat, `❌` = not
+supported.
+
+| Pattern / feature | `oniguruma_dart` | Dart `RegExp` |
+|---|:--:|:--:|
+| `*` `+` `?` `{n,m}` and lazy `*?` `+?` | ✅ | ✅ |
+| Alternation `\|`, char classes, ranges, negation | ✅ | ✅ |
+| Capturing `( )` and non-capturing `(?: )` groups | ✅ | ✅ |
+| Named groups `(?<name>…)` and backref `\k<name>` | ✅ | ✅ |
+| Numeric back-references `\1` | ✅ | ✅ |
+| Look-ahead `(?=…)` `(?!…)` | ✅ | ✅ |
+| Look-behind `(?<=…)` `(?<!…)` | ✅ | ✅ |
+| Anchors `^` `$` `\b` `\B`, dot-all / multiline flags | ✅ | ✅ |
+| Buffer anchors `\A` `\z` `\Z` `\G` | ✅ | ❌ |
+| Unicode properties `\p{…}` `\P{…}` | ✅ (default) | ⚠️ needs `unicode: true` |
+| Case-insensitive **multi-char folds** (`ß`↔`ss`) | ✅ | ❌ |
+| Atomic groups `(?>…)` | ✅ | ❌ |
+| Possessive quantifiers `a++` `a*+` `a?+` | ✅ | ❌ |
+| Conditionals `(?(cond)yes\|no)` | ✅ | ❌ |
+| Subroutine calls & recursion `\g<name>` `\g<0>` | ✅ | ❌ |
+| Back-ref by name/number & nesting level `\k<n-1>` | ✅ | ❌ |
+| Keep `\K`, line-break `\R`, grapheme cluster `\X` | ✅ | ❌ |
+| POSIX classes `[[:alpha:]]` | ✅ | ❌ |
+| Leading inline modifiers `(?i)` `(?x)` `(?m)` | ✅ | ❌ |
+| Free-spacing / extended mode + comments `(?#…)` | ✅ | ❌ |
+| Callouts (of contents `(?{…})` / of name `(*NAME)`) | ✅ | ❌ |
+| Selectable syntax (Ruby / Perl / POSIX / grep / …) | ✅ | ❌ |
+| Non-Unicode encodings (Shift-JIS, EUC, Big5, …) | ✅ (~28) | ❌ (UTF-16 only) |
+| Byte-offset results | ✅ | ❌ |
+
+## Installation
 
 ```console
 dart pub add oniguruma_dart
 ```
 
+For a Flutter app:
+
+```console
+flutter pub add oniguruma_dart
+```
+
+Then import it:
+
 ```dart
 import 'package:oniguruma_dart/oniguruma_dart.dart';
 ```
 
-## Quick start
+No build hooks, native toolchain, or prebuilt binaries — it's pure Dart, so it
+works out of the box on every target including Web/WASM.
+
+## Usage
 
 Use the idiomatic **`OnigRegex`** API — it works like `dart:core`'s `RegExp`,
 with `String` in and `String` out (offsets are UTF-16 code-unit indices):
@@ -46,8 +108,6 @@ void main() {
   print(m?.start);               // 8
 }
 ```
-
-## Usage
 
 ### Find matches
 
