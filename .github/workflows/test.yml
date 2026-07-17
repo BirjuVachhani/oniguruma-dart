@@ -7,12 +7,14 @@ name: test
 #
 # Jobs:
 #   * analyze            — static analysis of both packages (once, Linux).
-#   * test               — the native FFI VM suite + the pure-Dart suite on all
-#     four hosted OS/arch combos (linux-x64, macos-arm64, macos-x64,
-#     windows-x64). The native run links each platform's committed prebuilt, so
-#     this is what proves the shipped binaries actually load and run.
+#   * test               — the native FFI VM suite + the pure-Dart suite on the
+#     hosted OS/arch combos (linux-x64, macos-arm64, windows-x64). The native run
+#     links each platform's committed prebuilt, so this is what proves the shipped
+#     binaries actually load and run. (Intel macOS / macos-13 is intentionally not
+#     covered: that runner is being retired and queues for hours; the code is
+#     architecture-independent and the x64 prebuilt is integrity-checked.)
 #   * wasm-node          — the WebAssembly module suite driven through Node's
-#     WebAssembly API + UTF-16LE marshalling (test/wasm/*.test.mjs). This is the
+#     WebAssembly API + UTF-8 marshalling (test/wasm/*.test.mjs). This is the
 #     headless WASM gate.
 #   * native-from-source — the same native VM suite with the prebuilts removed,
 #     forcing the hook's compile-from-source fallback (branch C of
@@ -37,6 +39,12 @@ on:
   pull_request:
   workflow_dispatch:
 
+# A new push to a ref cancels any still-running run for that same ref, so runs
+# never pile up (e.g. queued behind a scarce runner) and clog the queue.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
@@ -47,6 +55,7 @@ jobs:
   analyze:
     name: analyze
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 
@@ -63,13 +72,13 @@ jobs:
   test:
     name: test (${{ matrix.name }})
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         include:
           - { name: linux-x64, runner: ubuntu-latest }
           - { name: macos-arm64, runner: macos-14 }
-          - { name: macos-x64, runner: macos-13 }
           - { name: windows-x64, runner: windows-latest }
     steps:
       - uses: actions/checkout@v4
@@ -97,6 +106,7 @@ jobs:
   wasm-node:
     name: wasm module (Node)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: packages/oniguruma_native
@@ -116,6 +126,7 @@ jobs:
   native-from-source:
     name: native from source (${{ matrix.runner }})
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
