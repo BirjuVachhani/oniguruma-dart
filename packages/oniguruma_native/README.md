@@ -7,10 +7,10 @@ Shiki / VS Code syntax highlighting) are written for.
 One API on every platform (`OnigScanner`, `OnigString`, `OnigMatch`), backed by
 the **same Oniguruma engine everywhere**:
 
-| Platform | Engine | `isOnigurumaSupported` |
-|----------|--------|:----------------------:|
-| Android / iOS / macOS / Linux / Windows / server | Real Oniguruma C, compiled/bundled by a Dart **build hook** and called via `dart:ffi` | `true` |
-| Web (dart2js / dart2wasm) | The same C engine compiled to **WebAssembly**, driven over `dart:js_interop` | `true` |
+| Platform | Engine |
+|----------|--------|
+| Android / iOS / macOS / Linux / Windows / server | Real Oniguruma C, compiled/bundled by a Dart **build hook** and called via `dart:ffi` |
+| Web (dart2js / dart2wasm) | The same C engine compiled to **WebAssembly**, driven over `dart:js_interop` |
 
 On web, WebAssembly instantiation is asynchronous, so call `loadWasm()` once and
 `await` it before constructing a scanner. It is a **no-op on IO**, so the same

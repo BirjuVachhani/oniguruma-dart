@@ -14,7 +14,6 @@ Future<void> main() async {
   // is portable across every platform.
   await loadWasm();
 
-  print('engine supported: $isOnigurumaSupported');
   print('oniguruma ${onigVersion()}');
 
   // A scanner compiles several patterns at once and, from a given position,

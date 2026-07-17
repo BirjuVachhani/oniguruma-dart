@@ -5,10 +5,6 @@ import 'package:oniguruma_native/oniguruma_native.dart';
 import 'package:test/test.dart';
 
 void main() {
-  test('native engine is available on this (IO) platform', () {
-    expect(isOnigurumaSupported, isTrue);
-  });
-
   test('links and reports a version', () {
     expect(onigVersion(), matches(RegExp(r'^\d+\.\d+\.\d+')));
   });

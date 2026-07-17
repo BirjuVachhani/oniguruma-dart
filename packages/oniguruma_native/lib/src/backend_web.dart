@@ -20,9 +20,6 @@ import 'types.dart';
 import 'web/oniguruma_wasm.g.dart';
 import 'web/wasm_bindings.dart';
 
-/// True: the WebAssembly engine is available on web (after [loadWasm]).
-const bool isOnigurumaSupported = true;
-
 /// Loads the Oniguruma WebAssembly module. Call once, and `await` it, before
 /// using [OnigScanner]/[OnigString] on web.
 ///

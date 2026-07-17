@@ -11,9 +11,6 @@ import 'package:ffi/ffi.dart';
 import 'bindings.dart' as onig;
 import 'types.dart';
 
-/// True: this platform has a native Oniguruma engine.
-const bool isOnigurumaSupported = true;
-
 /// No-op on IO: the native engine needs no loading. This mirrors the web
 /// backend's [loadWasm] so cross-platform startup code can `await loadWasm()`
 /// unconditionally; [bytes]/[url] are ignored here.

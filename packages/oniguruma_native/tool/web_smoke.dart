@@ -10,7 +10,6 @@ import 'package:oniguruma_native/oniguruma_native.dart';
 
 Future<void> main() async {
   await loadWasm(); // loads the embedded module on web; no-op on IO
-  print('isOnigurumaSupported = $isOnigurumaSupported');
   print('oniguruma ${onigVersion()}');
 
   final scanner = OnigScanner([r'\d+']);

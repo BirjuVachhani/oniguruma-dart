@@ -22,10 +22,9 @@
 /// scanner.dispose();
 /// ```
 ///
-/// [isOnigurumaSupported] is `true` on every platform. The embedded wasm makes
-/// web zero-setup; pass `bytes`/`url` to [loadWasm] to supply your own module
-/// and trim the bundle. Offsets are UTF-16 code units matching Dart `String`
-/// indices on all platforms.
+/// The embedded wasm makes web zero-setup; pass `bytes`/`url` to [loadWasm] to
+/// supply your own module and trim the bundle. Offsets are UTF-16 code units
+/// matching Dart `String` indices on all platforms.
 library;
 
 export 'src/types.dart';

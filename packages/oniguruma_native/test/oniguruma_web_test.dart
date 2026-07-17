@@ -15,10 +15,6 @@ void main() {
     await loadWasm(); // instantiate the embedded module once
   });
 
-  test('engine is available on web after loadWasm', () {
-    expect(isOnigurumaSupported, isTrue);
-  });
-
   test('loadWasm is idempotent', () async {
     await loadWasm();
     await loadWasm();

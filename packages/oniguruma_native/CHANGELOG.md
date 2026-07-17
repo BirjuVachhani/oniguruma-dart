@@ -9,8 +9,7 @@ platform**, behind one vscode-oniguruma-compatible API (`OnigScanner`,
   called via `dart:ffi`.
 - **Web** (dart2js and dart2wasm): the *same* Oniguruma + shim compiled to a
   self-contained wasm32-wasi module and driven over `dart:js_interop`, so
-  results are byte-identical to the native backend. `isOnigurumaSupported` is
-  `true` on web too.
+  results are byte-identical to the native backend.
 - The right backend is chosen automatically by a conditional import, so
   consumers write one `import` and never deal with platform specifics.
 - Call `await loadWasm()` once at startup before constructing a scanner. On web
