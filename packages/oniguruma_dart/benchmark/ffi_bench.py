@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Measure the sibling `oniguruma_ffi` package (native Oniguruma driven from
+"""Measure the sibling `oniguruma_native` package (native Oniguruma driven from
 Dart via FFI) on the canonical 13 mainstream patterns, and fold the results
 into mainstream_results.json as two engines:
 
@@ -19,8 +19,8 @@ import json, os, re, subprocess
 
 # .../packages/oniguruma_dart
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# .../packages/oniguruma_ffi (sibling package that owns the harness + build hook)
-FFI_PKG = os.path.normpath(os.path.join(ROOT, "..", "oniguruma_ffi"))
+# .../packages/oniguruma_native (sibling package that owns the harness + build hook)
+FFI_PKG = os.path.normpath(os.path.join(ROOT, "..", "oniguruma_native"))
 JSON = os.path.join(ROOT, "benchmark/mainstream_results.json")
 DATASETS = os.path.join(ROOT, "benchmark/datasets")
 TARGET = "bin/mainstream_bench.dart"  # entry point, relative to FFI_PKG

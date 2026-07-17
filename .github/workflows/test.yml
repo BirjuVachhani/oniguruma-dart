@@ -1,0 +1,70 @@
+name: test
+
+# Runs the headless, reliable test layers on every push / PR:
+#   * Dart VM: the FFI backend suite + the wasm embed-integrity guard
+#     (packages/oniguruma_native/test/*.dart, @TestOn('vm')).
+#   * Node:    the WebAssembly module suite that drives the shipped .wasm through
+#     the same WebAssembly API + UTF-16LE marshalling as the web backend
+#     (packages/oniguruma_native/test/wasm/*.test.mjs).
+#
+# The browser suite (test/oniguruma_web_test.dart, @TestOn('browser')) is the
+# end-to-end check of the Dart web backend and is run locally with
+# `dart test packages/oniguruma_native -p chrome [-c dart2wasm]`; it is intentionally
+# not gated here because the browser runner is environment-flaky. The Node suite
+# above covers the same wasm behaviour headlessly.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dart:
+    name: dart (FFI + wasm embed integrity)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: "3.12.2"
+
+      - name: Resolve the workspace
+        run: dart pub get
+
+      - name: Analyze
+        run: dart analyze packages/oniguruma_native
+
+      # Runs the @TestOn('vm') suites: the native FFI backend (via the committed
+      # linux-x64 prebuilt) and the embed-integrity guard that pins the base64
+      # wasm to prebuilt/web + checksums.sha256.
+      # Run from inside the package so the native-asset build hook fires on a
+      # cold CI cache (invoking `dart test packages/oniguruma_native` from the
+      # workspace root does not build the code asset). pub get still runs at the
+      # workspace root above.
+      - name: Test (VM)
+        working-directory: packages/oniguruma_native
+        run: dart test
+
+  wasm-node:
+    name: wasm module (Node)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/oniguruma_native
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # Drives the shipped prebuilt/web/oniguruma_native.wasm through Node's
+      # WebAssembly API — no browser, no Dart. `node --test` discovers
+      # test/wasm/*.test.mjs and exits non-zero on any failure.
+      - name: Test wasm module
+        run: node --test

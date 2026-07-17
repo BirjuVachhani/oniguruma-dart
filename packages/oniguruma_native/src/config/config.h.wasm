@@ -1,0 +1,93 @@
+/* Oniguruma config.h for the wasm32-wasi (WebAssembly) build.
+ *
+ * Used only by the wasm prebuild (tool/prebuilt/build_wasm.sh, driven by the
+ * prebuild-oniguruma workflow) — NOT by the runtime build hook, which never
+ * runs on web. It mirrors src/config/config.h (the generic non-Windows
+ * variant) with the one difference that matters on wasm32: it is an ILP32
+ * target, so `long` and `void*` are 4 bytes, not 8. wasi-sdk's sysroot ships
+ * every header libonig probes, so the HAVE_* set is unchanged.
+ */
+
+/* Define to 1 if you have 'alloca', as a function or macro. */
+#define HAVE_ALLOCA 1
+
+/* Define to 1 if <alloca.h> works. */
+#define HAVE_ALLOCA_H 1
+
+/* Define to 1 if you have the <dlfcn.h> header file. */
+#define HAVE_DLFCN_H 1
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#define HAVE_INTTYPES_H 1
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#define HAVE_STDINT_H 1
+
+/* Define to 1 if you have the <stdio.h> header file. */
+#define HAVE_STDIO_H 1
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#define HAVE_STDLIB_H 1
+
+/* Define to 1 if you have the <strings.h> header file. */
+#define HAVE_STRINGS_H 1
+
+/* Define to 1 if you have the <string.h> header file. */
+#define HAVE_STRING_H 1
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#define HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/times.h> header file. */
+#define HAVE_SYS_TIMES_H 1
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#define HAVE_SYS_TIME_H 1
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#define HAVE_SYS_TYPES_H 1
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#define HAVE_UNISTD_H 1
+
+/* Define to the sub-directory where libtool stores uninstalled libraries. */
+#define LT_OBJDIR ".libs/"
+
+/* Name of package */
+#define PACKAGE "onig"
+
+/* Define to the address where bug reports for this package should be sent. */
+#define PACKAGE_BUGREPORT ""
+
+/* Define to the full name of this package. */
+#define PACKAGE_NAME "onig"
+
+/* Define to the full name and version of this package. */
+#define PACKAGE_STRING "onig 6.9.10"
+
+/* Define to the one symbol short name of this package. */
+#define PACKAGE_TARNAME "onig"
+
+/* Define to the home page for this package. */
+#define PACKAGE_URL ""
+
+/* Define to the version of this package. */
+#define PACKAGE_VERSION "6.9.10"
+
+/* The size of 'int', as computed by sizeof. */
+#define SIZEOF_INT 4
+
+/* The size of 'long', as computed by sizeof. (wasm32 is ILP32) */
+#define SIZEOF_LONG 4
+
+/* The size of 'long long', as computed by sizeof. */
+#define SIZEOF_LONG_LONG 8
+
+/* The size of 'void*', as computed by sizeof. (wasm32 is ILP32) */
+#define SIZEOF_VOIDP 4
+
+/* Define to 1 if all of the C89 standard headers exist. */
+#define STDC_HEADERS 1
+
+/* Version number of package */
+#define VERSION "6.9.10"

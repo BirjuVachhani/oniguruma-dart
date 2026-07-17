@@ -1,0 +1,27 @@
+name: oniguruma_native
+
+description: >-
+  Oniguruma regex bindings for Dart on every platform: native dart:ffi on IO and
+  WebAssembly on web, behind one vscode-oniguruma-compatible OnigScanner API
+  backed by the same engine everywhere.
+
+version: 1.0.0
+
+homepage: https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native
+repository: https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native
+
+resolution: workspace
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  ffi: ^2.2.0
+  hooks: ^2.1.0
+  code_assets: ^1.2.1
+  native_toolchain_c: ^0.19.3
+  archive: ^4.0.9
+  crypto: ^3.0.7
+
+dev_dependencies:
+  test: ^1.31.0

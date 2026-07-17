@@ -1,6 +1,6 @@
 name: prebuild-oniguruma
 
-# Builds the prebuilt `oniguruma_ffi` shared library (Oniguruma + our shim folded
+# Builds the prebuilt `oniguruma_native` shared library (Oniguruma + our shim folded
 # into one self-contained dylib/so/dll) for every supported platform and
 # architecture. Manually triggered.
 #
@@ -17,12 +17,12 @@ name: prebuild-oniguruma
 #   2. Extract it — GitHub wraps artifacts, so you get oniguruma-prebuilt.zip
 #      containing the inner oniguruma-prebuilt.zip (its root is prebuilt/):
 #        unzip oniguruma-prebuilt.zip                        # -> oniguruma-prebuilt.zip
-#        unzip oniguruma-prebuilt.zip -d packages/oniguruma_ffi/
-#   3. git add packages/oniguruma_ffi/prebuilt && commit.
+#        unzip oniguruma-prebuilt.zip -d packages/oniguruma_native/
+#   3. git add packages/oniguruma_native/prebuilt && commit.
 #   The combined bundle already includes a matching checksums.sha256 (verified
 #   by the build hook). If you instead refresh only one `oniguruma-<platform>-
 #   <arch>` artifact, regenerate the manifest with
-#   packages/oniguruma_ffi/tool/prebuilt/gen_checksums.sh before committing.
+#   packages/oniguruma_native/tool/prebuilt/gen_checksums.sh before committing.
 #
 # Nothing is committed or released by this workflow — artifacts only.
 
@@ -33,8 +33,8 @@ permissions:
   contents: read
 
 env:
-  # Where the hook expects each library, relative to packages/oniguruma_ffi/.
-  PKG_DIR: packages/oniguruma_ffi
+  # Where the hook expects each library, relative to packages/oniguruma_native/.
+  PKG_DIR: packages/oniguruma_native
 
 jobs:
   build:
@@ -45,23 +45,23 @@ jobs:
       matrix:
         include:
           # --- macOS ---
-          - { id: macos-arm64,        runner: macos-14,       dest: macos/arm64,          lib: liboniguruma_ffi.dylib, args: "-DCMAKE_OSX_ARCHITECTURES=arm64" }
-          - { id: macos-x64,          runner: macos-14,       dest: macos/x64,            lib: liboniguruma_ffi.dylib, args: "-DCMAKE_OSX_ARCHITECTURES=x86_64" }
+          - { id: macos-arm64,        runner: macos-14,       dest: macos/arm64,          lib: liboniguruma_native.dylib, args: "-DCMAKE_OSX_ARCHITECTURES=arm64" }
+          - { id: macos-x64,          runner: macos-14,       dest: macos/x64,            lib: liboniguruma_native.dylib, args: "-DCMAKE_OSX_ARCHITECTURES=x86_64" }
           # --- iOS (device + simulator) ---
-          - { id: ios-device-arm64,   runner: macos-14,       dest: ios/device/arm64,     lib: liboniguruma_ffi.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
-          - { id: ios-sim-arm64,      runner: macos-14,       dest: ios/simulator/arm64,  lib: liboniguruma_ffi.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
-          - { id: ios-sim-x64,        runner: macos-14,       dest: ios/simulator/x64,    lib: liboniguruma_ffi.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
+          - { id: ios-device-arm64,   runner: macos-14,       dest: ios/device/arm64,     lib: liboniguruma_native.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphoneos -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
+          - { id: ios-sim-arm64,      runner: macos-14,       dest: ios/simulator/arm64,  lib: liboniguruma_native.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
+          - { id: ios-sim-x64,        runner: macos-14,       dest: ios/simulator/x64,    lib: liboniguruma_native.dylib, args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0" }
           # --- Linux ---
-          - { id: linux-x64,          runner: ubuntu-latest,  dest: linux/x64,            lib: liboniguruma_ffi.so,    args: "" }
-          - { id: linux-arm64,        runner: ubuntu-latest,  dest: linux/arm64,          lib: liboniguruma_ffi.so,    args: "-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc", setup: linux-cross }
+          - { id: linux-x64,          runner: ubuntu-latest,  dest: linux/x64,            lib: liboniguruma_native.so,    args: "" }
+          - { id: linux-arm64,        runner: ubuntu-latest,  dest: linux/arm64,          lib: liboniguruma_native.so,    args: "-DCMAKE_SYSTEM_NAME=Linux -DCMAKE_SYSTEM_PROCESSOR=aarch64 -DCMAKE_C_COMPILER=aarch64-linux-gnu-gcc", setup: linux-cross }
           # --- Android (NDK) ---
-          - { id: android-arm64,      runner: ubuntu-latest,  dest: android/arm64,        lib: liboniguruma_ffi.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21" }
-          - { id: android-arm,        runner: ubuntu-latest,  dest: android/arm,          lib: liboniguruma_ffi.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-21" }
-          - { id: android-x64,        runner: ubuntu-latest,  dest: android/x64,          lib: liboniguruma_ffi.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=x86_64 -DANDROID_PLATFORM=android-21" }
-          - { id: android-ia32,       runner: ubuntu-latest,  dest: android/ia32,         lib: liboniguruma_ffi.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=x86 -DANDROID_PLATFORM=android-21" }
+          - { id: android-arm64,      runner: ubuntu-latest,  dest: android/arm64,        lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-21" }
+          - { id: android-arm,        runner: ubuntu-latest,  dest: android/arm,          lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-21" }
+          - { id: android-x64,        runner: ubuntu-latest,  dest: android/x64,          lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=x86_64 -DANDROID_PLATFORM=android-21" }
+          - { id: android-ia32,       runner: ubuntu-latest,  dest: android/ia32,         lib: liboniguruma_native.so,    args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake -DANDROID_ABI=x86 -DANDROID_PLATFORM=android-21" }
           # --- Windows ---
-          - { id: windows-x64,        runner: windows-latest, dest: windows/x64,          lib: oniguruma_ffi.dll,      args: "-A x64" }
-          - { id: windows-arm64,      runner: windows-latest, dest: windows/arm64,        lib: oniguruma_ffi.dll,      args: "-A ARM64" }
+          - { id: windows-x64,        runner: windows-latest, dest: windows/x64,          lib: oniguruma_native.dll,      args: "-A x64" }
+          - { id: windows-arm64,      runner: windows-latest, dest: windows/arm64,        lib: oniguruma_native.dll,      args: "-A ARM64" }
 
     steps:
       - uses: actions/checkout@v4
@@ -98,7 +98,7 @@ jobs:
           found=$(find "$RUNNER_TEMP/build" -name "${{ matrix.lib }}" -type f | head -1)
           if [ -z "$found" ]; then
             echo "::error::built library ${{ matrix.lib }} not found under $RUNNER_TEMP/build"
-            find "$RUNNER_TEMP/build" -maxdepth 3 -type f -name '*oniguruma_ffi*' || true
+            find "$RUNNER_TEMP/build" -maxdepth 3 -type f -name '*oniguruma_native*' || true
             exit 1
           fi
           cp "$found" "$out/${{ matrix.lib }}"
@@ -111,9 +111,56 @@ jobs:
           path: staging
           if-no-files-found: error
 
+  # WebAssembly build for the web backend: Oniguruma + our shim compiled to one
+  # self-contained wasm32-wasi "reactor" module (see tool/prebuilt/build_wasm.sh).
+  # The committed prebuilt/web/oniguruma_native.wasm is embedded into the package as
+  # base64 by tool/gen_wasm_embed.dart; regenerate that after refreshing the blob.
+  wasm:
+    name: wasm
+    runs-on: ubuntu-latest
+    env:
+      WASI_SDK_VERSION: "33"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CMake (for fetch_onig.cmake)
+        uses: lukka/get-cmake@latest
+
+      - name: Install wasi-sdk
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/WebAssembly/wasi-sdk/releases/download/wasi-sdk-${WASI_SDK_VERSION}/wasi-sdk-${WASI_SDK_VERSION}.0-x86_64-linux.tar.gz"
+          mkdir -p "$RUNNER_TEMP/wasi-sdk"
+          curl -fL --retry 3 "$url" | tar -xz -C "$RUNNER_TEMP/wasi-sdk" --strip-components=1
+          "$RUNNER_TEMP/wasi-sdk/bin/clang" --version | head -1
+
+      - name: Fetch + verify Oniguruma source
+        shell: bash
+        run: cmake -DDEST="$RUNNER_TEMP/onig" -P "$PKG_DIR/tool/prebuilt/fetch_onig.cmake"
+
+      - name: Build wasm
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="staging/prebuilt/web"
+          mkdir -p "$out"
+          WASI_SDK="$RUNNER_TEMP/wasi-sdk" \
+          ONIG_SRC="$RUNNER_TEMP/onig/onig-6.9.10" \
+          OUT="$PWD/$out/oniguruma_native.wasm" \
+            bash "$PKG_DIR/tool/prebuilt/build_wasm.sh"
+          ls -l "$out"
+
+      - name: Upload wasm artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: oniguruma-wasm
+          path: staging
+          if-no-files-found: error
+
   bundle:
     name: bundle
-    needs: build
+    needs: [build, wasm]
     runs-on: ubuntu-latest
     steps:
       - name: Download every individual artifact
@@ -128,8 +175,9 @@ jobs:
         run: |
           set -euo pipefail
           cd merged/prebuilt
-          # Paths relative to prebuilt/ — must match the build hook's lookup keys.
-          find . -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' \) \
+          # Paths relative to prebuilt/ — must match the build hook's lookup keys
+          # (the native libs) and include the wasm blob for the web backend.
+          find . -type f \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' -o -name '*.wasm' \) \
             | sed 's|^\./||' \
             | LC_ALL=C sort \
             | xargs sha256sum > checksums.sha256
@@ -143,7 +191,7 @@ jobs:
           echo "Assembled prebuilt/ tree:"
           find merged/prebuilt -type f | sort
           # Zip with the prebuilt/ dir at the archive root (checksums.sha256
-          # included) so it can be unzipped straight into packages/oniguruma_ffi/.
+          # included) so it can be unzipped straight into packages/oniguruma_native/.
           ( cd merged && zip -r -X ../oniguruma-prebuilt.zip prebuilt )
           echo "--- oniguruma-prebuilt.zip contents ---"
           unzip -l oniguruma-prebuilt.zip

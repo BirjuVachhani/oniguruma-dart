@@ -133,5 +133,35 @@
     "case-insens": 17542333.3,
     "backref-dup": 40092714.3,
     "greedy-dotstar": 11578636.4
+  },
+  "ONIG_WASM": {
+    "literal": 4500984.0,
+    "literal-unicode": 2754983.0,
+    "alt-5": 30968134.0,
+    "class-lower": 52259116.0,
+    "class-digit": 32711125.0,
+    "word-w": 48605416.0,
+    "two-words": 48256757.0,
+    "word-boundary": 51292600.0,
+    "email-like": 89389000.0,
+    "named-group": 54507566.0,
+    "case-insens": 38464577.0,
+    "backref-dup": 99334611.0,
+    "greedy-dotstar": 22114902.0
+  },
+  "ONIG_WASM_BULK": {
+    "literal": 3840309.0,
+    "literal-unicode": 2481737.0,
+    "alt-5": 27558012.0,
+    "class-lower": 37784375.0,
+    "class-digit": 32197119.0,
+    "word-w": 33699255.0,
+    "two-words": 41559970.0,
+    "word-boundary": 49232493.0,
+    "email-like": 88596375.0,
+    "named-group": 38930791.0,
+    "case-insens": 38036255.0,
+    "backref-dup": 97539527.0,
+    "greedy-dotstar": 21337454.0
   }
 }

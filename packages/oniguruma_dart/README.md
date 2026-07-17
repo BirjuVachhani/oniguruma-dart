@@ -184,22 +184,24 @@ Dart's built-in `RegExp` on nearly every pattern:
 
 It is even faster than the **native C library driven from Dart over FFI**: for
 bulk find-all-matches the String API is **~2× faster** than the sibling
-[`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi) package (which pays a UTF-16LE scan and an
+[`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native) package (which pays a UTF-16LE scan and an
 FFI crossing per match), winning on 12 of 13 patterns.
 
-![Geometric-mean scan time per engine, normalized to Oniguruma C (shorter is faster; dashed line = C). The port's byte (0.58×) and String (0.73×) APIs sit left of the C baseline; Dart RegExp and the FFI paths sit right of it.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
+![Geometric-mean scan time per engine, normalized to Oniguruma C (shorter is faster; dashed line = C). The port's byte (0.58×) and String (0.73×) APIs sit left of the C baseline; Dart RegExp, the FFI paths, and the web WebAssembly path sit right of it.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
 
 Throughput is workload-dependent, and a few pathological cases (heavy
-back-references) remain slower than C — and than `oniguruma_ffi`. Full
+back-references) remain slower than C — and than `oniguruma_native`. Full
 methodology, per-pattern tables, the FFI head-to-head, and an interactive chart
 are in [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md).
 
-## `oniguruma_dart` (pure Dart) vs `oniguruma_ffi` (native)
+## `oniguruma_dart` (pure Dart) vs `oniguruma_native` (native)
 
 This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 (`oniguruma_dart`, pure Dart) when you want:
 
-- **Web / WASM support** — runs anywhere Dart runs (dart2js, dart2wasm); FFI does not.
+- **The lightest, fastest web build** — pure Dart, so no embedded WebAssembly
+  module to download (the FFI package runs on web too, but ships a ~600 KB wasm
+  blob and is ~3× slower here for bulk scanning).
 - **Zero native setup** — no C toolchain, no build hooks, no prebuilt binaries to
   ship, no `flutter config --enable-native-assets`.
 - **Bulk matching** — `firstMatch` / `allMatches` / `replace` over `String` or
@@ -208,11 +210,12 @@ This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 - A **full idiomatic regex API**: named groups, captures, replace, and both
   `String` and byte offsets.
 
-Reach for **[`oniguruma_ffi`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_ffi)** instead when you need the real C
+Reach for **[`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native)** instead when you need the real C
 engine's exact behaviour — driving **TextMate grammars / Shiki** with
 vscode-oniguruma-compatible `OnigScanner` semantics, incremental tokenization
-(one match per call), or robustness on pathological backtracking — and you only
-target IO platforms (no web). See the [comparison in the root README](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/README.md#which-package-should-i-use)
+(one match per call), or robustness on pathological backtracking. It runs on
+every platform too (WebAssembly on web), just with a heavier web bundle. See the
+[comparison in the root README](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/README.md#which-package-should-i-use)
 and [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md) for the head-to-head.
 
 ## Contributing
