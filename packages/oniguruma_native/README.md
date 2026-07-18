@@ -105,21 +105,17 @@ runtime, with an optional one-line step to self-host it — see
 
 ## Usage
 
-Call `loadWasm()` once and `await` it before constructing a scanner. On web it
-loads the WebAssembly module (instantiation is asynchronous — see
-[Web (WebAssembly)](#web-webassembly)); on IO it is a **no-op**, so the same
-startup code is portable across every platform:
+An `OnigScanner` compiles several patterns at once and, from a position, returns
+the earliest / left-most match across all of them — the operation a TextMate /
+Shiki tokenizer performs per token. Match offsets are UTF-16 code units (matching
+Dart `String` indices).
 
 ```dart
 import 'package:oniguruma_native/oniguruma_native.dart';
 
 Future<void> main() async {
-  await loadWasm(); // web: loads the wasm module; IO: returns immediately
+  await loadWasm(); // once at startup — no-op on IO; on web see "Web Setup" below
 
-  print('oniguruma ${onigVersion()}'); // e.g. "6.9.10"
-
-  // A scanner compiles several patterns at once and, from a position, returns
-  // the earliest/left-most match across all of them — what a tokenizer does.
   final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
   final input = OnigString('ab 12');
 
@@ -133,8 +129,7 @@ Future<void> main() async {
     pos = span.end > pos ? span.end : pos + 1;
   }
 
-  // scanCount runs the whole non-overlapping scan inside the engine in a single
-  // crossing (one FFI call on IO / one JS→wasm call on web).
+  // scanCount runs the whole non-overlapping scan inside the engine in one call.
   print('total matches: ${scanner.scanCount(input)}');
 
   input.dispose();
@@ -142,14 +137,8 @@ Future<void> main() async {
 }
 ```
 
-After `loadWasm()` resolves, every call is synchronous on all platforms. Offsets
-are UTF-16 code units (matching Dart `String` indices). The engine runs Oniguruma
-in **UTF-8** — the encoding TextMate/VS Code grammars are authored against, so
-`\xHH` byte escapes match as intended — and maps the reported byte offsets back
-to UTF-16 indices via a per-string offset map (skipped entirely for ASCII).
-
 `OnigString` and `OnigScanner` hold native memory — call `dispose()` on each when
-you're done. A runnable version of the above is in
+you're done. A runnable version is in
 [`example/`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_native/example/oniguruma_native_example.dart).
 
 ### Low-level C API (Layer 0)
