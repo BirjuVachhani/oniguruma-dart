@@ -5,10 +5,11 @@ platform**, backed by the same C engine everywhere, in **two layers**:
 
 - **Layer 0 — the C API.** `onigNew`, `onigSearch`, `onigMatch`, `OnigRegion`,
   `OnigRegSet`, name/capture introspection and `onig_error_code_to_str`, mirroring
-  `oniguruma.h` with byte offsets, on **every platform** — bound directly via
-  `dart:ffi` on IO, and driven through flat-int shim accessors over the same
-  WebAssembly module on web. Shares its names with the sibling `oniguruma_dart`
-  package, so low-level code is swappable between them.
+  `oniguruma.h` with byte offsets, on **every platform** — driven through flat-int
+  C shim accessors (`dart:ffi` on IO, `dart:js_interop` over the WebAssembly
+  module on web), which keeps all struct/ABI handling in C and resolves on
+  Windows (whose DLLs export only the shim). Shares its names with the sibling
+  `oniguruma_dart` package, so low-level code is swappable between them.
 - **Layer 1 — the vscode scanner.** `OnigScanner`, `OnigString`,
   `OnigScannerMatch` (formerly `OnigMatch`) — the `vscode-oniguruma`-shaped API,
   with UTF-16 offsets, on every platform.

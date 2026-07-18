@@ -1,9 +1,14 @@
 /// Native (dart:ffi) implementation of the low-level Oniguruma C API (Layer 0).
 ///
-/// Binds the real `onig_*` functions directly (see [bindings]) and presents them
-/// with the same names/shapes as the sibling `oniguruma_dart` package, so
-/// low-level code is swappable between the two. Subjects and patterns are
-/// `Uint8List` with **byte offsets**, exactly like the C library.
+/// Drives the engine through the flat-int **shim accessors** (`onig_shim_*` in
+/// `src/oniguruma_shim.c`) rather than binding the raw `onig_*` symbols. On
+/// Windows a DLL only exports `__declspec(dllexport)` symbols, so the raw
+/// functions and the encoding/syntax data globals aren't resolvable there; the
+/// shim (which IS exported) keeps all struct/ABI/global handling in C and works
+/// on every platform. This is the same path the web backend uses, so the two
+/// backends share one ABI and this API matches `lowlevel_web.dart` and the
+/// pure-Dart `oniguruma_dart` exactly. Subjects/patterns are `Uint8List` with
+/// **byte offsets**.
 library;
 
 import 'dart:convert';
@@ -18,61 +23,82 @@ import 'lowlevel_common.dart';
 export 'lowlevel_common.dart' show OnigRegion, OnigException, RegSetLead;
 
 /// Default case-fold flag (`ONIGENC_CASE_FOLD_MIN`). Accepted by [onigNew] for
-/// signature parity with `oniguruma_dart`; the native `onig_new` always applies
-/// its own default fold, so a non-default value is a no-op in this backend.
+/// signature parity; the native `onig_new` always applies its own default fold,
+/// so a non-default value is a no-op in this backend.
 const int onigCaseFoldDefault = 1 << 30;
 
-/// A built-in character encoding (`OnigEncoding`). Only the encodings whose
-/// globals survive in the prebuilt libraries are available here (more require a
-/// prebuilt refresh); `oniguruma_dart` implements the full set.
+const int _capRegs = 64; // max capture groups read back per match
+const int _capNames = 32; // max group numbers read back per name
+
+/// A built-in character encoding (`OnigEncoding`), selected by shim id. Only the
+/// encodings whose globals survive in the prebuilt libraries are available here
+/// (more require a prebuilt refresh); `oniguruma_dart` implements the full set.
 class OnigEncoding {
-  OnigEncoding._(this._ptr, this.name);
-  final Pointer<c.OnigEncodingType> _ptr;
+  const OnigEncoding._(this.id, this.name);
+  final int id;
   final String name;
   @override
   String toString() => 'OnigEncoding($name)';
 }
 
-/// A built-in syntax (`OnigSyntaxType*`).
+/// A built-in syntax (`OnigSyntaxType*`), selected by shim id.
 class OnigSyntax {
-  OnigSyntax._(this._ptr, this.name);
-  final Pointer<c.OnigSyntaxTypeStruct> _ptr;
+  const OnigSyntax._(this.id, this.name);
+  final int id;
   final String name;
   @override
   String toString() => 'OnigSyntax($name)';
 }
 
-final OnigEncoding utf8Encoding = OnigEncoding._(
-  Native.addressOf<c.OnigEncodingType>(c.gEncUtf8),
-  'UTF-8',
-);
-final OnigEncoding asciiEncoding = OnigEncoding._(
-  Native.addressOf<c.OnigEncodingType>(c.gEncAscii),
-  'US-ASCII',
-);
-
-final OnigSyntax onigSyntaxOniguruma = OnigSyntax._(
-  Native.addressOf<c.OnigSyntaxTypeStruct>(c.gSynOniguruma),
-  'Oniguruma',
-);
-final OnigSyntax onigSyntaxRuby = OnigSyntax._(
-  Native.addressOf<c.OnigSyntaxTypeStruct>(c.gSynRuby),
-  'Ruby',
-);
+const OnigEncoding utf8Encoding = OnigEncoding._(0, 'UTF-8');
+const OnigEncoding asciiEncoding = OnigEncoding._(1, 'US-ASCII');
+const OnigSyntax onigSyntaxOniguruma = OnigSyntax._(0, 'Oniguruma');
+const OnigSyntax onigSyntaxRuby = OnigSyntax._(1, 'Ruby');
 
 /// The default syntax (`ONIG_SYNTAX_DEFAULT`), i.e. Oniguruma.
-final OnigSyntax onigSyntaxDefault = onigSyntaxOniguruma;
+const OnigSyntax onigSyntaxDefault = onigSyntaxOniguruma;
+
+Pointer<Uint8> _copyBytes(Uint8List src, int len) {
+  final p = malloc<Uint8>(len == 0 ? 1 : len);
+  if (len > 0) p.asTypedList(len).setRange(0, len, src);
+  return p;
+}
+
+String _errorMessage(int code) {
+  final buf = malloc<Uint8>(96);
+  try {
+    final len = c.shimErrorString(code, buf, 90);
+    if (len <= 0) return 'Oniguruma error $code';
+    return utf8.decode(buf.asTypedList(len), allowMalformed: true);
+  } finally {
+    malloc.free(buf);
+  }
+}
+
+void _readRegion(
+  Pointer<Int32> nr,
+  Pointer<Int32> beg,
+  Pointer<Int32> end,
+  OnigRegion region,
+) {
+  final n = nr.value;
+  region.resize(n);
+  for (var i = 0; i < n; i++) {
+    region.beg[i] = beg[i];
+    region.end[i] = end[i];
+  }
+}
 
 /// A compiled pattern (`regex_t*`). Holds native memory; call [dispose] when
 /// done (unless it was handed to an [OnigRegSet], which then owns it).
 class Regex {
   Regex._(this._ptr);
 
-  final Pointer<c.OnigRegexT> _ptr;
+  final Pointer<c.ShimRegex> _ptr;
   bool _freed = false;
   bool _ownedBySet = false;
 
-  Pointer<c.OnigRegexT> get _handle {
+  Pointer<c.ShimRegex> get _handle {
     if (_freed) throw StateError('Regex used after dispose()');
     return _ptr;
   }
@@ -82,37 +108,7 @@ class Regex {
   void dispose() {
     if (_freed || _ownedBySet) return;
     _freed = true;
-    c.onigFree(_ptr);
-  }
-}
-
-String _errorMessage(int code) {
-  const maxLen = 90; // ONIG_MAX_ERROR_MESSAGE_LEN
-  final buf = malloc<Uint8>(maxLen + 1);
-  try {
-    final len = c.onigErrorCodeToStr(buf, code);
-    if (len <= 0) return 'Oniguruma error $code';
-    return utf8.decode(buf.asTypedList(len), allowMalformed: true);
-  } finally {
-    malloc.free(buf);
-  }
-}
-
-Pointer<Uint8> _copyBytes(Uint8List src, int len) {
-  final p = malloc<Uint8>(len == 0 ? 1 : len);
-  if (len > 0) p.asTypedList(len).setRange(0, len, src);
-  return p;
-}
-
-void _copyRegionOut(Pointer<c.OnigRegionStruct> src, OnigRegion dst) {
-  final ref = src.ref;
-  final nr = ref.numRegs;
-  dst.resize(nr);
-  final beg = ref.beg;
-  final end = ref.end;
-  for (var i = 0; i < nr; i++) {
-    dst.beg[i] = beg[i];
-    dst.end[i] = end[i];
+    c.shimRegexFree(_ptr);
   }
 }
 
@@ -127,25 +123,17 @@ Regex onigNew(
   int caseFoldFlag = onigCaseFoldDefault,
 }) {
   final patPtr = _copyBytes(pattern, end);
-  final regOut = malloc<Pointer<c.OnigRegexT>>();
+  final errOut = malloc<Int32>();
   try {
-    final r = c.onigNew(
-      regOut,
-      patPtr,
-      patPtr + end,
-      options,
-      enc._ptr,
-      syntax._ptr,
-      nullptr, // OnigErrorInfo* — omitted; message via onig_error_code_to_str
-    );
-    if (r != 0) {
-      // 0 == ONIG_NORMAL
-      throw OnigException(r, _errorMessage(r));
+    final handle = c.shimRegexNew(patPtr, end, options, enc.id, syntax.id, errOut);
+    if (handle == nullptr) {
+      final code = errOut.value;
+      throw OnigException(code, _errorMessage(code));
     }
-    return Regex._(regOut.value);
+    return Regex._(handle);
   } finally {
     malloc.free(patPtr);
-    malloc.free(regOut);
+    malloc.free(errOut);
   }
 }
 
@@ -162,22 +150,29 @@ int onigSearch(
   int option = 0,
 }) {
   final sp = _copyBytes(str, str.length);
-  final nreg = c.onigRegionNew();
+  final nr = malloc<Int32>();
+  final beg = malloc<Int32>(_capRegs);
+  final endp = malloc<Int32>(_capRegs);
   try {
-    final r = c.onigSearch(
+    final r = c.shimSearch(
       reg._handle,
       sp,
-      sp + end,
-      sp + start,
-      sp + range,
-      nreg,
+      end,
+      start,
+      range,
       option,
+      nr,
+      beg,
+      endp,
+      _capRegs,
     );
-    if (r >= 0 && region != null) _copyRegionOut(nreg, region);
+    if (r >= 0 && region != null) _readRegion(nr, beg, endp, region);
     return r;
   } finally {
-    c.onigRegionFree(nreg, 1);
     malloc.free(sp);
+    malloc.free(nr);
+    malloc.free(beg);
+    malloc.free(endp);
   }
 }
 
@@ -192,67 +187,52 @@ int onigMatch(
   int option = 0,
 }) {
   final sp = _copyBytes(str, str.length);
-  final nreg = c.onigRegionNew();
+  final nr = malloc<Int32>();
+  final beg = malloc<Int32>(_capRegs);
+  final endp = malloc<Int32>(_capRegs);
   try {
-    final r = c.onigMatch(reg._handle, sp, sp + end, sp + at, nreg, option);
-    if (r >= 0 && region != null) _copyRegionOut(nreg, region);
+    final r = c.shimMatch(reg._handle, sp, end, at, option, nr, beg, endp, _capRegs);
+    if (r >= 0 && region != null) _readRegion(nr, beg, endp, region);
     return r;
   } finally {
-    c.onigRegionFree(nreg, 1);
     malloc.free(sp);
+    malloc.free(nr);
+    malloc.free(beg);
+    malloc.free(endp);
   }
 }
 
-/// Number of capture groups in [reg], excluding the whole match
-/// (`onig_number_of_captures`).
-int onigNumberOfCaptures(Regex reg) => c.onigNumberOfCaptures(reg._handle);
+/// Number of capture groups in [reg], excluding the whole match.
+int onigNumberOfCaptures(Regex reg) => c.shimNumberOfCaptures(reg._handle);
 
-/// Number of distinct group names in [reg] (`onig_number_of_names`).
-int onigNumberOfNames(Regex reg) => c.onigNumberOfNames(reg._handle);
+/// Number of distinct group names in [reg].
+int onigNumberOfNames(Regex reg) => c.shimNumberOfNames(reg._handle);
 
-/// The capture-group numbers bound to [name] in [reg]
-/// (`onig_name_to_group_numbers`). Empty if [name] is not a group name.
+/// The capture-group numbers bound to [name] in [reg]. Empty if not a name.
 List<int> onigNameToGroupNumbers(Regex reg, String name) {
   final nb = utf8.encode(name);
   final np = _copyBytes(nb, nb.length);
-  final numsOut = malloc<Pointer<Int32>>();
+  final out = malloc<Int32>(_capNames);
   try {
-    final count = c.onigNameToGroupNumbers(
-      reg._handle,
-      np,
-      np + nb.length,
-      numsOut,
-    );
+    final count = c.shimNameToGroupNumbers(reg._handle, np, nb.length, out, _capNames);
     if (count <= 0) return const <int>[];
-    final arr = numsOut.value; // owned by the regex — do not free
-    return List<int>.generate(count, (i) => arr[i]);
+    final n = count > _capNames ? _capNames : count;
+    return List<int>.generate(n, (i) => out[i]);
   } finally {
     malloc.free(np);
-    malloc.free(numsOut);
+    malloc.free(out);
   }
 }
 
-/// The backref group number for [name] (`onig_name_to_backref_number`); uses
-/// [region] to disambiguate a duplicated name. Returns a negative code when the
-/// name is undefined.
+/// The backref group number for [name] (`onig_name_to_backref_number`). The
+/// [region] disambiguation argument is ignored in this backend. Returns a
+/// negative code when the name is undefined.
 int onigNameToBackrefNumber(Regex reg, String name, [OnigRegion? region]) {
   final nb = utf8.encode(name);
   final np = _copyBytes(nb, nb.length);
-  Pointer<c.OnigRegionStruct> nreg = nullptr;
   try {
-    if (region != null) {
-      nreg = c.onigRegionNew();
-      c.onigRegionResize(nreg, region.numRegs);
-      final ref = nreg.ref;
-      ref.numRegs = region.numRegs;
-      for (var i = 0; i < region.numRegs; i++) {
-        ref.beg[i] = region.beg[i];
-        ref.end[i] = region.end[i];
-      }
-    }
-    return c.onigNameToBackrefNumber(reg._handle, np, np + nb.length, nreg);
+    return c.shimNameToBackrefNumber(reg._handle, np, nb.length);
   } finally {
-    if (nreg != nullptr) c.onigRegionFree(nreg, 1);
     malloc.free(np);
   }
 }
@@ -263,17 +243,14 @@ int onigNameToBackrefNumber(Regex reg, String name, [OnigRegion? region]) {
 /// it, and the regex's own [Regex.dispose] becomes a no-op.
 class OnigRegSet {
   OnigRegSet() {
-    final out = malloc<Pointer<c.OnigRegSetT>>();
-    try {
-      final r = c.onigRegsetNew(out, 0, nullptr);
-      if (r != 0) throw OnigException(r, _errorMessage(r));
-      _set = out.value;
-    } finally {
-      malloc.free(out);
+    final h = c.shimRegsetNew();
+    if (h == nullptr) {
+      throw const OnigException(-1, 'onig_regset_new failed');
     }
+    _set = h;
   }
 
-  late final Pointer<c.OnigRegSetT> _set;
+  late final Pointer<c.ShimRegSet> _set;
   final List<Regex> _regexes = <Regex>[];
   bool _freed = false;
 
@@ -283,9 +260,8 @@ class OnigRegSet {
   /// Match start byte offset of the most recent successful [search].
   int matchPos = -1;
 
-  /// Add a compiled pattern (`onig_regset_add`); returns its index.
   int add(Regex reg) {
-    final r = c.onigRegsetAdd(_set, reg._handle);
+    final r = c.shimRegsetAdd(_set, reg._handle);
     if (r != 0) throw OnigException(r, _errorMessage(r));
     reg._ownedBySet = true;
     _regexes.add(reg);
@@ -295,9 +271,6 @@ class OnigRegSet {
   int get length => _regexes.length;
   Regex operator [](int i) => _regexes[i];
 
-  /// Search all patterns over `[start, range)` within `[0, end)`
-  /// (`onig_regset_search`). Returns the matching pattern index (and sets
-  /// [region] + [matchPos]), or -1 for no match / a negative error code.
   int search(
     Uint8List str,
     int end,
@@ -306,29 +279,38 @@ class OnigRegSet {
     RegSetLead lead = RegSetLead.positionLead,
   }) {
     final sp = _copyBytes(str, str.length);
-    final rmatch = malloc<Int32>();
+    final mp = malloc<Int32>();
+    final nr = malloc<Int32>();
+    final beg = malloc<Int32>(_capRegs);
+    final endp = malloc<Int32>(_capRegs);
     try {
-      final idx = c.onigRegsetSearch(
+      final idx = c.shimRegsetSearch(
         _set,
         sp,
-        sp + end,
-        sp + start,
-        sp + range,
+        end,
+        start,
+        range,
         lead == RegSetLead.regexLead ? 1 : 0,
         0,
-        rmatch,
+        mp,
+        nr,
+        beg,
+        endp,
+        _capRegs,
       );
       if (idx >= 0) {
-        matchPos = rmatch.value;
-        final out = region ??= OnigRegion();
-        _copyRegionOut(c.onigRegsetGetRegion(_set, idx), out);
+        matchPos = mp.value;
+        _readRegion(nr, beg, endp, region ??= OnigRegion());
       } else {
         matchPos = -1;
       }
       return idx;
     } finally {
       malloc.free(sp);
-      malloc.free(rmatch);
+      malloc.free(mp);
+      malloc.free(nr);
+      malloc.free(beg);
+      malloc.free(endp);
     }
   }
 
@@ -336,6 +318,6 @@ class OnigRegSet {
   void dispose() {
     if (_freed) return;
     _freed = true;
-    c.onigRegsetFree(_set);
+    c.shimRegsetFree(_set);
   }
 }

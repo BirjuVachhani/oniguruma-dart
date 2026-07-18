@@ -15,7 +15,7 @@ Regex _compile(String pattern, {int options = 0}) {
 Uint8List _b(String s) => Uint8List.fromList(utf8.encode(s));
 
 void main() {
-  group('Layer 0 (raw onig_* over FFI)', () {
+  group('Layer 0 (onig_* over the FFI shim)', () {
     test('onigNew + onigSearch fills a region with byte offsets', () {
       final r = _compile(r'(\d+)-(\d+)');
       final str = _b('ab 12-345 cd');

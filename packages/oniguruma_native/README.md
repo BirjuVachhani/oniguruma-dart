@@ -11,8 +11,8 @@ tooling ecosystem uses:
 
 - **Layer 0 — the C API.** `onigNew`, `onigSearch`, `onigMatch`, `OnigRegion`,
   `OnigRegSet` and friends, mirroring `oniguruma.h` with byte offsets. On every
-  platform — `dart:ffi` binds the raw `onig_*` on IO; the web backend drives the
-  same engine through flat-int shim accessors.
+  platform, over the same flat-int C shim accessors — `dart:ffi` on IO,
+  `dart:js_interop` on web.
 - **Layer 1 — the vscode scanner.** `OnigScanner`, `OnigString`,
   `OnigScannerMatch` — the `vscode-oniguruma`-shaped surface a TextMate / Shiki
   tokenizer drives, with UTF-16 offsets. Works on every platform.
@@ -155,10 +155,11 @@ you're done. A runnable version of the above is in
 ### Low-level C API (Layer 0)
 
 When you need the raw engine rather than a scanner, the `onig_*` surface mirrors
-`oniguruma.h` (byte offsets, `Uint8List` subjects) on every platform — bound
-directly via `dart:ffi` on IO, and driven through flat-int shim accessors on web.
-This is the same API `oniguruma_dart` exposes, so low-level code is swappable
-between the two packages. On web, `await loadWasm()` first (as for the scanner).
+`oniguruma.h` (byte offsets, `Uint8List` subjects) on every platform — driven
+through the same flat-int C shim accessors (`dart:ffi` on IO, `dart:js_interop`
+on web). This is the same API `oniguruma_dart` exposes, so low-level code is
+swappable between the two packages. On web, `await loadWasm()` first (as for the
+scanner).
 
 ```dart
 import 'dart:convert';
