@@ -12,6 +12,19 @@ callouts, `\p{Script}`, multi-character case folds, ~28 text encodings, and a
 choice of regex dialects (Ruby, Perl, Java, Python, grep, POSIX, …) — behind an
 idiomatic `String` API that works just like `dart:core`'s `RegExp`.
 
+Three API surfaces, all pure Dart:
+
+- **`OnigRegex`** — the idiomatic `String` API (`firstMatch` / `allMatches` /
+  `replace`), the default choice ([Usage](#usage)).
+- **`OnigScanner`** — a `vscode-oniguruma`-shaped multi-pattern scanner for
+  **TextMate-grammar / Shiki** tokenizers; the same surface the sibling FFI
+  package [`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native)
+  exposes, so tokenizer code is swappable between them
+  ([Scanner](#scanner-vscode-oniguruma--textmate-grammars)).
+- **The low-level byte C API** — `onigNew` / `onigSearch` / `onigMatch` /
+  `OnigRegion` / `OnigRegSet`, mirroring `oniguruma.h` with byte offsets
+  ([byte API](#non-utf-8-text--the-low-level-byte-api)).
+
 ## Features
 
 ### Why this over the built-in `RegExp`?
