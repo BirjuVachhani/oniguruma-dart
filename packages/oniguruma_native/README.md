@@ -86,22 +86,23 @@ import 'package:oniguruma_native/oniguruma_native.dart';
 On IO the native library is provided by a Dart build hook: it bundles a
 SHA-256-verified prebuilt for your target when one ships (macOS, iOS, Linux,
 Android, Windows), otherwise it downloads and compiles the pinned Oniguruma
-source (which needs a C toolchain). On web the WebAssembly module is embedded in
-the package, so nothing needs to be hosted or fetched — see
+source (which needs a C toolchain). On web the WebAssembly module is fetched at
+runtime, with an optional one-line step to self-host it — see
 [How the native build works](#how-the-native-build-works) and
 [Web (WebAssembly)](#web-webassembly).
 
 ## Usage
 
 Call `loadWasm()` once and `await` it before constructing a scanner. On web it
-loads the embedded WebAssembly module (instantiation is asynchronous); on IO it
-is a **no-op**, so the same startup code is portable across every platform:
+loads the WebAssembly module (instantiation is asynchronous — see
+[Web (WebAssembly)](#web-webassembly)); on IO it is a **no-op**, so the same
+startup code is portable across every platform:
 
 ```dart
 import 'package:oniguruma_native/oniguruma_native.dart';
 
 Future<void> main() async {
-  await loadWasm(); // web: loads the embedded module; IO: returns immediately
+  await loadWasm(); // web: loads the wasm module; IO: returns immediately
 
   print('oniguruma ${onigVersion()}'); // e.g. "6.9.10"
 
@@ -154,11 +155,11 @@ This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
   backtracker (e.g. it is ~3× faster than the pure-Dart port on `backref-dup`).
 
 Reach for **[`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)** (pure Dart) instead when you
-want **zero native setup** (no build hooks or prebuilt binaries), a **smaller web
-bundle** (this package embeds a ~600 KB WebAssembly module), or are doing **bulk
-matching** — for scanning a whole input for every match, the pure-Dart port is
-about **2× faster** than this package and works everywhere Dart runs. Both
-packages run on web; on web `oniguruma_dart` is the lighter, faster choice.
+want **zero native setup** (no build hooks or prebuilt binaries), a **lighter web
+story** (no separate ~600 KB WebAssembly module to fetch or host), or are doing
+**bulk matching** — for scanning a whole input for every match, the pure-Dart
+port is about **2× faster** than this package and works everywhere Dart runs.
+Both packages run on web; on web `oniguruma_dart` is the lighter, faster choice.
 
 Why pure Dart wins bulk scanning: this package's `findNextMatch` API costs one
 **FFI crossing per match**, and each non-ASCII result is translated through a
@@ -205,30 +206,74 @@ patterns are marshalled into its heap through the module's own `malloc`/`free` �
 the same UTF-8 bytes the FFI backend passes natively — so results are
 byte-identical to the native engine.
 
-- **Call `await loadWasm()` once** before constructing a scanner. Instantiation
-  is asynchronous (browsers won't instantiate a module this size synchronously on
-  the main thread), so this step is required on web; it is a no-op on IO.
-- **Zero setup by default** — the wasm module is embedded in the package, so
-  nothing needs to be hosted or fetched.
-- **Bring your own module** to trim your bundle: `await loadWasm(bytes: ...)`
-  (e.g. from a Flutter asset via `rootBundle`) or `await loadWasm(url: ...)`.
+**Call `await loadWasm()` once** before constructing a scanner. Instantiation is
+asynchronous (browsers won't instantiate a module this size synchronously on the
+main thread), so this step is required on web; it is a no-op on IO.
+
+### Web Setup
+
+The WebAssembly module (~600 KB) is **not** bundled into your app — it ships as a
+per-version asset on this package's GitHub Release. On web, `loadWasm()` loads a
+local `web/oniguruma_native.wasm` if present and otherwise falls back to that
+release asset, so it works with **zero setup**. For production, self-host it (one
+command): that streaming-compiles the module, lets the browser cache the compiled
+code, and works **offline and under a strict CSP** (no third-party fetch).
+
+**Steps**
+
+1. Add the dependency:
+
+   ```console
+   dart pub add oniguruma_native      # or: flutter pub add oniguruma_native
+   ```
+
+2. Download the module into your app's `web/` directory:
+
+   ```console
+   dart run oniguruma_native:setup
+   ```
+
+   This fetches the `oniguruma_native.wasm` matching your installed version,
+   verifies it against the package's SHA-256 manifest, and writes
+   `web/oniguruma_native.wasm`.
+
+3. Commit `web/oniguruma_native.wasm` — or add it to `.gitignore` and run the
+   command from step 2 in CI before building for web.
+
+4. Load it once at startup, before constructing a scanner:
+
+   ```dart
+   await loadWasm(); // fetches web/oniguruma_native.wasm; a no-op on IO
+   ```
+
+**How `loadWasm()` resolves the module** (first match wins):
+
+1. `loadWasm(bytes: ...)` / `loadWasm(url: ...)` — a module you supply explicitly.
+2. `web/oniguruma_native.wasm` — the local copy from step 2 (the default; served
+   from your app's web root).
+3. The version-matched **GitHub Release** asset — the zero-setup fallback used
+   when no local copy is found.
+
+One file serves both the JS (dart2js) and WasmGC (dart2wasm) builds. To host the
+module on your own CDN pass `loadWasm(url: ...)`; to supply raw bytes (e.g. a
+Flutter asset via `rootBundle`) pass `loadWasm(bytes: ...)`.
 
 Web is the portability option, not the speed option. The wasm build runs at
 roughly **2.3× native C** for a bulk scan (the same engine is ~1.7× slower as
-sandboxed wasm than as native machine code), carries the embedded module
-(~600 KB), and marshals across the JS boundary — measured under Node/V8, the
-engine Chrome runs; see the
+sandboxed wasm than as native machine code) and marshals across the JS boundary —
+measured under Node/V8, the engine Chrome runs; see the
 [web head-to-head in `benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md#web-oniguruma_native-webassembly-vs-the-pure-dart-port).
 If you only target web and want the smallest, fastest option, prefer the
 pure-Dart [`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)
-(about **3× faster** here, with no wasm blob to download).
+(about **3× faster** here, with no wasm module to fetch).
 
 ## Status
 
 Version 1.0.0. Native backend verified on macOS/arm64; the WebAssembly backend
 verified in Chrome under both dart2js and dart2wasm (byte-identical offsets to
 native). Prebuilt native binaries and the wasm module are regenerated by the
-`prebuild-oniguruma` workflow.
+`refresh-prebuilts` workflow; the wasm is published to the GitHub Release (and
+fetched by `dart run oniguruma_native:setup` / `loadWasm`) by `release-wasm`.
 
 ## License
 

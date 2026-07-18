@@ -10,8 +10,9 @@ import 'package:oniguruma_native/oniguruma_native.dart';
 
 Future<void> main() async {
   // On web, the WebAssembly module is instantiated asynchronously, so load it
-  // once before use. On IO (dart:ffi) this is a no-op, so the same startup code
-  // is portable across every platform.
+  // once before use. It resolves a local `web/oniguruma_native.wasm` (created by
+  // `dart run oniguruma_native:setup`) or falls back to the GitHub Release. On IO
+  // (dart:ffi) this is a no-op, so the same startup code is portable everywhere.
   await loadWasm();
 
   print('oniguruma ${onigVersion()}');

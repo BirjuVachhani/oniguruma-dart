@@ -16,28 +16,55 @@ library;
 
 import 'dart:typed_data';
 
+import 'release.dart';
 import 'types.dart';
 import 'utf8_offsets.dart';
-import 'web/oniguruma_wasm.g.dart';
 import 'web/wasm_bindings.dart';
 
 /// Loads the Oniguruma WebAssembly module. Call once, and `await` it, before
 /// using [OnigScanner]/[OnigString] on web.
 ///
-/// By default the module embedded in the package is used (zero setup). To trim
-/// your web bundle you may instead supply your own copy — pass raw [bytes], or
-/// a [url] the module is fetched from. Idempotent; a second call returns
-/// immediately.
+/// Resolution order:
+/// 1. [bytes] — instantiate the module you supply directly.
+/// 2. [url] — fetch and instantiate from that URL (used as-is; no fallback).
+/// 3. Otherwise the **default**: fetch `oniguruma_native.wasm` from the app's
+///    web root — where `dart run oniguruma_native:setup` writes it — and, if
+///    that isn't present (setup was never run), fall back to the version-matched
+///    module on the GitHub Release. So web works with zero setup, and running
+///    `setup` upgrades you to a locally-hosted, cached, offline/CSP-friendly copy.
+///
+/// Idempotent; a second call returns immediately.
 ///
 /// On IO platforms this is a no-op (the FFI backend needs no loading); the
 /// symbol exists so cross-platform startup code can `await loadWasm()`
 /// unconditionally.
 Future<void> loadWasm({Uint8List? bytes, String? url}) async {
   if (OnigWasmModule.isLoaded) return;
-  final wasm =
-      bytes ??
-      (url != null ? await OnigWasmModule.fetchBytes(url) : onigWasmBytes());
-  await OnigWasmModule.load(wasm);
+  if (bytes != null) {
+    await OnigWasmModule.load(bytes);
+    return;
+  }
+  if (url != null) {
+    await OnigWasmModule.loadFromUrl(url); // explicit URL: honour it, no fallback
+    return;
+  }
+  // Default: the locally-hosted copy first, then the release-asset fallback.
+  try {
+    await OnigWasmModule.loadFromUrl(wasmAssetName);
+  } catch (localErr) {
+    final release = releaseWasmUrl();
+    try {
+      await OnigWasmModule.loadFromUrl(release);
+    } catch (releaseErr) {
+      throw StateError(
+        "Could not load '$wasmAssetName'. Tried the local copy (run "
+        '`dart run oniguruma_native:setup` to create it in web/) and the '
+        "release fallback '$release'. Check your network/CSP, or pass "
+        'loadWasm(bytes: ...) / loadWasm(url: ...) with your own module. '
+        'Local error: $localErr; release error: $releaseErr',
+      );
+    }
+  }
 }
 
 /// The linked Oniguruma version (e.g. `6.9.10`). Requires [loadWasm].

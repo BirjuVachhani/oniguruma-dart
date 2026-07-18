@@ -16,9 +16,12 @@ platform**, behind one vscode-oniguruma-compatible API (`OnigScanner`,
   it loads the WebAssembly module (instantiation is asynchronous); on IO it is a
   no-op, so cross-platform startup code can call it unconditionally. After it
   resolves, every call is synchronous everywhere.
-- The wasm module is **embedded in the package** (base64), so web is zero-setup.
-  To trim your bundle, pass your own module to `loadWasm(bytes: ...)` or
-  `loadWasm(url: ...)`.
+- The wasm module is **published as a per-version GitHub Release asset**, not
+  embedded. `loadWasm()` fetches it — a local `web/oniguruma_native.wasm` if
+  present, otherwise the version-matched release asset — so web works with zero
+  setup. Run `dart run oniguruma_native:setup` to download and self-host it in
+  `web/` (streaming-compiled, browser-cached, offline/CSP-friendly). Override
+  with `loadWasm(bytes: ...)` / `loadWasm(url: ...)`.
 - vscode-oniguruma-compatible multi-pattern scanning: `OnigScanner.findNextMatch`
   runs the whole scan loop inside the engine (in C on IO, in wasm on web), so
   there is exactly one boundary crossing per query.

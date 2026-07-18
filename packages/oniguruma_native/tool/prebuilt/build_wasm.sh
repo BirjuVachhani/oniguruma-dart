@@ -6,8 +6,9 @@
 # local verification; not part of the published package.
 #
 # The web backend (lib/src/backend_web.dart) drives this module over
-# dart:js_interop; the embedded copy shipped to pub is the base64 of this file,
-# produced by tool/gen_wasm_embed.dart.
+# dart:js_interop. This blob is committed under prebuilt/web/ and published to
+# the GitHub Release by the release-wasm workflow; consumers fetch it via
+# `dart run oniguruma_native:setup` (or loadWasm's runtime fallback).
 #
 # Usage:
 #   WASI_SDK=/path/to/wasi-sdk ONIG_SRC=/path/to/onig-6.9.10 \

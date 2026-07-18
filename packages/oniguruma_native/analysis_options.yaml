@@ -5,8 +5,3 @@
 # See https://dart.dev/go/core-lints and https://dart.dev/tools/analysis.
 
 include: package:lints/recommended.yaml
-
-analyzer:
-  exclude:
-    # Generated: base64 of the embedded wasm module (see tool/gen_wasm_embed.dart).
-    - lib/src/web/oniguruma_wasm.g.dart

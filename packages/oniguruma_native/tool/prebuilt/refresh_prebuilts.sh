@@ -108,10 +108,8 @@ log "Installing into $PKG/prebuilt ..."
 rsync -a --exclude='.DS_Store' --exclude='checksums.sha256' \
   "$tmp/extract/prebuilt/" "$PKG/prebuilt/"
 
-# The package ships the wasm as a base64 embed, not the raw module — regenerate.
-log "Regenerating wasm embed (lib/src/web/oniguruma_wasm.g.dart) ..."
-( cd "$PKG" && dart run tool/gen_wasm_embed.dart )
-
+# The web wasm (prebuilt/web/*.wasm) is committed and published to the GitHub
+# Release by the release-wasm workflow — no embed step to regenerate.
 log "Regenerating checksums.sha256 ..."
 bash "$PKG/tool/prebuilt/gen_checksums.sh" >/dev/null
 
@@ -122,9 +120,7 @@ log "Verifying integrity ..."
 # --- summary ----------------------------------------------------------------
 echo
 log "Done. Review and commit the refreshed files:"
-git -C "$REPO_ROOT" status --short -- \
-  "$PKG/prebuilt" "$PKG/lib/src/web/oniguruma_wasm.g.dart"
+git -C "$REPO_ROOT" status --short -- "$PKG/prebuilt"
 echo
-echo "    git add packages/oniguruma_native/prebuilt \\"
-echo "            packages/oniguruma_native/lib/src/web/oniguruma_wasm.g.dart"
+echo "    git add packages/oniguruma_native/prebuilt"
 echo "    git commit -m 'chore: refresh oniguruma_native prebuilt binaries'"

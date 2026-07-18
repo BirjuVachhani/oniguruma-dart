@@ -4,9 +4,10 @@
 # it also lists the build/editor artifacts (normally handled by .gitignore) to
 # keep the archive correct even when publishing from a fresh checkout.
 #
-# What DOES ship: lib/, hook/build.dart, src/oniguruma_shim.c, src/config/,
-# prebuilt/**, pubspec.yaml, README.md. The prebuilt libraries are the whole
-# point of the package; make sure nothing below matches them.
+# What DOES ship: lib/, bin/setup.dart, hook/build.dart, src/oniguruma_shim.c,
+# src/config/, prebuilt/** (minus the raw web wasm), pubspec.yaml, README.md. The
+# prebuilt libraries are the whole point of the package; make sure nothing below
+# matches them.
 
 # Build artifacts and caches.
 build/
@@ -34,7 +35,9 @@ tool/
 
 # Dev-only: the mainstream benchmark harness (built via `dart build cli` and
 # driven by ../oniguruma_dart/benchmark/ffi_bench.py); not a package executable.
-bin/
+# NOTE: bin/setup.dart MUST ship — it is the `dart run oniguruma_native:setup`
+# command consumers run to fetch the web wasm — so exclude only the benchmark.
+bin/mainstream_bench.dart
 
 # `dart build cli` output bundle.
 build/
@@ -44,10 +47,10 @@ build/
 # tool/prebuilt/; listed explicitly for clarity.
 tool/prebuilt/
 
-# The raw web wasm blob is embedded into lib/src/web/oniguruma_wasm.g.dart as
-# base64 (that .g.dart is what the web backend loads), so shipping the raw
-# .wasm too would just duplicate ~600 KB in the archive. Keep it in git for
-# provenance, but exclude it from the published package.
+# The web wasm blob is delivered to consumers as a GitHub Release asset — fetched
+# by `dart run oniguruma_native:setup`, or at runtime by loadWasm's fallback — not
+# shipped in the pub archive. Keep it in git for provenance and so the release
+# workflow can upload it; exclude it from the published package.
 prebuilt/web/
 
 # The Oniguruma C sources are never vendored; the build hook downloads them

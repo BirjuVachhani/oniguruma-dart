@@ -12,7 +12,10 @@ import 'package:test/test.dart';
 ///   dart test test/oniguruma_web_test.dart -p chrome -c dart2wasm
 void main() {
   setUpAll(() async {
-    await loadWasm(); // instantiate the embedded module once
+    // The module is no longer embedded; load the committed blob served by the
+    // package:test browser server (rooted at the package directory). Streaming
+    // needs application/wasm; loadFromUrl falls back to a plain fetch otherwise.
+    await loadWasm(url: '/prebuilt/web/oniguruma_native.wasm');
   });
 
   test('loadWasm is idempotent', () async {

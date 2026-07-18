@@ -6,10 +6,12 @@ name: refresh-prebuilts
 #   * builds the self-contained oniguruma_native library for every platform/arch
 #     and the wasm32-wasi module,
 #   * installs them into packages/oniguruma_native/prebuilt/ (replacing the old
-#     binaries — no stale files left behind),
-#   * regenerates the embedded wasm (lib/src/web/oniguruma_wasm.g.dart) and the
-#     SHA-256 manifest,
+#     binaries — no stale files left behind, including prebuilt/web/*.wasm),
+#   * regenerates the SHA-256 manifest,
 #   * commits and pushes to the dispatched branch.
+#
+# The web wasm is committed under prebuilt/web/ (not embedded); the release-wasm
+# workflow uploads it to the GitHub Release for consumers to fetch.
 #
 # Manual only. Dispatch it from the branch that carries the source you want baked
 # in (CI compiles the shim from that ref). The follow-up test workflow then runs
@@ -160,11 +162,6 @@ jobs:
         with:
           ref: ${{ github.ref }}
 
-      - name: Set up Dart
-        uses: dart-lang/setup-dart@v1
-        with:
-          sdk: "3.12.2"
-
       - name: Download every build artifact
         uses: actions/download-artifact@v4
         with:
@@ -190,11 +187,6 @@ jobs:
           rsync -a --exclude='.DS_Store' --exclude='checksums.sha256' \
             merged/prebuilt/ "$dst"/
 
-      - name: Regenerate wasm embed
-        shell: bash
-        # Direct file run (not `dart run`) → no native-asset build hook, no pub get.
-        run: dart "$PKG_DIR/tool/gen_wasm_embed.dart"
-
       - name: Regenerate checksum manifest
         shell: bash
         run: bash "$PKG_DIR/tool/prebuilt/gen_checksums.sh"
@@ -215,7 +207,7 @@ jobs:
           set -euo pipefail
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add "$PKG_DIR/prebuilt" "$PKG_DIR/lib/src/web/oniguruma_wasm.g.dart"
+          git add "$PKG_DIR/prebuilt"
           if git diff --cached --quiet; then
             echo "Prebuilts already up to date — nothing to commit."
             exit 0

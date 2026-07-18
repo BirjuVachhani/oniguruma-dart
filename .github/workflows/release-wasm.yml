@@ -1,0 +1,88 @@
+name: release-wasm
+
+# Publishes the committed web WebAssembly module as a GitHub Release asset for a
+# package version. `dart run oniguruma_native:setup` and loadWasm's runtime
+# fallback download it — see packages/oniguruma_native/lib/src/release.dart for
+# the URL scheme: the release tag is plain semver (e.g. 1.2.0) and the asset is
+# oniguruma_native.wasm.
+#
+# Guarantees before uploading:
+#   * tag == pubspec `version:` == release.dart `packageVersion` — so the runtime
+#     fallback can never resolve a tag that disagrees with the shipped code.
+#   * the committed prebuilt/web/oniguruma_native.wasm matches prebuilt/
+#     checksums.sha256 — so released == checksummed == what setup verifies.
+# No rebuild here; refresh the blob with `refresh-prebuilts` when the shim or
+# source pin changes.
+
+on:
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload to (plain semver, e.g. 1.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  PKG_DIR: packages/oniguruma_native
+
+jobs:
+  upload-wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve target tag
+        id: tag
+        # Never interpolate ${{ }} into the script body; pass via env and quote.
+        env:
+          EVENT: ${{ github.event_name }}
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_TAG: ${{ github.ref_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            tag="$INPUT_TAG"
+          else
+            tag="$REF_TAG"
+          fi
+          echo "name=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Verify tag == pubspec == release.dart version
+        env:
+          TAG: ${{ steps.tag.outputs.name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          pubspec_ver=$(grep -E '^version:' "$PKG_DIR/pubspec.yaml" \
+            | sed -E 's/^version:[[:space:]]*//')
+          const_ver=$(grep -E 'const String packageVersion' "$PKG_DIR/lib/src/release.dart" \
+            | sed -E "s/.*'([^']+)'.*/\1/")
+          echo "tag=$TAG  pubspec=$pubspec_ver  release.dart=$const_ver"
+          if [ "$TAG" != "$pubspec_ver" ] || [ "$const_ver" != "$pubspec_ver" ]; then
+            echo "::error::version mismatch — tag=$TAG pubspec=$pubspec_ver release.dart=$const_ver"
+            exit 1
+          fi
+
+      - name: Verify the committed wasm against the checksum manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$PKG_DIR/prebuilt"
+          test -f web/oniguruma_native.wasm \
+            || { echo "::error::web/oniguruma_native.wasm is missing"; exit 1; }
+          # Check only the wasm entry (paths in the manifest are relative to here).
+          grep -E ' +web/oniguruma_native\.wasm$' checksums.sha256 | sha256sum -c -
+          echo "wasm matches checksums.sha256"
+
+      - name: Upload wasm to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          files: ${{ env.PKG_DIR }}/prebuilt/web/oniguruma_native.wasm
+          fail_on_unmatched_files: true

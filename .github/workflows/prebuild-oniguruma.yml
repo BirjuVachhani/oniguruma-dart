@@ -113,8 +113,9 @@ jobs:
 
   # WebAssembly build for the web backend: Oniguruma + our shim compiled to one
   # self-contained wasm32-wasi "reactor" module (see tool/prebuilt/build_wasm.sh).
-  # The committed prebuilt/web/oniguruma_native.wasm is embedded into the package as
-  # base64 by tool/gen_wasm_embed.dart; regenerate that after refreshing the blob.
+  # The committed prebuilt/web/oniguruma_native.wasm is uploaded to the GitHub
+  # Release by the release-wasm workflow; consumers fetch it via
+  # `dart run oniguruma_native:setup` (or loadWasm's runtime fallback).
   wasm:
     name: wasm
     runs-on: ubuntu-latest

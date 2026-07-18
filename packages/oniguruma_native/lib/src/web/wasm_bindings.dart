@@ -26,10 +26,18 @@ external JSPromise<JSObject> _wasmInstantiate(
   JSObject importObject,
 );
 
+@JS('WebAssembly.instantiateStreaming')
+external JSPromise<JSObject> _wasmInstantiateStreaming(
+  JSPromise<_Response> source,
+  JSObject importObject,
+);
+
 @JS('fetch')
 external JSPromise<_Response> _fetch(JSString url);
 
 extension type _Response._(JSObject _) implements JSObject {
+  external bool get ok;
+  external int get status;
   external JSPromise<JSArrayBuffer> arrayBuffer();
 }
 
@@ -147,21 +155,48 @@ class OnigWasmModule {
   /// Idempotent: a second call is a no-op (the first winning instance stays).
   static Future<void> load(Uint8List bytes) async {
     if (_instance != null) return;
-    final resultObj = await _wasmInstantiate(
-      bytes.toJS,
-      _buildImports(),
-    ).toDart;
-    final exports = _InstantiateResult(resultObj).instance.exports;
-    // Reactor modules export `_initialize`; call it once to run libc ctors.
-    exports.initialize?.callAsFunction();
-    _instance = OnigWasmModule._(exports);
+    final resultObj = await _wasmInstantiate(bytes.toJS, _buildImports()).toDart;
+    _install(resultObj);
   }
 
-  /// Fetches wasm bytes from [url] (used by `loadWasm(url: ...)`).
-  static Future<Uint8List> fetchBytes(String url) async {
-    final resp = await _fetch(url.toJS).toDart;
-    final buf = await resp.arrayBuffer().toDart;
-    return buf.toDart.asUint8List();
+  /// Instantiates the module fetched from [url]. Idempotent.
+  ///
+  /// Prefers `WebAssembly.instantiateStreaming` — it compiles while downloading
+  /// and lets the browser cache the compiled module — and falls back to
+  /// fetch → arrayBuffer → instantiate when the server sends the wrong MIME type
+  /// (streaming requires `application/wasm`). Throws a [StateError] if the
+  /// resource is missing (e.g. a 404 when `setup` was never run), so callers can
+  /// fall back to another URL.
+  static Future<void> loadFromUrl(String url) async {
+    if (_instance != null) return;
+    JSObject resultObj;
+    try {
+      resultObj = await _wasmInstantiateStreaming(
+        _fetch(url.toJS),
+        _buildImports(),
+      ).toDart;
+    } catch (_) {
+      // Wrong MIME, missing file, or no streaming support: refetch explicitly so
+      // we can distinguish "absent" (404) from "served but not application/wasm".
+      final resp = await _fetch(url.toJS).toDart;
+      if (!resp.ok) {
+        throw StateError('fetch $url failed with HTTP ${resp.status}');
+      }
+      final buf = await resp.arrayBuffer().toDart;
+      resultObj = await _wasmInstantiate(
+        buf.toDart.asUint8List().toJS,
+        _buildImports(),
+      ).toDart;
+    }
+    _install(resultObj);
+  }
+
+  /// Reads exports from an `instantiate`/`instantiateStreaming` result, runs the
+  /// reactor initializer (libc ctors), and stores the winning singleton.
+  static void _install(JSObject resultObj) {
+    final exports = _InstantiateResult(resultObj).instance.exports;
+    exports.initialize?.callAsFunction();
+    _instance = OnigWasmModule._(exports);
   }
 
   // --- allocator + shim calls ---
