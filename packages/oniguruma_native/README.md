@@ -201,7 +201,7 @@ figures somewhat — the overall picture is unchanged.)
 ![Per-pattern, per-full-corpus-scan time (log scale, shorter is faster): this package's FFI per-match and bulk paths (pink) vs oniguruma_dart's byte and String APIs (blue/green). The pure-Dart port is faster on 12 of 13 patterns; this package wins backref-dup, where the native engine handles pathological backtracking far better.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
 See the full head-to-head in
-[`../oniguruma_dart/benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md).
+[`oniguruma_dart`'s `benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md).
 
 ## How the native build works
 
@@ -309,14 +309,15 @@ fetched by `dart run oniguruma_native:setup` / `loadWasm`) by `release-wasm`.
 ```
 BSD 2-Clause License
 
-Copyright (c) 2026 Birju Vachhani (oniguruma_dart, the Dart port)
+Copyright (c) 2026 Birju Vachhani (oniguruma_native, the Dart FFI bindings)
 Copyright (c) 2002-2021 K.Kosako (Oniguruma, the original C library)
 All rights reserved.
 
-oniguruma_dart is a source-code port of the Oniguruma regular-expression
-library (https://github.com/kkos/oniguruma). As a derivative work it is
-distributed under Oniguruma's original BSD 2-Clause license, reproduced below,
-and retains the original copyright notice as that license requires.
+oniguruma_native provides Dart FFI bindings to the Oniguruma regular-expression
+library (https://github.com/kkos/oniguruma) and bundles/links it. As a
+derivative work it is distributed under Oniguruma's original BSD 2-Clause
+license, reproduced below, and retains the original copyright notice as that
+license requires.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
