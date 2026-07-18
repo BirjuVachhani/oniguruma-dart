@@ -12,8 +12,12 @@ Initial release — a 1:1 Dart port of the Oniguruma 6.9.10 regex engine.
   the C sources; Unicode-correct case-insensitive matching.
 - ~28 encodings: UTF-8/16/32, EUC-JP/KR/TW, SJIS, Big5, GB18030,
   ISO-8859-1..16, CP1251, KOI8-R/U, ASCII.
-- Byte API (`onigNew`/`onigSearch`), idiomatic `String` API
-  (`OnigRegex`/`OnigMatch`), and multi-pattern `OnigRegSet`.
+- Three API layers: the low-level byte C API (`onigNew`/`onigSearch`/`onigMatch`/
+  `OnigRegion`/`OnigRegSet`, plus `onigVersion` and `onig_number_of_captures` /
+  name-lookup introspection), the idiomatic `String` API (`OnigRegex`/
+  `OnigMatch`), and a `vscode-oniguruma`-shaped `OnigScanner` / `OnigString` /
+  `OnigScannerMatch` for TextMate-grammar / Shiki tokenizers — the same scanner
+  surface as `oniguruma_native`, so tokenizer code is swappable between them.
 - Verified byte-for-byte against the C library (differential + fuzz suites).
 - Fast: on a broad pattern mix the `String` API averages ~0.73× the time of the
   hand-tuned C library (i.e. faster than native C across the suite) and beats

@@ -2,14 +2,15 @@
 //
 //   node --test packages/oniguruma_native/test/wasm/
 //
-// These exercise the SHIPPED wasm artifact (prebuilt/web/oniguruma_native.wasm —
-// the exact bytes embedded as base64 into lib/src/web/oniguruma_wasm.g.dart;
-// oniguruma_web_embed_test.dart proves they are byte-identical) through the SAME
-// WebAssembly API + UTF-8 marshalling that lib/src/web/backend_web.dart uses
-// (Oniguruma runs in UTF-8; byte offsets are mapped back to UTF-16 code-unit
-// indices via a per-string offset map — see lib/src/utf8_offsets.dart). So a
-// failure here is a real bug in the wasm module or the marshalling contract,
-// caught headlessly — no browser required, unlike test/oniguruma_web_test.dart.
+// These exercise the SHIPPED wasm artifact (prebuilt/web/oniguruma_native.wasm,
+// whose SHA-256 wasm_provenance_test.dart checks against prebuilt/checksums.sha256)
+// through the SAME WebAssembly API + UTF-8 marshalling that lib/src/web/ uses —
+// backend_web.dart for the scanner (Layer 1) and lowlevel_web.dart for the raw
+// onig_* accessors (Layer 0). Oniguruma runs in UTF-8; byte offsets are mapped
+// back to UTF-16 code-unit indices via a per-string offset map (see
+// lib/src/utf8_offsets.dart). So a failure here is a real bug in the wasm module
+// or the marshalling contract, caught headlessly — no browser required, unlike
+// test/oniguruma_web_test.dart.
 //
 // The behavioural cases mirror the IO/FFI suite (test/oniguruma_test.dart) so the
 // web engine is held to byte-identical semantics. On top of that they cover what
@@ -198,6 +199,88 @@ class OnigWasm {
     for (let i = p; u8[i] !== 0; i++) s += String.fromCharCode(u8[i]);
     return s;
   }
+
+  // --- Layer 0 (raw onig_* via flat-int shim accessors; byte offsets) ---
+
+  _readRegs() {
+    const dv = new DataView(this.ex.memory.buffer);
+    const nr = dv.getInt32(this.numRegs, true);
+    const regs = [];
+    for (let g = 0; g < nr; g++) {
+      regs.push([dv.getInt32(this.beg + g * 4, true),
+                 dv.getInt32(this.end + g * 4, true)]);
+    }
+    return regs;
+  }
+
+  regexNew(pattern, { enc = 0, syntax = 0, options = 0 } = {}) {
+    const p = this.writeString(pattern);
+    const errOut = this.malloc(4);
+    const reg = this.ex.onig_shim_regex_new(
+      p.p, p.byteLen, options, enc, syntax, errOut);
+    const code = new DataView(this.ex.memory.buffer).getInt32(errOut, true);
+    this.free(p.p);
+    this.free(errOut);
+    return { reg, code };
+  }
+
+  regexFree(reg) { this.ex.onig_shim_regex_free(reg); }
+
+  errorString(code) {
+    const buf = this.malloc(96);
+    const len = this.ex.onig_shim_error_string(code, buf, 90);
+    const u8 = new Uint8Array(this.ex.memory.buffer);
+    let s = '';
+    for (let i = 0; i < len; i++) s += String.fromCharCode(u8[buf + i]);
+    this.free(buf);
+    return s;
+  }
+
+  search(reg, str, start = 0) {
+    const pos = this.ex.onig_shim_search(
+      reg, str.p, str.byteLen, start, str.byteLen, 0,
+      this.numRegs, this.beg, this.end, this.cap);
+    return { pos, regs: pos < 0 ? [] : this._readRegs() };
+  }
+
+  match(reg, str, at = 0) {
+    const len = this.ex.onig_shim_match(
+      reg, str.p, str.byteLen, at, 0,
+      this.numRegs, this.beg, this.end, this.cap);
+    return { len, regs: len < 0 ? [] : this._readRegs() };
+  }
+
+  numberOfCaptures(reg) { return this.ex.onig_shim_number_of_captures(reg); }
+  numberOfNames(reg) { return this.ex.onig_shim_number_of_names(reg); }
+
+  nameToGroupNumbers(reg, name) {
+    const p = this.writeString(name);
+    const out = this.malloc(4 * 32);
+    const count = this.ex.onig_shim_name_to_group_numbers(
+      reg, p.p, p.byteLen, out, 32);
+    const nums = [];
+    if (count > 0) {
+      const dv = new DataView(this.ex.memory.buffer);
+      for (let i = 0; i < count; i++) nums.push(dv.getInt32(out + i * 4, true));
+    }
+    this.free(p.p);
+    this.free(out);
+    return { count, nums };
+  }
+
+  regsetSearch(set, str, start = 0, lead = 0) {
+    const mp = this.malloc(4);
+    const idx = this.ex.onig_shim_regset_search(
+      set, str.p, str.byteLen, start, str.byteLen, lead, 0,
+      mp, this.numRegs, this.beg, this.end, this.cap);
+    let matchPos = -1, regs = [];
+    if (idx >= 0) {
+      matchPos = new DataView(this.ex.memory.buffer).getInt32(mp, true);
+      regs = this._readRegs();
+    }
+    this.free(mp);
+    return { idx, matchPos, regs };
+  }
 }
 
 let onig;
@@ -226,8 +309,15 @@ describe('wasm module structure', () => {
     const names = WebAssembly.Module.exports(module_).map((e) => e.name);
     for (const required of [
       'memory', '_initialize', 'malloc', 'free',
+      // Layer 1 — scanner
       'onig_shim_scanner_new', 'onig_shim_scanner_free', 'onig_shim_find',
       'onig_shim_scan_count', 'onig_shim_version',
+      // Layer 0 — raw onig_* accessors
+      'onig_shim_regex_new', 'onig_shim_regex_free', 'onig_shim_error_string',
+      'onig_shim_search', 'onig_shim_match', 'onig_shim_number_of_captures',
+      'onig_shim_number_of_names', 'onig_shim_name_to_group_numbers',
+      'onig_shim_name_to_backref_number', 'onig_shim_regset_new',
+      'onig_shim_regset_add', 'onig_shim_regset_search', 'onig_shim_regset_free',
     ]) {
       assert.ok(names.includes(required), `missing export: ${required}`);
     }
@@ -520,5 +610,78 @@ describe('resource churn (no corruption across many alloc/free cycles)', () => {
       onig.free(s.p);
       onig.ex.onig_shim_scanner_free(sc);
     }
+  });
+});
+
+describe('Layer 0 (raw onig_* accessors, byte offsets)', () => {
+  test('regex_new + search fills the region with byte offsets', () => {
+    const { reg, code } = onig.regexNew(String.raw`(\d+)-(\d+)`);
+    assert.equal(code, 0);
+    assert.ok(reg !== 0);
+    const s = onig.writeString('ab 12-345 cd');
+    const { pos, regs } = onig.search(reg, s, 0);
+    assert.equal(pos, 3);
+    assert.deepEqual(regs, [[3, 9], [3, 5], [6, 9]]);
+    onig.free(s.p);
+    onig.regexFree(reg);
+  });
+
+  test('search returns ONIG_MISMATCH (-1) on no match', () => {
+    const { reg } = onig.regexNew(String.raw`\d+`);
+    const s = onig.writeString('abc');
+    assert.equal(onig.search(reg, s, 0).pos, -1);
+    onig.free(s.p);
+    onig.regexFree(reg);
+  });
+
+  test('match anchors and reports the matched byte length', () => {
+    const { reg } = onig.regexNew(String.raw`\w+`);
+    const s = onig.writeString('foo bar');
+    const { len, regs } = onig.match(reg, s, 0);
+    assert.equal(len, 3);
+    assert.deepEqual(regs[0], [0, 3]);
+    onig.free(s.p);
+    onig.regexFree(reg);
+  });
+
+  test('regex_new reports an error code + message for a bad pattern', () => {
+    const { reg, code } = onig.regexNew('(');
+    assert.equal(reg, 0);
+    assert.ok(code < 0);
+    assert.match(onig.errorString(code), /parenthesis/);
+  });
+
+  test('name / capture introspection', () => {
+    const { reg } = onig.regexNew(String.raw`(?<year>\d{4})-(?<mon>\d{2})`);
+    assert.equal(onig.numberOfCaptures(reg), 2);
+    assert.equal(onig.numberOfNames(reg), 2);
+    assert.deepEqual(onig.nameToGroupNumbers(reg, 'year').nums, [1]);
+    assert.deepEqual(onig.nameToGroupNumbers(reg, 'mon').nums, [2]);
+    onig.regexFree(reg);
+  });
+
+  test('regset returns the left-most match + region', () => {
+    const set = onig.ex.onig_shim_regset_new();
+    onig.ex.onig_shim_regset_add(set, onig.regexNew(String.raw`\d+`).reg);
+    onig.ex.onig_shim_regset_add(set, onig.regexNew(String.raw`[a-z]+`).reg);
+    const s = onig.writeString('  abc123');
+    const { idx, matchPos, regs } = onig.regsetSearch(set, s, 0);
+    assert.equal(idx, 1); // [a-z]+ @2 beats \d+ @5
+    assert.equal(matchPos, 2);
+    assert.deepEqual(regs[0], [2, 5]);
+    onig.free(s.p);
+    onig.ex.onig_shim_regset_free(set);
+  });
+
+  test('Layer 0 search agrees with the scanner on the same match', () => {
+    const { reg } = onig.regexNew(String.raw`\d+`);
+    const s = onig.writeString('abc 42');
+    const l0 = onig.search(reg, s, 0);
+    const sc = onig.newScanner([String.raw`\d+`]);
+    const scm = onig.find(sc, s, 0); // ASCII → byte offsets == UTF-16 indices
+    assert.deepEqual(l0.regs[0], scm.caps[0]);
+    onig.free(s.p);
+    onig.regexFree(reg);
+    onig.ex.onig_shim_scanner_free(sc);
   });
 });

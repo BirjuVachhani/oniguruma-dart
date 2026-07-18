@@ -164,3 +164,180 @@ int onig_shim_scan_count(ShimScanner* sc, const unsigned char* str,
 
 SHIM_EXPORT
 const char* onig_shim_version(void) { return onig_version(); }
+
+// ===========================================================================
+// Layer 0 — flat-int accessors over the raw onig_* API for the WEB backend.
+//
+// The FFI (IO) backend binds onig_* directly, but the web/js_interop bridge
+// can't marshal OnigRegion / regex_t structs across the boundary. These helpers
+// keep all struct/ABI handling in C and expose only ints (opaque handles as
+// pointers, byte offsets, codes), so the Dart web layer can present the same
+// low-level API the IO backend does. Encodings/syntaxes are selected by id:
+//   encoding: 0 = UTF-8, 1 = US-ASCII
+//   syntax:   0 = Oniguruma, 1 = Ruby
+// (only the globals that survive in the prebuilt module are available).
+// ===========================================================================
+
+static OnigEncoding shim_encoding(int id) {
+  switch (id) {
+    case 1:  return ONIG_ENCODING_ASCII;
+    case 0:
+    default: return ONIG_ENCODING_UTF8;
+  }
+}
+
+static OnigSyntaxType* shim_syntax(int id) {
+  switch (id) {
+    case 1:  return ONIG_SYNTAX_RUBY;
+    case 0:
+    default: return ONIG_SYNTAX_ONIGURUMA;
+  }
+}
+
+// Copy the winning region's group byte offsets into the caller's int arrays.
+static void shim_fill_region(OnigRegion* region, int* outNumRegs, int* beg,
+                             int* end, int capacity) {
+  int n = region->num_regs;
+  if (n > capacity) n = capacity;
+  *outNumRegs = n;
+  for (int g = 0; g < n; g++) {
+    beg[g] = region->beg[g];
+    end[g] = region->end[g];
+  }
+}
+
+// Compile a pattern. Returns the regex handle, or NULL on failure with *errOut
+// set to the Oniguruma error code (0 == ONIG_NORMAL on success).
+SHIM_EXPORT
+regex_t* onig_shim_regex_new(const unsigned char* pat, int patLen, int options,
+                             int encId, int synId, int* errOut) {
+  ensure_init();
+  regex_t* reg = NULL;
+  int r = onig_new(&reg, pat, pat + patLen, (OnigOptionType)options,
+                   shim_encoding(encId), shim_syntax(synId), NULL);
+  if (errOut) *errOut = r;
+  if (r != ONIG_NORMAL) return NULL;
+  return reg;
+}
+
+SHIM_EXPORT
+void onig_shim_regex_free(regex_t* reg) {
+  if (reg) onig_free(reg);
+}
+
+// Format an error code into buf (up to cap bytes); returns the length written.
+// A zeroed OnigErrorInfo is passed so a code that wants a "%n" detail reads a
+// safe (empty) value rather than an uninitialised vararg (which would trap in
+// wasm). Detail is omitted, matching the FFI backend.
+SHIM_EXPORT
+int onig_shim_error_string(int code, unsigned char* buf, int cap) {
+  unsigned char tmp[ONIG_MAX_ERROR_MESSAGE_LEN];
+  OnigErrorInfo einfo;
+  memset(&einfo, 0, sizeof(einfo));
+  int n = onig_error_code_to_str(tmp, code, &einfo);
+  if (n < 0) n = 0;
+  if (n > cap) n = cap;
+  memcpy(buf, tmp, n);
+  return n;
+}
+
+// Search [startByte, rangeByte) within [0, endByte). Fills the caller's beg/end
+// arrays with the match's group byte offsets (up to capacity) and *outNumRegs.
+// Returns the match start byte offset (>=0), ONIG_MISMATCH (-1), or a negative
+// error code.
+SHIM_EXPORT
+int onig_shim_search(regex_t* reg, const unsigned char* str, int endByte,
+                     int startByte, int rangeByte, int option, int* outNumRegs,
+                     int* beg, int* end, int capacity) {
+  OnigRegion* region = onig_region_new();
+  int r = onig_search(reg, str, str + endByte, str + startByte, str + rangeByte,
+                      region, (OnigOptionType)option);
+  if (r >= 0) shim_fill_region(region, outNumRegs, beg, end, capacity);
+  onig_region_free(region, 1);
+  return r;
+}
+
+// Anchored match at atByte within [0, endByte). Returns the matched byte length
+// (>=0) or a negative code; fills beg/end like onig_shim_search.
+SHIM_EXPORT
+int onig_shim_match(regex_t* reg, const unsigned char* str, int endByte,
+                    int atByte, int option, int* outNumRegs, int* beg, int* end,
+                    int capacity) {
+  OnigRegion* region = onig_region_new();
+  int r = onig_match(reg, str, str + endByte, str + atByte, region,
+                     (OnigOptionType)option);
+  if (r >= 0) shim_fill_region(region, outNumRegs, beg, end, capacity);
+  onig_region_free(region, 1);
+  return r;
+}
+
+SHIM_EXPORT
+int onig_shim_number_of_captures(regex_t* reg) {
+  return onig_number_of_captures(reg);
+}
+
+SHIM_EXPORT
+int onig_shim_number_of_names(regex_t* reg) {
+  return onig_number_of_names(reg);
+}
+
+// Writes up to `cap` group numbers for `name` into out[]; returns the total
+// count (>=0), or a negative code if the name is undefined.
+SHIM_EXPORT
+int onig_shim_name_to_group_numbers(regex_t* reg, const unsigned char* name,
+                                    int nameLen, int* out, int cap) {
+  int* nums = NULL;
+  int n = onig_name_to_group_numbers(reg, name, name + nameLen, &nums);
+  if (n < 0) return n;
+  int m = n > cap ? cap : n;
+  for (int i = 0; i < m; i++) out[i] = nums[i];
+  return n;
+}
+
+SHIM_EXPORT
+int onig_shim_name_to_backref_number(regex_t* reg, const unsigned char* name,
+                                     int nameLen) {
+  return onig_name_to_backref_number(reg, name, name + nameLen, NULL);
+}
+
+// --- RegSet (the set owns its regexes; onig_regset_free frees them) ---
+
+SHIM_EXPORT
+OnigRegSet* onig_shim_regset_new(void) {
+  ensure_init();
+  OnigRegSet* set = NULL;
+  int r = onig_regset_new(&set, 0, NULL);
+  return (r == ONIG_NORMAL) ? set : NULL;
+}
+
+SHIM_EXPORT
+int onig_shim_regset_add(OnigRegSet* set, regex_t* reg) {
+  return onig_regset_add(set, reg);
+}
+
+// Search all patterns. On a match returns the winning pattern index (>=0), sets
+// *outMatchPos to the match start byte and *outNumRegs + beg/end to the winner's
+// region (up to capacity). Returns -1 for no match or a negative error code.
+SHIM_EXPORT
+int onig_shim_regset_search(OnigRegSet* set, const unsigned char* str,
+                            int endByte, int startByte, int rangeByte, int lead,
+                            int option, int* outMatchPos, int* outNumRegs,
+                            int* beg, int* end, int capacity) {
+  int matchPos = 0;
+  OnigRegSetLead l =
+      (lead == 1) ? ONIG_REGSET_REGEX_LEAD : ONIG_REGSET_POSITION_LEAD;
+  int idx = onig_regset_search(set, str, str + endByte, str + startByte,
+                               str + rangeByte, l, (OnigOptionType)option,
+                               &matchPos);
+  if (idx >= 0) {
+    *outMatchPos = matchPos;
+    shim_fill_region(onig_regset_get_region(set, idx), outNumRegs, beg, end,
+                     capacity);
+  }
+  return idx;
+}
+
+SHIM_EXPORT
+void onig_shim_regset_free(OnigRegSet* set) {
+  if (set) onig_regset_free(set);
+}

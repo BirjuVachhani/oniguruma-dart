@@ -4,10 +4,22 @@ Dart bindings to the [Oniguruma](https://github.com/kkos/oniguruma)
 regular-expression library — the engine TextMate grammars (and therefore
 Shiki / VS Code syntax highlighting) are written for.
 
-It presents **one API on every platform** (`OnigScanner`, `OnigString`,
-`OnigMatch`), backed by the **same real Oniguruma C engine everywhere** — native
-`dart:ffi` on IO, the same engine compiled to WebAssembly on web — so results are
-bit-for-bit identical to the C library the rest of the tooling ecosystem uses.
+It exposes Oniguruma in **two layers**, backed by the **same real C engine
+everywhere** — native `dart:ffi` on IO, the same engine compiled to WebAssembly
+on web — so results are bit-for-bit identical to the C library the rest of the
+tooling ecosystem uses:
+
+- **Layer 0 — the C API.** `onigNew`, `onigSearch`, `onigMatch`, `OnigRegion`,
+  `OnigRegSet` and friends, mirroring `oniguruma.h` with byte offsets. On every
+  platform — `dart:ffi` binds the raw `onig_*` on IO; the web backend drives the
+  same engine through flat-int shim accessors.
+- **Layer 1 — the vscode scanner.** `OnigScanner`, `OnigString`,
+  `OnigScannerMatch` — the `vscode-oniguruma`-shaped surface a TextMate / Shiki
+  tokenizer drives, with UTF-16 offsets. Works on every platform.
+
+The sibling pure-Dart [`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)
+presents the **same two layers** (plus an idiomatic `String` API), so low-level
+and scanner code is swappable between the FFI and pure-Dart packages.
 
 | Platform | Engine |
 |----------|--------|
@@ -140,19 +152,46 @@ to UTF-16 indices via a per-string offset map (skipped entirely for ASCII).
 you're done. A runnable version of the above is in
 [`example/`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_native/example/oniguruma_native_example.dart).
 
+### Low-level C API (Layer 0)
+
+When you need the raw engine rather than a scanner, the `onig_*` surface mirrors
+`oniguruma.h` (byte offsets, `Uint8List` subjects) on every platform — bound
+directly via `dart:ffi` on IO, and driven through flat-int shim accessors on web.
+This is the same API `oniguruma_dart` exposes, so low-level code is swappable
+between the two packages. On web, `await loadWasm()` first (as for the scanner).
+
+```dart
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:oniguruma_native/oniguruma_native.dart';
+
+final pattern = Uint8List.fromList(utf8.encode(r'(\d+)-(\d+)'));
+final reg = onigNew(pattern, pattern.length, utf8Encoding, onigSyntaxOniguruma, 0);
+
+final subject = Uint8List.fromList(utf8.encode('id 12-345'));
+final region = OnigRegion();
+final pos = onigSearch(reg, subject, subject.length, 0, subject.length, region);
+// pos == 3 (byte offset); region.beg/end hold the group byte offsets.
+
+reg.dispose(); // frees native memory (onig_free)
+```
+
 ## When to use this vs `oniguruma_dart` (pure Dart)
 
 This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 (`oniguruma_native`, the real C library over FFI) when you want:
 
-- **Exact native-engine behaviour** — driving **TextMate grammars / Shiki**
-  syntax highlighting through vscode-oniguruma-compatible `OnigScanner`
-  semantics, bit-for-bit with the C library other tooling uses.
+- **A `vscode-oniguruma`-shaped API** — `OnigScanner` / `OnigString` /
+  `findNextMatch(line, pos)` mirror the JS package Shiki and VS Code are built on,
+  so a ported TextMate tokenizer drops straight in. (`oniguruma_dart` is *also*
+  byte-identical to the C engine and *also* ships this scanner — the difference is
+  provenance and the performance profile below, not correctness.)
 - **Incremental tokenization** — one `OnigScanner.findNextMatch` per token over
   short lines (what a tokenizer does), rather than bulk find-all-matches.
-- **Robustness on pathological patterns** — the mature C engine handles heavy
-  back-references / catastrophic backtracking far better than a from-scratch
-  backtracker (e.g. it is ~3× faster than the pure-Dart port on `backref-dup`).
+- **The reference engine itself** — this *is* the C library, so behaviour tracks
+  Ruby / VS Code / Shiki by construction; and it handles pathological patterns
+  (heavy back-references, catastrophic backtracking) more robustly (e.g. ~3×
+  faster than the pure-Dart port on `backref-dup`).
 
 Reach for **[`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)** (pure Dart) instead when you
 want **zero native setup** (no build hooks or prebuilt binaries), a **lighter web

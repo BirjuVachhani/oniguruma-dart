@@ -72,6 +72,19 @@ echo "wasm: compiling ${#SRCS[@]} sources -> $OUT"
   -Wl,--export=onig_shim_find \
   -Wl,--export=onig_shim_scan_count \
   -Wl,--export=onig_shim_version \
+  -Wl,--export=onig_shim_regex_new \
+  -Wl,--export=onig_shim_regex_free \
+  -Wl,--export=onig_shim_error_string \
+  -Wl,--export=onig_shim_search \
+  -Wl,--export=onig_shim_match \
+  -Wl,--export=onig_shim_number_of_captures \
+  -Wl,--export=onig_shim_number_of_names \
+  -Wl,--export=onig_shim_name_to_group_numbers \
+  -Wl,--export=onig_shim_name_to_backref_number \
+  -Wl,--export=onig_shim_regset_new \
+  -Wl,--export=onig_shim_regset_add \
+  -Wl,--export=onig_shim_regset_search \
+  -Wl,--export=onig_shim_regset_free \
   -Wl,--export=malloc \
   -Wl,--export=free \
   -Wl,--export-memory \

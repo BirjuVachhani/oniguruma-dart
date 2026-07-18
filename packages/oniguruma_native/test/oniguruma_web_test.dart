@@ -1,6 +1,9 @@
 @TestOn('browser')
 library;
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:oniguruma_native/oniguruma_native.dart';
 import 'package:test/test.dart';
 
@@ -366,6 +369,83 @@ void main() {
         scanner.dispose();
       });
       expect(scanner.scanCount(s), n);
+    });
+  });
+
+  group('Layer 0 (raw onig_* over wasm via the shim)', () {
+    Uint8List b(String s) => Uint8List.fromList(utf8.encode(s));
+
+    Regex compile(String pattern, {int options = 0}) {
+      final p = b(pattern);
+      return onigNew(p, p.length, utf8Encoding, onigSyntaxOniguruma, options);
+    }
+
+    test('onigNew + onigSearch fills a region with byte offsets', () {
+      final r = compile(r'(\d+)-(\d+)');
+      addTearDown(r.dispose);
+      final str = b('ab 12-345 cd');
+      final region = OnigRegion();
+      final pos = onigSearch(r, str, str.length, 0, str.length, region);
+      expect(pos, 3);
+      expect(region.numRegs, 3);
+      expect([region.beg[0], region.end[0]], [3, 9]);
+      expect([region.beg[1], region.end[1]], [3, 5]);
+      expect([region.beg[2], region.end[2]], [6, 9]);
+    });
+
+    test('onigSearch returns ONIG_MISMATCH (-1) on no match', () {
+      final r = compile(r'\d+');
+      addTearDown(r.dispose);
+      final str = b('abc');
+      expect(onigSearch(r, str, str.length, 0, str.length, null), -1);
+    });
+
+    test('onigMatch anchors and reports matched length', () {
+      final r = compile(r'\w+');
+      addTearDown(r.dispose);
+      final str = b('foo bar');
+      final region = OnigRegion();
+      expect(onigMatch(r, str, str.length, 0, region), 3);
+      expect(region.end[0], 3);
+    });
+
+    test('onigNew throws OnigException on a malformed pattern', () {
+      expect(() => compile('('), throwsA(isA<OnigException>()));
+    });
+
+    test('name / capture introspection', () {
+      final r = compile(r'(?<year>\d{4})-(?<mon>\d{2})');
+      addTearDown(r.dispose);
+      expect(onigNumberOfCaptures(r), 2);
+      expect(onigNumberOfNames(r), 2);
+      expect(onigNameToGroupNumbers(r, 'year'), [1]);
+      expect(onigNameToGroupNumbers(r, 'mon'), [2]);
+      expect(onigNameToGroupNumbers(r, 'nope'), isEmpty);
+    });
+
+    test('OnigRegSet finds the left-most match + region', () {
+      final set = OnigRegSet();
+      addTearDown(set.dispose);
+      set.add(compile(r'\d+'));
+      set.add(compile(r'[a-z]+'));
+      final str = b('  abc123');
+      final idx = set.search(str, str.length, 0, str.length);
+      expect(idx, 1);
+      expect(set.matchPos, 2);
+      expect([set.region!.beg[0], set.region!.end[0]], [2, 5]);
+    });
+
+    test('web Layer 0 byte offsets equal the scanner UTF-16 offsets (ASCII)', () {
+      final r = compile(r'\d+');
+      addTearDown(r.dispose);
+      final bytes = b('abc 42');
+      final region = OnigRegion();
+      onigSearch(r, bytes, bytes.length, 0, bytes.length, region);
+      final scanner = OnigScanner([r'\d+']);
+      addTearDown(scanner.dispose);
+      final m = scanner.findNextMatch(OnigString('abc 42'), 0)!;
+      expect(m.captureIndices[0].start, region.beg[0]);
+      expect(m.captureIndices[0].end, region.end[0]);
     });
   });
 }

@@ -2,7 +2,7 @@
 ///
 /// This drives a WebAssembly build of the **same** Oniguruma + shim the FFI
 /// backend uses (`src/oniguruma_shim.c`, wasm32-wasi), so `OnigScanner`,
-/// `OnigString`, and `OnigMatch` behave byte-identically to native. The module
+/// `OnigString`, and `OnigScannerMatch` behave byte-identically to native. The module
 /// is instantiated by the JS host and driven over `dart:js_interop`; it works
 /// under both dart2js and dart2wasm (see [wasm_bindings]).
 ///
@@ -140,7 +140,7 @@ class OnigScanner {
 
   /// Finds the left-most match at or after [startPosition] (UTF-16 code units),
   /// or null if none. A match exactly at [startPosition] wins immediately.
-  OnigMatch? findNextMatch(OnigString string, int startPosition) {
+  OnigScannerMatch? findNextMatch(OnigString string, int startPosition) {
     final m = OnigWasmModule.instance;
     final enc = string._enc;
     final idx = m.find(
@@ -161,7 +161,7 @@ class OnigScanner {
       // Oniguruma reports UTF-8 byte offsets; map back to UTF-16 indices.
       return OnigCapture(enc.byteToU16(beg[g]), enc.byteToU16(end[g]));
     });
-    return OnigMatch(idx, caps);
+    return OnigScannerMatch(idx, caps);
   }
 
   /// Counts every non-overlapping match across the whole of [string] in a

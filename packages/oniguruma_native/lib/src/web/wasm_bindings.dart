@@ -78,6 +78,75 @@ extension type _Exports._(JSObject _) implements JSObject {
   @JS('onig_shim_version')
   external int version();
 
+  // --- Layer 0 (raw onig_* via flat-int shim accessors) ---
+  @JS('onig_shim_regex_new')
+  external int regexNew(
+    int pat,
+    int patLen,
+    int options,
+    int encId,
+    int synId,
+    int errOut,
+  );
+  @JS('onig_shim_regex_free')
+  external void regexFree(int reg);
+  @JS('onig_shim_error_string')
+  external int errorString(int code, int buf, int cap);
+  @JS('onig_shim_search')
+  external int search(
+    int reg,
+    int str,
+    int endByte,
+    int startByte,
+    int rangeByte,
+    int option,
+    int outNumRegs,
+    int beg,
+    int end,
+    int capacity,
+  );
+  @JS('onig_shim_match')
+  external int match(
+    int reg,
+    int str,
+    int endByte,
+    int atByte,
+    int option,
+    int outNumRegs,
+    int beg,
+    int end,
+    int capacity,
+  );
+  @JS('onig_shim_number_of_captures')
+  external int numberOfCaptures(int reg);
+  @JS('onig_shim_number_of_names')
+  external int numberOfNames(int reg);
+  @JS('onig_shim_name_to_group_numbers')
+  external int nameToGroupNumbers(int reg, int name, int nameLen, int out, int cap);
+  @JS('onig_shim_name_to_backref_number')
+  external int nameToBackrefNumber(int reg, int name, int nameLen);
+  @JS('onig_shim_regset_new')
+  external int regsetNew();
+  @JS('onig_shim_regset_add')
+  external int regsetAdd(int set, int reg);
+  @JS('onig_shim_regset_search')
+  external int regsetSearch(
+    int set,
+    int str,
+    int endByte,
+    int startByte,
+    int rangeByte,
+    int lead,
+    int option,
+    int outMatchPos,
+    int outNumRegs,
+    int beg,
+    int end,
+    int capacity,
+  );
+  @JS('onig_shim_regset_free')
+  external void regsetFree(int set);
+
   /// Present on reactor modules; runs libc constructors. Called once after
   /// instantiation.
   @JS('_initialize')
@@ -228,6 +297,35 @@ class OnigWasmModule {
       _exports.scanCount(sc, str, endByte);
   int version() => _exports.version();
 
+  // --- Layer 0 (raw onig_* via the flat-int shim accessors) ---
+  int regexNew(int pat, int patLen, int options, int encId, int synId, int errOut) =>
+      _exports.regexNew(pat, patLen, options, encId, synId, errOut);
+  void regexFree(int reg) => _exports.regexFree(reg);
+  int errorString(int code, int buf, int cap) =>
+      _exports.errorString(code, buf, cap);
+  int search(int reg, int str, int endByte, int startByte, int rangeByte,
+          int option, int outNumRegs, int beg, int end, int capacity) =>
+      _exports.search(reg, str, endByte, startByte, rangeByte, option,
+          outNumRegs, beg, end, capacity);
+  int match(int reg, int str, int endByte, int atByte, int option,
+          int outNumRegs, int beg, int end, int capacity) =>
+      _exports.match(
+          reg, str, endByte, atByte, option, outNumRegs, beg, end, capacity);
+  int numberOfCaptures(int reg) => _exports.numberOfCaptures(reg);
+  int numberOfNames(int reg) => _exports.numberOfNames(reg);
+  int nameToGroupNumbers(int reg, int name, int nameLen, int out, int cap) =>
+      _exports.nameToGroupNumbers(reg, name, nameLen, out, cap);
+  int nameToBackrefNumber(int reg, int name, int nameLen) =>
+      _exports.nameToBackrefNumber(reg, name, nameLen);
+  int regsetNew() => _exports.regsetNew();
+  int regsetAdd(int set, int reg) => _exports.regsetAdd(set, reg);
+  int regsetSearch(int set, int str, int endByte, int startByte, int rangeByte,
+          int lead, int option, int outMatchPos, int outNumRegs, int beg,
+          int end, int capacity) =>
+      _exports.regsetSearch(set, str, endByte, startByte, rangeByte, lead,
+          option, outMatchPos, outNumRegs, beg, end, capacity);
+  void regsetFree(int set) => _exports.regsetFree(set);
+
   // --- heap access (views re-derived each call; growth detaches buffers) ---
 
   /// Copies [bytes] into the module's heap at [ptr] in one boundary crossing.
@@ -249,6 +347,17 @@ class OnigWasmModule {
   Int32List readInt32List(int ptr, int count) {
     if (count <= 0) return Int32List(0);
     return _I32View(_exports.memory.buffer, ptr, count).toDart;
+  }
+
+  /// Reads [len] bytes starting at heap offset [ptr] (e.g. an error message).
+  Uint8List readBytes(int ptr, int len) {
+    if (len <= 0) return Uint8List(0);
+    final dv = _DataView(_exports.memory.buffer);
+    final out = Uint8List(len);
+    for (var i = 0; i < len; i++) {
+      out[i] = dv.getUint8(ptr + i);
+    }
+    return out;
   }
 
   /// Reads a NUL-terminated ASCII C string at [ptr] (e.g. the version).

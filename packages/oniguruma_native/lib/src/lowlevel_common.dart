@@ -1,10 +1,14 @@
-/// Capture-group result storage (`OnigRegion` / `re_registers`, oniguruma.h).
+/// Backend-independent Layer-0 types, shared by the FFI (IO) and web backends.
+///
+/// These mirror the sibling `oniguruma_dart` package's names/shapes so low-level
+/// code written against one package moves to the other unchanged.
 library;
 
-/// Holds the byte offsets of the whole match (index 0) and each capture group.
+/// Capture-group result storage (`OnigRegion` / `re_registers`, oniguruma.h),
+/// holding **byte offsets** of the whole match (index 0) and each group.
 ///
-/// `beg[i]`/`end[i]` are **byte offsets** into the subject; an unset group has
-/// both set to [regionNotFound] (`ONIG_REGION_NOTPOS` = -1).
+/// This is a plain Dart value object on every platform; the FFI backend copies
+/// the native region's registers into it after each search.
 class OnigRegion {
   static const int notFound = -1;
 
@@ -75,4 +79,29 @@ class OnigRegion {
     sb.write(')');
     return sb.toString();
   }
+}
+
+/// Thrown when a pattern fails to compile (`onig_new` returns an error code).
+class OnigException implements Exception {
+  const OnigException(this.code, this.message);
+
+  /// The Oniguruma error code (`ONIGERR_*`, negative).
+  final int code;
+
+  /// A human-readable message from `onig_error_code_to_str`.
+  final String message;
+
+  @override
+  String toString() => 'OnigException($code): $message';
+}
+
+/// Lead mode for [OnigRegSet.search] (`onig_regset_search` lead argument).
+enum RegSetLead {
+  /// Return the overall left-most match; ties broken by add order
+  /// (`ONIG_REGSET_POSITION_LEAD` = 0).
+  positionLead,
+
+  /// Return the first pattern (in add order) that matches
+  /// (`ONIG_REGSET_REGEX_LEAD` = 1).
+  regexLead,
 }

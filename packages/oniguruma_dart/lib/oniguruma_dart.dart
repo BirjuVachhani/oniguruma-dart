@@ -1,9 +1,13 @@
 /// A 1:1 Dart port of the Oniguruma regular-expression engine.
 ///
-/// Two layers:
+/// Three layers:
 ///  * a low-level byte API mirroring the C library (`onigNew`, `onigSearch`,
-///    `OnigRegion`) operating on `Uint8List` with byte offsets;
-///  * (P8) an idiomatic `String`-based wrapper.
+///    `onigMatch`, `OnigRegion`, `OnigRegSet`, POSIX/GNU, callouts, `onigVersion`)
+///    operating on `Uint8List` with byte offsets;
+///  * an idiomatic `String`-based wrapper (`OnigRegex`/`OnigMatch`);
+///  * a `vscode-oniguruma`-shaped multi-pattern scanner (`OnigScanner`,
+///    `OnigString`, `OnigScannerMatch`) — the same surface as `oniguruma_native`,
+///    for TextMate-grammar / Shiki tokenizers.
 library;
 
 export 'src/onig_types.dart'
@@ -48,4 +52,14 @@ export 'src/encoding/encodings.dart';
 export 'src/regex.dart' show Regex, onigNew;
 export 'src/exec/search.dart' show onigSearch, onigMatch;
 export 'src/regset.dart' show OnigRegSet, RegSetLead;
+export 'src/info.dart'
+    show
+        onigVersion,
+        onigVersionString,
+        onigNumberOfCaptures,
+        onigNumberOfNames,
+        onigNameToGroupNumbers,
+        onigNameToBackrefNumber;
 export 'src/api/string_api.dart' show OnigRegex, OnigMatch;
+export 'src/api/scanner.dart'
+    show OnigScanner, OnigString, OnigScannerMatch, OnigCapture, loadWasm;

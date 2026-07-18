@@ -185,6 +185,23 @@ OnigRegex.compile(r'\X').allMatches('a👨‍👩‍👧e').length;             
 OnigRegex.compile(r'(?i)straße').hasMatch('STRASSE');             // true (ß ↔ ss)
 ```
 
+### Scanner (vscode-oniguruma / TextMate grammars)
+
+For syntax highlighting you drive a **multi-pattern scanner**, not a single
+regex. `OnigScanner` mirrors the `vscode-oniguruma` API (also exposed by
+`oniguruma_native`, so tokenizer code is swappable): compile many patterns, then
+ask for the winning match from a position. Offsets are UTF-16 code units.
+
+```dart
+final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
+final line = OnigString('ab 12');
+
+final m = scanner.findNextMatch(line, 0)!;
+m.index;                       // 1  → the [a-z]+ pattern won
+m.captureIndices.first.start;  // 0
+m.captureIndices.first.end;    // 2  ("ab")
+```
+
 ## Non-UTF-8 text & the low-level byte API
 
 For non-UTF-8 encodings, or when you need C-identical **byte offsets** and want
@@ -269,12 +286,20 @@ This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
   itself.
 - A **full idiomatic regex API**: named groups, captures, replace, and both
   `String` and byte offsets.
+- The **same three surfaces on every platform** — the low-level C API
+  (`onigNew` / `onigSearch` / `OnigRegion`), the idiomatic `OnigRegex` String
+  API, **and** a `vscode-oniguruma`-shaped `OnigScanner` / `OnigString` /
+  `OnigScannerMatch` for **TextMate grammars / Shiki** tokenizers — byte-identical
+  to the C engine, with no wasm to host on web.
 
-Reach for **[`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native)** instead when you need the real C
-engine's exact behaviour — driving **TextMate grammars / Shiki** with
-vscode-oniguruma-compatible `OnigScanner` semantics, incremental tokenization
-(one match per call), or robustness on pathological backtracking. It runs on
-every platform too (WebAssembly on web), just with a heavier web bundle. See the
+Reach for **[`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native)** instead when you want the
+**reference C engine itself** — for provenance (behaviour tracks Ruby / VS Code /
+Shiki by construction), incremental per-token tokenization (one match per FFI
+crossing, its sweet spot), or robustness on pathological backtracking. Both
+packages ship the same `OnigScanner` surface and are byte-identical, so for
+TextMate / Shiki either works — `oniguruma_native` is the drop-in when you're
+porting code already written against the `vscode-oniguruma` npm package. It runs
+on every platform too (WebAssembly on web), just with a heavier web bundle. See the
 [comparison in the root README](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/README.md#which-package-should-i-use)
 and [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md) for the head-to-head.
 

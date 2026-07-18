@@ -12,8 +12,12 @@ class OnigCapture {
 
 /// The result of `OnigScanner.findNextMatch`: which pattern matched and the
 /// capture ranges (index 0 is the whole match).
-class OnigMatch {
-  const OnigMatch(this.index, this.captureIndices);
+///
+/// Named `OnigScannerMatch` (not `OnigMatch`) to match the sibling
+/// `oniguruma_dart` scanner and leave `OnigMatch` free for an idiomatic
+/// String-API match type.
+class OnigScannerMatch {
+  const OnigScannerMatch(this.index, this.captureIndices);
   final int index;
   final List<OnigCapture> captureIndices;
 }

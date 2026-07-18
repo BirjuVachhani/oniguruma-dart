@@ -91,7 +91,7 @@ class OnigScanner {
 
   /// Finds the left-most match at or after [startPosition] (UTF-16 code units),
   /// or null if none. A match exactly at [startPosition] wins immediately.
-  OnigMatch? findNextMatch(OnigString string, int startPosition) {
+  OnigScannerMatch? findNextMatch(OnigString string, int startPosition) {
     final enc = string._enc;
     final idx = onig.shimFind(
       _sc,
@@ -109,7 +109,7 @@ class OnigScanner {
       // Oniguruma reports UTF-8 byte offsets; map back to UTF-16 indices.
       return OnigCapture(enc.byteToU16(_beg[g]), enc.byteToU16(_end[g]));
     });
-    return OnigMatch(idx, caps);
+    return OnigScannerMatch(idx, caps);
   }
 
   /// Counts every non-overlapping match of these patterns across the whole of
