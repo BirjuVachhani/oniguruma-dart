@@ -7,14 +7,14 @@
 .vscode/
 .DS_Store
 
-# The vendored Oniguruma C library — differential/fuzz oracle and benchmark
+# The vendored Oniguruma C library: differential/fuzz oracle and benchmark
 # reference only, not part of the Dart package (~12 MB of C sources).
 oniguruma-master/
 
-# Dev-only tooling & docs — kept in the repo, not shipped to consumers:
+# Dev-only tooling & docs, kept in the repo, not shipped to consumers:
 #   * benchmark/  harnesses, reports, corpora, and the C reference CLI; they
 #     can't run without the excluded corpora + C library anyway. The headline
-#     results live in benchmarks.md at the repo root (which IS published).
+#     results live in benchmarks.md at this package's root (which IS published).
 #   * tool/       code generators for the Unicode data tables.
 #   * docs/       deep-dive investigation notes.
 benchmark/

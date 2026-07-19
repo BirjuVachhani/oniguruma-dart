@@ -35,20 +35,20 @@ tool/
 
 # Dev-only: the mainstream benchmark harness (built via `dart build cli` and
 # driven by ../oniguruma_dart/benchmark/ffi_bench.py); not a package executable.
-# NOTE: bin/setup.dart MUST ship — it is the `dart run oniguruma_native:setup`
-# command consumers run to fetch the web wasm — so exclude only the benchmark.
+# NOTE: bin/setup.dart MUST ship (it is the `dart run oniguruma_native:setup`
+# command consumers run to fetch the web wasm), so exclude only the benchmark.
 bin/mainstream_bench.dart
 
 # `dart build cli` output bundle.
 build/
 
 # CI infrastructure that produces prebuilt/ (kept in git, built by GitHub
-# Actions) — not needed by consumers. Note: tool/ above already covers
+# Actions), not needed by consumers. Note: tool/ above already covers
 # tool/prebuilt/; listed explicitly for clarity.
 tool/prebuilt/
 
-# The web wasm blob is delivered to consumers as a GitHub Release asset — fetched
-# by `dart run oniguruma_native:setup`, or at runtime by loadWasm's fallback — not
+# The web wasm blob is delivered to consumers as a GitHub Release asset (fetched
+# by `dart run oniguruma_native:setup`, or at runtime by loadWasm's fallback), not
 # shipped in the pub archive. Keep it in git for provenance and so the release
 # workflow can upload it; exclude it from the published package.
 prebuilt/web/
