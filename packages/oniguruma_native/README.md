@@ -166,6 +166,102 @@ final pos = onigSearch(reg, subject, subject.length, 0, subject.length, region);
 reg.dispose(); // frees native memory (onig_free)
 ```
 
+## Advanced features
+
+Because this is the real Oniguruma engine, it accepts the full dialect — the
+rich constructs `RegExp` can't express. They're engine-level pattern features,
+so you drive them through an `OnigScanner` (or the low-level C API). The small
+helper below compiles one pattern and returns the first match's text; each
+one-liner after it exercises a construct that ECMAScript lacks.
+
+```dart
+// On web, `await loadWasm()` once at startup first (a no-op on IO).
+String? firstMatch(String pattern, String input) {
+  final scanner = OnigScanner([pattern]);
+  final s = OnigString(input);
+  final m = scanner.findNextMatch(s, 0);
+  final text = m == null
+      ? null
+      : input.substring(
+          m.captureIndices.first.start, m.captureIndices.first.end);
+  s.dispose();
+  scanner.dispose();
+  return text;
+}
+```
+
+```dart
+firstMatch(r'a++a', 'aaaa');                      // null — possessive quantifier: no backtracking
+firstMatch(r'(?>a+)a', 'aaaa');                   // null — atomic group, same effect
+firstMatch(r'\b(?<w>\w+)\s+\k<w>\b', 'the the');  // "the the" — named back-reference
+firstMatch(r'(?<n>\d+)-\g<n>-\g<n>', '12-34-56'); // "12-34-56" — subroutine call \g<n>
+firstMatch(r'\((?:[^()]|\g<0>)*\)', 'a(b(c)d)e'); // "(b(c)d)" — recursion \g<0>
+firstMatch(r'^(a)?(?(1)b|c)$', 'ab');             // "ab" — conditional (?(1)yes|no)
+firstMatch(r'[a-z&&[^aeiou]]+', 'xyzaei');        // "xyz" — character-class intersection &&
+firstMatch(r'foo\Kbar', 'foobar');                // "bar" — \K drops text before it
+firstMatch(r'(?<=\w{2,4}@)\w+', 'bob@host');      // "host" — variable-length look-behind
+firstMatch(r'\p{Han}+', '東京タワー');              // "東京" — Unicode property, no flag needed
+firstMatch(r'[[:alpha:]]+', 'ab12');              // "ab" — POSIX class
+```
+
+Subroutine `\g<name>`/`\g<0>` re-runs a group's *sub-pattern* (whereas a
+back-reference re-matches its captured *text*), which is what lets `\g<0>`
+recurse for nested, balanced input a classic regex can't handle.
+
+## Examples
+
+Real-world patterns driven through the scanner surface.
+
+### Tokenize a line (the scanner's core job)
+
+Compile every token pattern once; `findNextMatch` returns the left-most winner
+and `m.index` tells you which pattern it was:
+
+```dart
+const kinds = ['number', 'name', 'string', 'op', 'space'];
+final scanner = OnigScanner(
+    [r'\d+(?:\.\d+)?', r'[A-Za-z_]\w*', r'"[^"]*"', r'[+\-*/=]', r'\s+']);
+final line = OnigString('total = price * 1.08');
+
+var pos = 0;
+while (true) {
+  final m = scanner.findNextMatch(line, pos);
+  if (m == null) break;
+  final span = m.captureIndices.first;      // whole match, UTF-16 code units
+  final text = line.text.substring(span.start, span.end);
+  if (m.index != 4) print('${kinds[m.index]}: "$text"'); // skip whitespace
+  pos = span.end > pos ? span.end : pos + 1;
+}
+line.dispose();
+scanner.dispose();
+// number/name/op tokens: name "total", op "=", name "price", op "*", number "1.08"
+```
+
+### Read capture groups by index
+
+`captureIndices[0]` is the whole match; `[1]`, `[2]`, … are the groups (an unset
+group reports `start == end == -1`). Offsets are UTF-16 code units:
+
+```dart
+final scanner = OnigScanner([r'(\d{4})-(\d{2})-(\d{2})']);
+final s = OnigString('build 2026-07-19 ok');
+final m = scanner.findNextMatch(s, 0)!;
+String group(int i) =>
+    s.text.substring(m.captureIndices[i].start, m.captureIndices[i].end);
+print('${group(1)}/${group(2)}/${group(3)}'); // 2026/07/19
+s.dispose();
+scanner.dispose();
+```
+
+### Match nested structures with recursion
+
+`\g<0>` recurses the whole pattern, so a single scanner pattern can span a
+balanced, arbitrarily-nested block (using the `firstMatch` helper above):
+
+```dart
+firstMatch(r'\{(?:[^{}]|\g<0>)*\}', 'cfg = {a {b} c};'); // "{a {b} c}"
+```
+
 ## When to use this vs `oniguruma_dart` (pure Dart)
 
 This repo ships two ways to run Oniguruma from Dart. Reach for **this package**

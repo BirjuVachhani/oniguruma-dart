@@ -215,6 +215,171 @@ m.captureIndices.first.start;  // 0
 m.captureIndices.first.end;    // 2  ("ab")
 ```
 
+## Advanced features
+
+Everything below is standard Oniguruma syntax — the rich constructs that make
+the dialect worth reaching for, none of which Dart's built-in `RegExp` can
+express. Every snippet runs as-is against the `OnigRegex` API shown above.
+
+### Possessive quantifiers & atomic groups
+
+`a++`, `a*+`, `a?+` and `(?>…)` match without ever giving anything back, so they
+don't backtrack — the fast, ReDoS-resistant way to say "take it all or fail":
+
+```dart
+OnigRegex.compile(r'a+a').hasMatch('aaaa');     // true  — greedy a+ backtracks one 'a'
+OnigRegex.compile(r'a++a').hasMatch('aaaa');    // false — possessive a++ keeps them all
+OnigRegex.compile(r'(?>a+)a').hasMatch('aaaa'); // false — atomic group, same effect
+```
+
+### Named & numbered back-references
+
+Match text that has to repeat — `\k<name>` (or `\1`) must re-match exactly what
+the group captured:
+
+```dart
+OnigRegex.compile(r'\b(?<word>\w+)\s+\k<word>\b').stringMatch('the the end'); // "the the"
+OnigRegex.compile(r'(\w+)=\1').stringMatch('x foo=foo');                      // "foo=foo"
+```
+
+### Subroutine calls & recursion
+
+`\g<name>` / `\g<1>` re-run a group's *sub-pattern* (unlike a back-reference,
+which re-matches its captured *text*); `\g<0>` recurses the whole pattern, so
+you can match nested, balanced structures a classic regex cannot:
+
+```dart
+// Reuse a sub-pattern by name:
+OnigRegex.compile(r'(?<n>\d+)-\g<n>-\g<n>').stringMatch('12-345-6'); // "12-345-6"
+
+// Recurse the whole pattern for balanced parentheses:
+OnigRegex.compile(r'\((?:[^()]|\g<0>)*\)').stringMatch('a(b(c)d)e'); // "(b(c)d)"
+```
+
+### Conditionals
+
+`(?(id)yes|no)` chooses a branch depending on whether an earlier group matched:
+
+```dart
+// "if group 1 matched, require b, otherwise require c":
+final re = OnigRegex.compile(r'^(a)?(?(1)b|c)$');
+re.hasMatch('ab'); // true
+re.hasMatch('c');  // true
+re.hasMatch('ac'); // false
+```
+
+### Look-around, including variable-length look-behind
+
+Full look-ahead and look-behind — and, unlike many engines, the look-behind may
+be variable-length:
+
+```dart
+OnigRegex.compile(r'\d+(?= ?px)').stringMatch('12px');         // "12"
+OnigRegex.compile(r'(?<=\w{2,4}@)\w+').stringMatch('bob@host'); // "host"
+```
+
+### `\K`, `\R`, `\X`
+
+Keep-out, any line break, and whole grapheme clusters:
+
+```dart
+OnigRegex.compile(r'foo\Kbar').stringMatch('foobar');   // "bar" (\K drops "foo" from the match)
+OnigRegex.compile(r'a\Rb').hasMatch('a\r\nb');          // true  (\R = CRLF / LF / …)
+OnigRegex.compile(r'\X').allMatches('a👨‍👩‍👧e').length;    // 3     (grapheme clusters)
+```
+
+### Character-class set operations & POSIX classes
+
+Intersect classes with `&&`, and use POSIX class names:
+
+```dart
+OnigRegex.compile(r'[a-z&&[^aeiou]]+').stringMatch('xyzaei'); // "xyz" (consonants only)
+OnigRegex.compile(r'[[:alpha:]]+').stringMatch('ab12');       // "ab"
+```
+
+### Unicode properties & multi-char case folds
+
+`\p{…}` works with no flag, and case-insensitive matching performs true Unicode
+folds that `RegExp` won't (`ß` ↔ `ss`):
+
+```dart
+OnigRegex.compile(r'\p{Han}+').stringMatch('東京タワー');        // "東京"
+OnigRegex.compile(r'\p{Greek}+').stringMatch('αβγabc');        // "αβγ"
+OnigRegex.compile(r'(?i)straße').hasMatch('STRASSE');          // true
+```
+
+### Inline modifiers, free-spacing & comments
+
+Flip flags on inside the pattern, lay it out with whitespace, and annotate it:
+
+```dart
+OnigRegex.compile(r'(?i)hello').hasMatch('HELLO');              // true
+OnigRegex.compile(r'(?x) \d{4}  # a year').stringMatch('2026'); // "2026"
+OnigRegex.compile(r'ab(?#ignored)c').hasMatch('abc');           // true
+```
+
+## Examples
+
+Ready-to-use patterns for common tasks, all against the `OnigRegex` API.
+
+### Parse an email into named parts
+
+```dart
+final re = OnigRegex.compile(
+    r'(?<local>[\w.+-]+)@(?<domain>[a-zA-Z\d-]+(?:\.[a-zA-Z\d-]+)+)');
+final m = re.firstMatch('reach me at bob.smith+news@mail.example.co.uk')!;
+m.namedGroup('local');  // "bob.smith+news"
+m.namedGroup('domain'); // "mail.example.co.uk"
+```
+
+### Pull the fields out of an ISO date
+
+```dart
+final m = OnigRegex.compile(r'(?<y>\d{4})-(?<mo>\d{2})-(?<d>\d{2})')
+    .firstMatch('build 2026-07-19 ok')!;
+(m.namedGroup('y'), m.namedGroup('mo'), m.namedGroup('d')); // (2026, 07, 19)
+```
+
+### Match an HTML/XML element and its matching close tag
+
+The closing tag has to reuse the opening tag's name — a back-reference:
+
+```dart
+final m = OnigRegex.compile(r'<(?<tag>\w+)>(?<body>.*?)</\k<tag>>')
+    .firstMatch('<b>bold</b> and <i>x</i>')!;
+m.namedGroup('tag');  // "b"
+m.namedGroup('body'); // "bold"
+```
+
+### Extract a balanced `{…}` block (recursion)
+
+```dart
+OnigRegex.compile(r'\{(?:[^{}]|\g<0>)*\}').stringMatch('cfg = {a {b} c};'); // "{a {b} c}"
+```
+
+### Find every doubled word
+
+```dart
+OnigRegex.compile(r'\b(?<w>\w+)\s+\k<w>\b')
+    .allMatches('this is is a a test')
+    .map((m) => m.namedGroup('w'))
+    .toList(); // [is, a]
+```
+
+### Collapse runs of whitespace
+
+```dart
+OnigRegex.compile(r'\s+').replaceAll('a  b\t\tc', (_) => ' '); // "a b c"
+```
+
+### Parse a semantic-version string
+
+```dart
+final m = OnigRegex.compile(r'(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)')
+    .firstMatch('v1.24.3-rc')!;
+'${m.namedGroup('major')}.${m.namedGroup('minor')}.${m.namedGroup('patch')}'; // "1.24.3"
+```
+
 ## Non-UTF-8 text & the low-level byte API
 
 For non-UTF-8 encodings, or when you need C-identical **byte offsets** and want
