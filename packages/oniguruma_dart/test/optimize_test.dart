@@ -2,7 +2,7 @@
 /// prefilter (`Optimize.str`/`map`, the `.*` anchor) each pattern gets.
 ///
 /// The oracle validates *results*, not *strategy*, so a pattern that silently
-/// loses its prefilter (as `(?i)…` literals once did — matching correctly but
+/// loses its prefilter (as `(?i)…` literals once did, matching correctly but
 /// scanning every position) passes the oracle yet regresses badly. These tests
 /// pin the strategy so such regressions fail loudly.
 library;
@@ -56,7 +56,7 @@ void main() {
   // Regression guard for the case-insensitive prefilter: `(?i)…` literals must
   // get a first-byte map over the leading char's fold class, not fall back to
   // scanning every position.
-  group('case-insensitive exact (strIc) — ASCII-fold-only literals', () {
+  group('case-insensitive exact (strIc), ASCII-fold-only literals', () {
     test('(?i)lorem → strIc with ASCII-lower folded needle', () {
       final r = _c('(?i)lorem');
       expect(r.optimize, Optimize.strIc, reason: 'Sunday skip, not byte scan');
@@ -83,8 +83,8 @@ void main() {
     });
 
     test('char with a NON-ascii fold member (s↔ſ) falls back to map', () {
-      // `s` folds with `ſ` (U+017F, multibyte), so a byte search would miss it
-      // — strIc bails and the first-byte map is used instead.
+      // `s` folds with `ſ` (U+017F, multibyte), so a byte search would miss it.
+      // strIc bails and the first-byte map is used instead.
       final r = _c('(?i)sun');
       expect(r.optimize, Optimize.map);
       expect(r.map![0x73], 1); // s

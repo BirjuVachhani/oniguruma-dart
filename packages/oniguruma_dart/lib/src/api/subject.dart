@@ -6,10 +6,10 @@
 ///
 /// Two implementations, chosen per input (mirrors how the VM's `RegExp`
 /// specializes on one-byte vs two-byte strings):
-///  * [AsciiSubject] — every code unit is `< 0x80`, so the code units *are* the
+///  * [AsciiSubject]: every code unit is `< 0x80`, so the code units *are* the
 ///    UTF-8 bytes and byte offset == code-unit index. No maps built; conversion
 ///    is the identity. This is the common case (all-ASCII source code).
-///  * [Utf8Subject] — has non-ASCII code units; UTF-8 bytes + a lazy cursor.
+///  * [Utf8Subject]: has non-ASCII code units; UTF-8 bytes + a lazy cursor.
 library;
 
 import 'dart:convert';
@@ -78,7 +78,7 @@ class AsciiSubject implements Subject {
 /// a single memoised `(byte, codeUnit)` cursor: [charAt] walks the cursor to the
 /// requested byte offset (forward or backward). Match/group offsets are queried
 /// in mostly-increasing order, so the total walk is amortised O(n) with no big
-/// array — and short scans that only touch the start of a large corpus pay only
+/// array, and short scans that only touch the start of a large corpus pay only
 /// for what they read.
 class Utf8Subject implements Subject {
   @override

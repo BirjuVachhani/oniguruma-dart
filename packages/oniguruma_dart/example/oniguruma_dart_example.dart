@@ -1,4 +1,4 @@
-// Example usage of oniguruma_dart — a pure-Dart port of the Oniguruma regex
+// Example usage of oniguruma_dart, a pure-Dart port of the Oniguruma regex
 // engine. Shows the idiomatic String API (recommended) and the low-level byte
 // API (mirrors the C library, operating on Uint8List with byte offsets).
 import 'dart:convert';

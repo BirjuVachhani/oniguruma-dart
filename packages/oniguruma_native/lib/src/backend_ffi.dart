@@ -1,4 +1,4 @@
-/// Native (dart:ffi) backend — selected on IO platforms. Wraps the Oniguruma C
+/// Native (dart:ffi) backend: selected on IO platforms. Wraps the Oniguruma C
 /// library compiled by hook/build.dart. Oniguruma runs in UTF-8 (so `\xHH`
 /// escapes in TextMate grammars behave as authored); match offsets are mapped
 /// back to UTF-16 code-unit (Dart `String`) indices via a per-string offset map

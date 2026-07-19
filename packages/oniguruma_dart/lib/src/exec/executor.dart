@@ -26,7 +26,7 @@ class Executor {
   final Regex reg;
   final List<Operation> ops;
 
-  // Flattened bytecode (reg.flat) — the hot loop reads interleaved scalar fields
+  // Flattened bytecode (reg.flat): the hot loop reads interleaved scalar fields
   // from [sc] (op `i`'s fields at `sc[i*stride + offset]`, one cache line per op)
   // and object payloads from the parallel lists, instead of dereferencing an
   // Operation object per instruction.
@@ -62,7 +62,7 @@ class Executor {
   final Map<int, int> _calloutCounters = {};
 
   /// ASCII (`< 0x80`) case-fold representatives, built once from
-  /// [OnigEncoding.caseFoldRep] on first use by the ignore-case string op — so
+  /// [OnigEncoding.caseFoldRep] on first use by the ignore-case string op, so
   /// its hot loop folds an ASCII byte with a table lookup instead of the virtual
   /// decode+fold+length chain. Exact for any encoding (same source function).
   Int32List? _asciiFoldRep;
@@ -107,7 +107,7 @@ class Executor {
   int bestLen = OnigResult.mismatch;
   int bestS = -1;
 
-  /// The original search start (`msa->start`), fixed across the whole search —
+  /// The original search start (`msa->start`), fixed across the whole search:
   /// `\G` (CHECK_POSITION SEARCH_START) matches only here, not at each candidate.
   int msaStart = 0;
 
@@ -266,8 +266,8 @@ class Executor {
                 }
                 final bq = str[q];
                 if (bq < 0x80 && asciiFast) {
-                  // ASCII char: fold via table, advance one byte — no virtual
-                  // decode/fold/length calls.
+                  // ASCII char: fold via table, advance one byte (no virtual
+                  // decode/fold/length calls).
                   if (fold[bq] != reps[k]) {
                     ok = false;
                     break;
@@ -304,7 +304,7 @@ class Executor {
             // Decode the code point so ASCII members match in wide encodings
             // (UTF-16/32), where a single char spans several bytes. For an
             // ASCII byte in an ASCII-compatible encoding, code == byte and
-            // len == 1 — skip the two virtual encoding calls.
+            // len == 1: skip the two virtual encoding calls.
             final int len;
             final int code;
             final b = str[s];
@@ -348,7 +348,7 @@ class Executor {
           break;
 
         // Mixed / multibyte classes: membership is decided by the CODE POINT
-        // (bitset for < 0x80 / single-byte, mbuf otherwise) — not the byte
+        // (bitset for < 0x80 / single-byte, mbuf otherwise), not the byte
         // length, so ASCII members match in wide encodings (UTF-16/32).
         case Op.cclassMb:
         case Op.cclassMix:
@@ -688,7 +688,7 @@ class Executor {
         case Op.memStartPush:
           // Push variant: open a new capture on the group's open stack + a
           // restore frame. The completed result is set at MEM_END, so the
-          // last-closed instance wins — correct for recursion and `\g<>`.
+          // last-closed instance wins (correct for recursion and `\g<>`).
           _openStart[sc[base + FlatOps.oMem]].add(s);
           stk.push(
             Stk.memStart,
@@ -885,7 +885,7 @@ class Executor {
 
         case Op.emptyCheckEndMemst:
           // Like above, but an empty iteration that *changed* a tracked capture
-          // is not treated as empty — loop once more so the capture is recorded
+          // is not treated as empty: loop once more so the capture is recorded
           // (rigid `EMPTY_CHECK_END_MEMST`).
           if (s != emptyCheckStk[sc[base + FlatOps.oMem]]) {
             pc++; // position advanced → keep looping
@@ -948,7 +948,7 @@ class Executor {
 
         case Op.saveVal:
           // `pc` carries the SaveType so a backtrack only rewinds right_range
-          // for SAVE_RIGHT_RANGE frames — never for a SAVE_S position.
+          // for SAVE_RIGHT_RANGE frames, never for a SAVE_S position.
           switch (sc[base + FlatOps.oFlag]) {
             case SaveType.rightRange:
               stk.push(
@@ -963,7 +963,7 @@ class Executor {
             default: // SaveType.keep
               // \K keep: the reported match start becomes the current position.
               // Save the old value so backtracking undoes it (C's SAVE_KEEP
-              // frame — the topmost surviving \K wins).
+              // frame: the topmost surviving \K wins).
               stk.push(
                 Stk.saveVal,
                 sc[base + FlatOps.oId],
@@ -1086,7 +1086,7 @@ class Executor {
             }
             // Possessive (flag==1, set by auto-possessification): the follower
             // can't match any char this loop consumed, so a give-back is always
-            // futile — skip the backtrack frame entirely.
+            // futile: skip the backtrack frame entirely.
             if (cur > floor && sc[base + FlatOps.oFlag] == 0) {
               stk.push(Stk.starLoop, 0, pc + 2, cur, floor);
             }
@@ -1193,7 +1193,7 @@ class Executor {
         case Stk.callout:
           {
             // Re-fire the callout in retraction as the match unwinds past it
-            // (e.g. COUNT `X` decrements). Side-effect only — result ignored.
+            // (e.g. COUNT `X` decrements). Side-effect only: result ignored.
             final cop = ops[stk.pc[i]];
             final fn = calloutRegistry.lookup(cop.calloutName!);
             if (fn != null) {
@@ -1224,7 +1224,7 @@ class Executor {
   /// Returns true ("not empty" → loop once more) iff some tracked group either
   /// was never captured before, or *changed to a different non-empty span*.
   /// A capture that merely shifts between two empty spans (e.g. `[2,2]`→`[3,3]`)
-  /// counts as empty — this is the exact C condition and the crux of parity.
+  /// counts as empty. This is the exact C condition and the crux of parity.
   bool _capsChanged(int id, List<int> groups) {
     var remaining = groups.length;
     final seen = _capsSeen;
@@ -1269,7 +1269,7 @@ class Executor {
   /// [repeatStk] is authoritative; with calls it's shared across recursion
   /// levels, so search the stack for THIS call level's REPEAT_INC frame,
   /// skipping any completed inner-call region (regexec.c
-  /// STACK_GET_REPEAT_COUNT_SEARCH — returnMark…callFrame balance).
+  /// STACK_GET_REPEAT_COUNT_SEARCH: returnMark…callFrame balance).
   int _getRepeatCount(int id) {
     if (reg.numCall == 0) return repeatStk[id];
     var k = stk.sp;
@@ -1313,7 +1313,7 @@ class Executor {
   int _cutToMark(int id, bool preserveSaveVal) {
     // `cut_to_mark`: discard the choice points down to (and including) the mark.
     // C's STACK_TO_VOID_TO_MARK keeps non-choice frames; the only such frame
-    // whose survival is observable here is SAVE_VAL — it restores right_range/\K
+    // whose survival is observable here is SAVE_VAL: it restores right_range/\K
     // when the enclosing scope later backtracks. A range-cutter `(?~|…)` inside
     // an atomic sets right_range and pushes that restore; truncating it outright
     // would leak the cut boundary past the atomic (#891). So (for atomic/absent
@@ -1368,7 +1368,7 @@ class Executor {
 
   // --- helpers -------------------------------------------------------------
 
-  /// `\k<name±n>` — match the capture of one of [groups] at call-nesting level
+  /// `\k<name±n>`: match the capture of one of [groups] at call-nesting level
   /// [nest] (`backref_match_at_nested_level`). Returns the new position or -1.
   int _backrefAtLevel(List<int> groups, int nest, int s, [bool ic = false]) {
     var level = 0;

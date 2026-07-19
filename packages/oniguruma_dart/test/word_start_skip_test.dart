@@ -48,7 +48,7 @@ void main() {
       () => expect(_m(r'\b\w{5}\b', 'oh there go'), (3, 8)),
     );
     test('skips mid-word candidates but still finds the real start', () {
-      // "xxlorem" — 'l' at index 2 is mid-word (prev 'x' is word); the real
+      // "xxlorem": 'l' at index 2 is mid-word (prev 'x' is word); the real
       // 5-letter word "lorem" only appears after the space.
       expect(_m(r'\b\w{5}\b', 'xxlorem lorem'), (8, 13));
     });

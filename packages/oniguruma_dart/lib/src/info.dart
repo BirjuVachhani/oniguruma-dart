@@ -3,7 +3,7 @@
 ///
 /// This port also exposes the same data directly as `Regex` fields
 /// (`numMem`, `numNamed`, `nameTable`); these functions exist so the public
-/// surface matches the C library — and the sibling `oniguruma_native` package —
+/// surface matches the C library, and the sibling `oniguruma_native` package,
 /// 1:1.
 library;
 

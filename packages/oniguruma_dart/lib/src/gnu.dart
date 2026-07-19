@@ -27,7 +27,7 @@ Regex reCompilePattern(String pattern, {OnigSyntax? syntax}) {
   );
 }
 
-/// `re_search` — search [str] in `[start, start+range]` for [reg]. Returns the
+/// `re_search`: search [str] in `[start, start+range]` for [reg]. Returns the
 /// match start byte offset, or -1 (no match). Fills [region] if provided.
 int reSearch(
   Regex reg,
@@ -41,7 +41,7 @@ int reSearch(
   return onigSearch(reg, str, size, start, rangeEnd, region);
 }
 
-/// `re_match` — anchored match of [reg] at [at]. Returns the matched byte
+/// `re_match`: anchored match of [reg] at [at]. Returns the matched byte
 /// length, or -1.
 int reMatch(Regex reg, Uint8List str, int size, int at, OnigRegion? region) {
   return onigMatch(reg, str, size, at, region);

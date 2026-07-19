@@ -230,8 +230,8 @@ class OnigWasmModule {
 
   /// Instantiates the module fetched from [url]. Idempotent.
   ///
-  /// Prefers `WebAssembly.instantiateStreaming` — it compiles while downloading
-  /// and lets the browser cache the compiled module — and falls back to
+  /// Prefers `WebAssembly.instantiateStreaming` (it compiles while downloading
+  /// and lets the browser cache the compiled module) and falls back to
   /// fetch → arrayBuffer → instantiate when the server sends the wrong MIME type
   /// (streaming requires `application/wasm`). Throws a [StateError] if the
   /// resource is missing (e.g. a 404 when `setup` was never run), so callers can

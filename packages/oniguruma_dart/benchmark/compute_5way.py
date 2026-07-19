@@ -51,14 +51,14 @@ def gmean(xs):
     return math.exp(sum(math.log(x) for x in xs) / len(xs))
 
 
-print("## Table A — absolute: median time to scan the corpus for all matches\n")
+print("## Table A, absolute: median time to scan the corpus for all matches\n")
 print("| pattern | matches | " + " | ".join(n for n, _ in ENGINES) + " |")
 print("|---|--:|" + "--:|" * len(ENGINES))
 for lab in LABELS:
     cells = " | ".join(t(d[lab]) for _, d in ENGINES)
     print(f"| {lab} | {COUNT[lab]:,} | {cells} |")
 
-print("\n## Table B — normalized to Oniguruma C (= 1.00×). ×>1 slower, %<0 faster.\n")
+print("\n## Table B, normalized to Oniguruma C (= 1.00×). ×>1 slower, %<0 faster.\n")
 print("| pattern | " + " | ".join(n for n, _ in ENGINES) + " |")
 print("|---|" + "--:|" * len(ENGINES))
 for lab in LABELS:

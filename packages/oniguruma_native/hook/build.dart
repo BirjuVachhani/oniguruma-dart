@@ -4,14 +4,14 @@
 // Two strategies, in order:
 //
 //   A. Prebuilt (default). If `prebuilt/<platform>/<arch>/<lib>` exists for the
-//      target, it is bundled directly as the code asset — no compiler, no
+//      target, it is bundled directly as the code asset, no compiler, no
 //      network. These blobs ship inside the published package; the
 //      `prebuild-oniguruma` GitHub Actions workflow produces them (see
 //      _prebuiltLibraryUri below for the layout). Integrity is inherent: they
 //      live in pub's immutable, hash-recorded archive.
 //
-//   C. Build from source (fallback). When no prebuilt exists for the target —
-//      or the consumer opts out via a user-define (see below) — the upstream
+//   C. Build from source (fallback). When no prebuilt exists for the target,
+//      or the consumer opts out via a user-define (see below), the upstream
 //      Oniguruma source tarball is downloaded from its GitHub release,
 //      verified against a pinned SHA-256, extracted, and compiled together
 //      with our shim exactly as before. Oniguruma is archived, so the pinned

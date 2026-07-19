@@ -1,7 +1,7 @@
 // Replays the exact findNextMatch query stream captured from shiki_flutter's
 // tokenizer (the same /tmp/onig_bench/workload_*.bin used by the standalone C
 // benchmark) through this Dart FFI Oniguruma bridge. This measures the REAL
-// cost of using Oniguruma from Dart — FFI crossings included — so it can be
+// cost of using Oniguruma from Dart (FFI crossings included) so it can be
 // compared directly against our pure-Dart engine and the no-FFI C number.
 //
 //   dart run benchmark/onig_replay.dart
@@ -40,7 +40,7 @@ void main() {
   for (final size in ['m', 'xl']) {
     final file = File('$_dir/workload_$size.bin');
     if (!file.existsSync()) {
-      print('[$size] missing ${file.path} — skip');
+      print('[$size] missing ${file.path}, skip');
       continue;
     }
     final r = _Reader(file.readAsBytesSync());

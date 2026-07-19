@@ -6,7 +6,7 @@
 //   * the multi-pattern "scanner" scan loop (kept in C so there is exactly one
 //     FFI crossing per findNextMatch, like vscode-oniguruma).
 //
-// Strings are UTF-8 — the encoding TextMate/VS Code grammars are authored
+// Strings are UTF-8: the encoding TextMate/VS Code grammars are authored
 // against, so `\xHH` byte escapes in those grammars match as intended. Oniguruma
 // reports UTF-8 byte offsets; the Dart side maps them back to UTF-16 code-unit
 // (Dart String) indices via a per-string offset map (see utf8_offsets.dart).
@@ -166,7 +166,7 @@ SHIM_EXPORT
 const char* onig_shim_version(void) { return onig_version(); }
 
 // ===========================================================================
-// Layer 0 — flat-int accessors over the raw onig_* API for the WEB backend.
+// Layer 0: flat-int accessors over the raw onig_* API for the WEB backend.
 //
 // The FFI (IO) backend binds onig_* directly, but the web/js_interop bridge
 // can't marshal OnigRegion / regex_t structs across the boundary. These helpers

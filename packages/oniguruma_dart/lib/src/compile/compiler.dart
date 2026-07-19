@@ -66,7 +66,7 @@ class _Compiler {
   /// (C's `push_mem_start = backtrack_mem | cap_history`). A group is push if it
   /// is back-referenced, called/recursive, or lexically inside an alternation,
   /// negative look-around, or *variable*-length repeat. Groups directly under a
-  /// *fixed* `{n}` (and mandatory top-level groups) are NON-push — their
+  /// *fixed* `{n}` (and mandatory top-level groups) are NON-push: their
   /// captures are not rewound, which is what yields C's "inverted" `beg>end`
   /// regions on empty iterations. Absent here ⇒ non-push.
   final Set<int> _pushMem = {};
@@ -628,7 +628,7 @@ class _Compiler {
     }
     if (cur != null) branches.add(cur);
 
-    // Fast path: literal switch — every branch has a fixed, DISTINCT single
+    // Fast path: literal switch. Every branch has a fixed, DISTINCT single
     // first byte and is non-nullable, so at most one branch can match at any
     // position. Dispatch straight to that branch via a byte→addr table with no
     // PUSH/backtrack frame (there is never another branch to give back to).
@@ -678,8 +678,8 @@ class _Compiler {
 
   /// Complete over-approximation of the first byte of [node] as a 256-bit
   /// [BitSet], or null if it can't be proven complete. Only non-nullable heads
-  /// are accepted (so the set really is every byte that can begin a match) —
-  /// this is the safety condition for skipping the branch in [Op.peekByte].
+  /// are accepted (so the set really is every byte that can begin a match).
+  /// This is the safety condition for skipping the branch in [Op.peekByte].
   BitSet? _altFirstBytes(Node node) {
     final bs = BitSet();
     return _altFirstBytesInto(node, bs) ? bs : null;
@@ -925,7 +925,7 @@ class _Compiler {
 
   void _compileCtype(CtypeNode node) {
     if (node.ctype == -2) {
-      // \X — grapheme cluster, or word segment under `(?y{w})`.
+      // \X: grapheme cluster, or word segment under `(?y{w})`.
       emit(
         Operation(Op.extendedGraphemeCluster)
           ..flag = node.st(NdSt.textSegmentWord)
@@ -959,7 +959,7 @@ class _Compiler {
 
   void _compileBackref(BackRefNode node) {
     if (node.hasLevel) {
-      // \k<name±n> — matches the group's capture n call levels away (the flat
+      // \k<name±n>: matches the group's capture n call levels away (the flat
       // capture may have been overwritten by recursion, so walk the stack).
       emit(
         Operation(Op.backrefWithLevel)
@@ -1058,11 +1058,11 @@ class _Compiler {
     }
   }
 
-  /// Look-behind `(?<=X)` / `(?<!X)` — fixed or variable length.
+  /// Look-behind `(?<=X)` / `(?<!X)`: fixed or variable length.
   void _compileLookBehind(AnchorNode node, {required bool negative}) {
     final body = node.body!;
     // The absent operator manipulates right_range (via SAVE/UPDATE_VAR
-    // right-range gimmicks), which a look-behind can't accommodate — C rejects
+    // right-range gimmicks), which a look-behind can't accommodate: C rejects
     // it (`ci.min == INFINITE_LEN` → INVALID_LOOK_BEHIND_PATTERN).
     if (_hasRightRangeGimmick(body, <int>{})) {
       throw OnigException(OnigErr.invalidLookBehindPattern);
@@ -1079,11 +1079,11 @@ class _Compiler {
     if (minC != maxC) {
       // divide_look_behind_alternatives (regcomp.c tune_look_behind,
       // CHAR_LEN_TOP_ALT_FIXED): a top-level alternation whose branches are each
-      // individually fixed-length becomes an alternation of *fixed* look-behinds
-      // — `(?<=A|B)` → `(?<=A)|(?<=B)`. Each is then a real backtrackable
+      // individually fixed-length becomes an alternation of *fixed* look-behinds:
+      // `(?<=A|B)` → `(?<=A)|(?<=B)`. Each is then a real backtrackable
       // alternative, so a later failure re-enters and tries the next branch
       // (e.g. `(?<=;()|)\k<1>` reaches the `;()` branch when `\k<1>` needs g1).
-      // Only when the look-behind's captures are actually referenced — otherwise
+      // Only when the look-behind's captures are actually referenced, otherwise
       // the branch choice is unobservable and the plain variable step-back (which
       // C would optimize away via reset-empty) gives identical offsets.
       if (!negative && body is AltNode && _lookBehindCapturesUsed(body)) {
@@ -1205,7 +1205,7 @@ class _Compiler {
   }
 
   /// True if [node] contains a SIDE-EFFECTING absent operator (`(?~|…)`
-  /// range-cutter/clear, marked ABSENT_WITH_SIDE_EFFECTS) — these can't live in
+  /// range-cutter/clear, marked ABSENT_WITH_SIDE_EFFECTS). These can't live in
   /// a look-behind (plain `(?~…)` is fine). Follows `\g<>` calls once via [seen].
   bool _hasRightRangeGimmick(Node node, Set<int> seen) {
     if (node.st(NdSt.absentWithSideEffects)) return true;
@@ -1484,7 +1484,7 @@ class _Compiler {
     // condition: a backref-check node.
     final cond = node.body;
     if (cond is BackRefNode) {
-      // Check every group of the (possibly multiplexed) name — the condition
+      // Check every group of the (possibly multiplexed) name: the condition
       // is true if ANY of them matched.
       emit(Operation(Op.backrefCheck)..ns = List<int>.of(cond.back));
     } else if (cond != null) {
@@ -1534,7 +1534,7 @@ class _Compiler {
       return;
     }
     // Push variants save+restore across backtracking; non-push variants set the
-    // capture registers directly (no rewind) — matching C's `push_mem_start` /
+    // capture registers directly (no rewind), matching C's `push_mem_start` /
     // `push_mem_end` so non-push groups can leave "inverted" empty regions.
     final push = _pushMem.contains(node.regNum);
     emit(Operation(push ? Op.memStartPush : Op.memStart)..mem = node.regNum);
@@ -1589,7 +1589,7 @@ class _Compiler {
         ..flag = 0,
     );
     if (node.body != null) compileTree(node.body!);
-    // flag=2: atomic cut — keep any right_range/\K SAVE_VAL from the body (e.g.
+    // flag=2: atomic cut. Keep any right_range/\K SAVE_VAL from the body (e.g.
     // an enclosed range-cutter `(?~|…)`) so its boundary is undone when the
     // enclosing scope backtracks out of the atomic (#891). flag=0/1 cuts don't.
     emit(
@@ -1632,7 +1632,7 @@ class _Compiler {
 
   // --- quantifiers ---------------------------------------------------------
 
-  /// `QUANTIFIER_EXPAND_LIMIT_SIZE` — C unrolls a repeat only while the compiled
+  /// `QUANTIFIER_EXPAND_LIMIT_SIZE`: C unrolls a repeat only while the compiled
   /// body is small enough (`tlen*count <= 10`); larger counts use `OP_REPEAT`.
   /// This exact boundary decides whether a repeat gets empty-check semantics,
   /// so we reproduce it 1:1 from `compile_quantifier_node`.
@@ -1837,7 +1837,7 @@ class _Compiler {
   }
 
   /// Eligible for the [Op.starGreedy] fast loop: a body that compiles to exactly
-  /// one single-character-consuming op with no captures/empty-check — a char
+  /// one single-character-consuming op with no captures/empty-check. A char
   /// class, or a ctype (anychar / `\w` / `\d`-style). `\X` (grapheme, ctype -2)
   /// is excluded (it consumes a whole cluster via its own opcode).
   bool _isStarEligible(Node body) =>
@@ -1855,7 +1855,7 @@ class _Compiler {
   }
 
   /// Auto-possessification: a greedy single-item loop `X*`/`X+` (an [Op.starGreedy])
-  /// followed by an atom whose first byte cannot be an `X` — or by end-of-pattern —
+  /// followed by an atom whose first byte cannot be an `X` (or by end-of-pattern)
   /// never needs to give a character back (giving back exposes only `X` chars,
   /// where the follower can't match). Mark such loops possessive (flag=1) so the
   /// executor skips pushing the give-back frame entirely. Provably match-preserving.

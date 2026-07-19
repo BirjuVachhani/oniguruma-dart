@@ -51,7 +51,7 @@ def gmean(xs):
     return math.exp(sum(math.log(x) for x in xs) / len(xs)) if xs else 0
 
 
-print("## V8 regex: JIT (machine code) vs bytecode interpreter — Node, same session\n")
+print("## V8 regex: JIT (machine code) vs bytecode interpreter, Node, same session\n")
 print("| pattern | V8 JIT (normal) | V8 interp (--regexp-interpret-all) | interp/JIT |")
 print("|---|--:|--:|--:|")
 for lab in labels:
@@ -59,7 +59,7 @@ for lab in labels:
         r = RE_INTERP[lab] / RE_JIT[lab]
         print(f"| {lab} | {t(RE_JIT[lab])} | {t(RE_INTERP[lab])} | {r:.1f}× |")
 g = gmean([RE_INTERP[l] / RE_JIT[l] for l in labels if l in RE_JIT and l in RE_INTERP])
-print(f"\n**geomean interp/JIT = {g:.1f}× — the pure cost of turning OFF V8's regex JIT.**")
+print(f"\n**geomean interp/JIT = {g:.1f}×: the pure cost of turning OFF V8's regex JIT.**")
 
 print("\n## Interpreter-vs-interpreter: V8 regex bytecode interp vs our Dart interp vs C\n")
 print("| pattern | Oniguruma C | oniguruma_dart·VM (our interp) | Dart RegExp·VM (V8 interp in DartVM) | V8 regex interp (Node) | V8 JIT (Node) |")
@@ -88,7 +88,7 @@ g2 = gmean([RE_VM[l] / RE_INTERP[l] for l in labels if l in RE_INTERP])
 print(f"| oniguruma_dart·VM / V8-regex-interp | {g1:.2f}× |")
 print(f"| Dart RegExp·VM / V8-regex-interp (both V8 Irregexp, DartVM vs Node) | {g2:.2f}× |")
 
-print("\n## --jitless (everything interpreted, incl. harness) — context only\n")
+print("\n## --jitless (everything interpreted, incl. harness), context only\n")
 print("| pattern | V8 regex interp (clean) | --jitless RegExp | --jitless our port (JS interpreted) |")
 print("|---|--:|--:|--:|")
 for lab in labels:

@@ -1,6 +1,6 @@
 // Downloads the version-matched Oniguruma WebAssembly module into your app's
-// `web/` directory, so the web backend serves it locally — streaming-compiled,
-// browser-cached, and available offline / under a strict CSP — instead of
+// `web/` directory, so the web backend serves it locally (streaming-compiled,
+// browser-cached, and available offline / under a strict CSP) instead of
 // falling back to fetching it from the GitHub Release at runtime.
 //
 //   dart run oniguruma_native:setup
@@ -34,7 +34,7 @@ Future<void> main(List<String> args) async {
   final target = File('${outDir.path}/$wasmAssetName');
 
   if (target.existsSync() && !opts.force) {
-    print('✓ ${target.path} already exists — use --force to overwrite.');
+    print('✓ ${target.path} already exists, use --force to overwrite.');
     return;
   }
 
@@ -45,7 +45,7 @@ Future<void> main(List<String> args) async {
   if (usingDefaults) {
     final expected = await _expectedChecksum();
     if (expected == null) {
-      print('! checksum manifest not found — skipping verification.');
+      print('! checksum manifest not found, skipping verification.');
     } else {
       final actual = sha256.convert(bytes).toString();
       if (actual != expected) {
@@ -60,7 +60,7 @@ Future<void> main(List<String> args) async {
       print('✓ SHA-256 verified.');
     }
   } else {
-    print('! custom --url/--version — skipping checksum verification.');
+    print('! custom --url/--version, skipping checksum verification.');
   }
 
   if (!outDir.existsSync()) outDir.createSync(recursive: true);
@@ -97,7 +97,7 @@ Future<List<int>> _downloadWithRetry(String url, {int attempts = 3}) async {
     } catch (e) {
       lastErr = e;
       if (attempt < attempts) {
-        stderr.writeln('  attempt $attempt failed ($e) — retrying...');
+        stderr.writeln('  attempt $attempt failed ($e), retrying...');
         await Future<void>.delayed(Duration(seconds: attempt));
       }
     }

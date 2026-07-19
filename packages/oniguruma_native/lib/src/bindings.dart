@@ -56,10 +56,10 @@ external int shimScanCount(
 external Pointer<Char> shimVersion();
 
 // ---------------------------------------------------------------------------
-// Layer 0 — flat-int shim accessors over the raw onig_* API.
+// Layer 0: flat-int shim accessors over the raw onig_* API.
 //
 // These bind the `onig_shim_*` Layer-0 helpers, NOT the raw `onig_*` symbols.
-// Reason: on Windows a DLL only exports `__declspec(dllexport)` symbols — that
+// Reason: on Windows a DLL only exports `__declspec(dllexport)` symbols. That
 // covers the shim (SHIM_EXPORT) but NOT the raw `onig_*` functions or the
 // encoding/syntax data globals, so binding those directly fails to resolve on
 // Windows. Going through the shim keeps all struct/ABI/global handling in C and

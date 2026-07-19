@@ -2,7 +2,7 @@
 /// (`executor.dart` `Op.strN` flag==2): an ASCII subject byte is folded via a
 /// table built from `enc.caseFoldRep` instead of the virtual decode/fold/length
 /// chain. The critical safety cases are ASCII pattern chars whose fold class
-/// includes NON-ASCII members (`s`↔`ſ`, `k`↔Kelvin U+212A) — those subject
+/// includes NON-ASCII members (`s`↔`ſ`, `k`↔Kelvin U+212A): those subject
 /// chars are multibyte, so they must still take the virtual path and match.
 library;
 

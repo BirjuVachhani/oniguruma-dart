@@ -217,7 +217,7 @@ class CodeRangeBuffer {
     return out;
   }
 
-  /// `add_code_range` — insert [from,to], merging overlaps/adjacency.
+  /// `add_code_range`: insert [from,to], merging overlaps/adjacency.
   void add(int from, int to) {
     if (from > to) {
       final t = from;

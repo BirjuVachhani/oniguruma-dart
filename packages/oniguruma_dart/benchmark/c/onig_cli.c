@@ -1,5 +1,5 @@
 /*
- * onig_cli.c — reference harness for the Dart port of Oniguruma.
+ * onig_cli.c: reference harness for the Dart port of Oniguruma.
  *
  * Two modes:
  *
@@ -164,7 +164,7 @@ static int bench_mode(const char* pat_hex, const char* path, long iters) {
   return 0;
 }
 
-/* Compile the pattern <iters> times, freeing each — measures compile ns/op. */
+/* Compile the pattern <iters> times, freeing each, measures compile ns/op. */
 static int compile_mode(const char* pat_hex, long iters) {
   unsigned char* pat;
   long plen = hexdecode(pat_hex, &pat);

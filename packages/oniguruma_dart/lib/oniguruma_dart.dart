@@ -6,7 +6,7 @@
 ///    operating on `Uint8List` with byte offsets;
 ///  * an idiomatic `String`-based wrapper (`OnigRegex`/`OnigMatch`);
 ///  * a `vscode-oniguruma`-shaped multi-pattern scanner (`OnigScanner`,
-///    `OnigString`, `OnigScannerMatch`) — the same surface as `oniguruma_native`,
+///    `OnigString`, `OnigScannerMatch`): the same surface as `oniguruma_native`,
 ///    for TextMate-grammar / Shiki tokenizers.
 library;
 

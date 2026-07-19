@@ -3,7 +3,7 @@
 /// whole pattern is an exact literal, a Sunday hit IS the match and the driver
 /// fills the region without running matchAt. Results must be byte-identical to
 /// the verified path. The critical cases are the ones that must NOT take the
-/// shortcut — a capture, a trailing anchor, or a whole-string option — where
+/// shortcut (a capture, a trailing anchor, or a whole-string option) where
 /// matchAt is still required.
 library;
 

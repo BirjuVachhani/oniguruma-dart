@@ -1,7 +1,7 @@
 /// Shared UTF-8 encoding + byte↔UTF-16 offset mapping for both backends.
 ///
-/// Oniguruma runs in UTF-8 (so `\xHH` byte escapes in TextMate grammars — which
-/// are authored against UTF-8 Oniguruma — behave correctly), but the public API
+/// Oniguruma runs in UTF-8 (so `\xHH` byte escapes in TextMate grammars, which
+/// are authored against UTF-8 Oniguruma, behave correctly), but the public API
 /// speaks Dart `String` indices, i.e. UTF-16 code units. This file bridges the
 /// two: it encodes a string to UTF-8 once and, unless the string is pure ASCII,
 /// builds the two maps needed to translate offsets in both directions.
@@ -17,7 +17,7 @@ import 'dart:typed_data';
 /// (what Dart `String` uses).
 ///
 /// For pure-ASCII input the two coordinate systems are identical, so [ascii] is
-/// true and no maps are allocated — the common case for source code, and the
+/// true and no maps are allocated: the common case for source code, and the
 /// reason the offset mapping is close to free there.
 class Utf8Encoded {
   Utf8Encoded._(this.bytes, this.u16Length, this._byteToU16, this._u16ToByte)
@@ -37,7 +37,7 @@ class Utf8Encoded {
   /// Length of [bytes].
   int get byteLength => bytes.length;
 
-  /// True when the string is pure ASCII — byte offset == UTF-16 index, so the
+  /// True when the string is pure ASCII: byte offset == UTF-16 index, so the
   /// maps are omitted and translation is the identity.
   final bool ascii;
 
@@ -52,7 +52,7 @@ class Utf8Encoded {
 
   /// Converts a UTF-16 code-unit offset to a UTF-8 byte offset (for the start
   /// position passed into Oniguruma). Out-of-range positions are clamped to the
-  /// string bounds — a tokenizer advancing past a zero-width match can ask for
+  /// string bounds. A tokenizer advancing past a zero-width match can ask for
   /// `length + 1`, which must behave as "at end" (no match), not throw.
   int u16ToByte(int u16) {
     if (u16 <= 0) return 0;

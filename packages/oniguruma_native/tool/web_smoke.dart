@@ -1,5 +1,5 @@
 // Proves the package compiles for web (no dart:ffi leakage) and that the web
-// backend's API is wired. Not a runtime test — the check is that
+// backend's API is wired. Not a runtime test: the check is that
 // `dart compile js` and `dart compile wasm` both succeed.
 //
 //   dart compile js   tool/web_smoke.dart -o /tmp/oniguruma_web_smoke.js

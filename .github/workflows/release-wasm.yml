@@ -2,15 +2,15 @@ name: release-wasm
 
 # Publishes the committed web WebAssembly module as a GitHub Release asset for a
 # package version. `dart run oniguruma_native:setup` and loadWasm's runtime
-# fallback download it — see packages/oniguruma_native/lib/src/release.dart for
+# fallback download it: see packages/oniguruma_native/lib/src/release.dart for
 # the URL scheme: the release tag is plain semver (e.g. 1.2.0) and the asset is
 # oniguruma_native.wasm.
 #
 # Guarantees before uploading:
-#   * tag == pubspec `version:` == release.dart `packageVersion` — so the runtime
+#   * tag == pubspec `version:` == release.dart `packageVersion`, so the runtime
 #     fallback can never resolve a tag that disagrees with the shipped code.
 #   * the committed prebuilt/web/oniguruma_native.wasm matches prebuilt/
-#     checksums.sha256 — so released == checksummed == what setup verifies.
+#     checksums.sha256, so released == checksummed == what setup verifies.
 # No rebuild here; refresh the blob with `refresh-prebuilts` when the shim or
 # source pin changes.
 
@@ -65,7 +65,7 @@ jobs:
             | sed -E "s/.*'([^']+)'.*/\1/")
           echo "tag=$TAG  pubspec=$pubspec_ver  release.dart=$const_ver"
           if [ "$TAG" != "$pubspec_ver" ] || [ "$const_ver" != "$pubspec_ver" ]; then
-            echo "::error::version mismatch — tag=$TAG pubspec=$pubspec_ver release.dart=$const_ver"
+            echo "::error::version mismatch: tag=$TAG pubspec=$pubspec_ver release.dart=$const_ver"
             exit 1
           fi
 

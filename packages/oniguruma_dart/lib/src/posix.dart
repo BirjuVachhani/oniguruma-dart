@@ -45,7 +45,7 @@ class PosixRegex {
   PosixRegex._(this._reg, this.reNsub, this._cflags);
 }
 
-/// `regcomp` — compile [pattern] with [cflags]. Returns 0 on success or a
+/// `regcomp`: compile [pattern] with [cflags]. Returns 0 on success or a
 /// `REG_*` error code, filling [out].
 int posixRegcomp(PosixRegexHolder out, String pattern, int cflags) {
   // `onig_posix_regcomp`: REG_EXTENDED uses the default (Oniguruma) syntax;
@@ -69,7 +69,7 @@ int posixRegcomp(PosixRegexHolder out, String pattern, int cflags) {
   }
 }
 
-/// `regexec` — match [str] against [preg]. Fills up to [nmatch] entries of
+/// `regexec`: match [str] against [preg]. Fills up to [nmatch] entries of
 /// [matches] with byte offsets. Returns 0 on match or [Reg.noMatch].
 int posixRegexec(
   PosixRegex preg,
@@ -104,10 +104,10 @@ int posixRegexec(
   return 0;
 }
 
-/// `regfree` — release compiled resources.
+/// `regfree`: release compiled resources.
 void posixRegfree(PosixRegex preg) => preg._reg = null;
 
-/// `regerror` — human-readable message for a POSIX error code.
+/// `regerror`: human-readable message for a POSIX error code.
 String posixRegerror(int code) {
   switch (code) {
     case Reg.noMatch:

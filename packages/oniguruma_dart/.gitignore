@@ -13,7 +13,7 @@
 /benchmark/web/bench_web.js.map
 /benchmark/web/corpus_data.g.dart
 
-# Vendored Oniguruma C library (v6.9.10) — differential-test and benchmark
+# Vendored Oniguruma C library (v6.9.10): differential-test and benchmark
 # oracle only, not part of the Dart package. Fetch & build it locally to run
 # those (see README → "Contributing").
 /oniguruma-master/

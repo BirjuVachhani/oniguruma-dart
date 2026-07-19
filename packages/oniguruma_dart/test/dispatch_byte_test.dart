@@ -5,7 +5,7 @@
 ///
 /// The results must be byte-identical to the general PUSH/JUMP alternation.
 /// The interesting cases are (a) a candidate whose byte matches a branch head
-/// but whose full literal does NOT match — must fail, never spuriously match a
+/// but whose full literal does NOT match: must fail, never spuriously match a
 /// sibling; (b) the switch embedded in a larger pattern where the continuation
 /// forces a give-back; (c) captures inside a branch; (d) shared-first-byte
 /// alternations that must FALL BACK to the general path and still be correct.
@@ -66,7 +66,7 @@ void main() {
       'prefix of a longer word still matches',
       () => expect(_m(pat, 'site'), (0, 3)),
     );
-    // partial then real: "si sit" — first "si" fails, later "sit" matches.
+    // partial then real: "si sit" (first "si" fails, later "sit" matches).
     test(
       'partial before the real one',
       () => expect(_m(pat, 'si sit'), (3, 6)),
@@ -137,7 +137,7 @@ void main() {
   // Fast in-process differential for the ≥3-branch dispatch path: a bare
   // distinct-first-byte literal switch is equivalent to "leftmost position where
   // one of the words starts (and fully matches)". Compute that independently and
-  // check thousands of random (word-set, subject) pairs against the engine — no
+  // check thousands of random (word-set, subject) pairs against the engine, no
   // C subprocess needed, so it covers far more branch/subject combos than the
   // IPC fuzzer can.
   group('dispatch vs independent oracle (fuzz)', () {

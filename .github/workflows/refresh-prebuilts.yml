@@ -6,7 +6,7 @@ name: refresh-prebuilts
 #   * builds the self-contained oniguruma_native library for every platform/arch
 #     and the wasm32-wasi module,
 #   * installs them into packages/oniguruma_native/prebuilt/ (replacing the old
-#     binaries — no stale files left behind, including prebuilt/web/*.wasm),
+#     binaries: no stale files left behind, including prebuilt/web/*.wasm),
 #   * regenerates the SHA-256 manifest,
 #   * commits and pushes to the dispatched branch.
 #
@@ -177,7 +177,7 @@ jobs:
           n=$(find merged/prebuilt -type f \
             \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' -o -name '*.wasm' \) | wc -l)
           echo "downloaded $n binaries"
-          [ "$n" -ge 14 ] || { echo "::error::expected >=14 binaries, got $n — refusing to replace"; exit 1; }
+          [ "$n" -ge 14 ] || { echo "::error::expected >=14 binaries, got $n, refusing to replace"; exit 1; }
 
           dst="$PKG_DIR/prebuilt"
           # Replace properly: drop the old binaries first so a shrunk matrix can
@@ -209,7 +209,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add "$PKG_DIR/prebuilt"
           if git diff --cached --quiet; then
-            echo "Prebuilts already up to date — nothing to commit."
+            echo "Prebuilts already up to date, nothing to commit."
             exit 0
           fi
           git commit -m "chore: refresh oniguruma_native prebuilt binaries (run ${RUN_ID})"

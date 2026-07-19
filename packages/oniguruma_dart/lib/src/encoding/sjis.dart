@@ -17,7 +17,7 @@ int _encLen(int b) =>
 bool _isMbFirst(int b) => _encLen(b) > 1;
 bool _isMbTrail(int b) => _sjisTrail[b] != 0;
 
-/// `SJIS_CAN_BE_TRAIL_TABLE` (sjis.c) — bytes that may be a second byte.
+/// `SJIS_CAN_BE_TRAIL_TABLE` (sjis.c): bytes that may be a second byte.
 final Uint8List _sjisTrail = Uint8List.fromList(const <int>[
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,

@@ -1,7 +1,7 @@
 /* Oniguruma config.h for the wasm32-wasi (WebAssembly) build.
  *
  * Used only by the wasm prebuild (tool/prebuilt/build_wasm.sh, driven by the
- * prebuild-oniguruma workflow) — NOT by the runtime build hook, which never
+ * prebuild-oniguruma workflow), NOT by the runtime build hook, which never
  * runs on web. It mirrors src/config/config.h (the generic non-Windows
  * variant) with the one difference that matters on wasm32: it is an ILP32
  * target, so `long` and `void*` are 4 bytes, not 8. wasi-sdk's sysroot ships

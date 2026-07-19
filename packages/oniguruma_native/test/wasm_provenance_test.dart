@@ -12,7 +12,7 @@ import 'package:test/test.dart';
 /// download time) and the `release-wasm` workflow (before upload). This guards
 /// the source of truth those rely on: the committed
 /// `prebuilt/web/oniguruma_native.wasm` is a valid module and matches the
-/// manifest — so a blob refreshed without an updated checksum (or vice-versa)
+/// manifest, so a blob refreshed without an updated checksum (or vice-versa)
 /// fails here rather than shipping a mismatch.
 
 /// Resolves a path relative to the package root, independent of the directory
@@ -37,7 +37,7 @@ void main() {
     }
     final bytes = await file.readAsBytes();
     expect(bytes, isNotEmpty);
-    // "\0asm" magic + version 1 — the 8-byte WebAssembly preamble.
+    // "\0asm" magic + version 1: the 8-byte WebAssembly preamble.
     expect(bytes.sublist(0, 8), [
       0x00,
       0x61,
@@ -75,7 +75,7 @@ void main() {
       actual,
       expected,
       reason:
-          'prebuilt/web/oniguruma_native.wasm does not match its checksum — '
+          'prebuilt/web/oniguruma_native.wasm does not match its checksum: '
           'refresh prebuilt/web and regenerate checksums.sha256',
     );
   });

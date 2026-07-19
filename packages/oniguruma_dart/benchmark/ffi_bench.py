@@ -35,7 +35,7 @@ def main():
     uni_c = os.path.join(DATASETS, "unicode_corpus.txt")
 
     # Build an AOT CLI bundle with `dart build cli`: this bundles the native
-    # code asset (produced by the package's build hook) next to an AOT exe —
+    # code asset (produced by the package's build hook) next to an AOT exe,
     # unlike `dart run` (JIT) or `dart compile exe` (which doesn't bundle the
     # code asset in this SDK). So the FFI engine is measured AOT, like the
     # port's own `dart compile exe` binaries.

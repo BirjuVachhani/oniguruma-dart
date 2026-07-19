@@ -13,7 +13,7 @@ C_CLI = os.path.join(ROOT, "benchmark/c/onig_cli")
 ASCII = os.path.join(ROOT, "benchmark/datasets/corpus.txt")
 UNI = os.path.join(ROOT, "benchmark/datasets/unicode_corpus.txt")
 
-# (label, pattern, corpus) — pattern is the C/Oniguruma equivalent of the
+# (label, pattern, corpus): pattern is the C/Oniguruma equivalent of the
 # bench_vs_regexp Case; case-insens uses inline (?i) instead of an option flag.
 PATTERNS = [
     ("literal",         "lorem",                      ASCII),
@@ -45,7 +45,7 @@ def bench(pat, corpus, iters):
 
 
 def main():
-    print("# C (libonig) — 13 patterns, ns per full-corpus scan (median of 5)\n")
+    print("# C (libonig), 13 patterns, ns per full-corpus scan (median of 5)\n")
     for label, pat, corpus in PATTERNS:
         # calibrate: one cheap run to size iters for ~300ms
         _, ns0 = bench(pat, corpus, 3)

@@ -103,7 +103,7 @@ void main() {
   final uni = File('benchmark/datasets/unicode_corpus.txt').readAsStringSync();
 
   stdout.writeln(
-    '# oniguruma_dart (OnigRegex) vs SDK RegExp — match throughput',
+    '# oniguruma_dart (OnigRegex) vs SDK RegExp: match throughput',
   );
   stdout.writeln(
     '# trials=$trials, adaptive timing (>= ${minMatchMs}ms/run)\n',

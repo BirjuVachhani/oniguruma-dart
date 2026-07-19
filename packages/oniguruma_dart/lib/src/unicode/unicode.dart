@@ -29,7 +29,7 @@ const Map<int, String> _ctypeToCr = {
   14: 'ASCII',
 };
 
-/// `onigenc_unicode_is_code_ctype` — is [code] a member of standard [ctype]?
+/// `onigenc_unicode_is_code_ctype`: is [code] a member of standard [ctype]?
 bool unicodeIsCodeCtype(int code, int ctype) {
   if (ctype <= CType.maxStd && code < 256) {
     if (ctype == CType.newline) return code == 0x0a;
@@ -116,7 +116,7 @@ List<int>? unicodePropertyRanges(String rawName) {
 /// Single code point → its case-fold equivalents (excluding itself), or empty.
 List<int> unicodeFoldCodes(int code) => unicodeFold1[code] ?? const [];
 
-/// `apply_all_case_fold` — invoke [f] for each single-char fold pair.
+/// `apply_all_case_fold`: invoke [f] for each single-char fold pair.
 void unicodeApplyAllCaseFold(void Function(int from, List<int> to) f) {
   unicodeFold1.forEach(f);
 }
@@ -238,7 +238,7 @@ List<List<int>>? fold2Inverse(int code) {
   return _fold2Inv![code];
 }
 
-/// Every code point that has a multi-char case fold (e.g. ß, ﬀ) — the sources
+/// Every code point that has a multi-char case fold (e.g. ß, ﬀ), the sources
 /// used to expand an ignore-case character class into an alternation.
 Iterable<int> multiCharFoldSources() {
   if (_fold2Inv == null) _buildFold2();

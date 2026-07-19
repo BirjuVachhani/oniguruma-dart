@@ -1,11 +1,11 @@
 /// Tests for the linear-time Thompson/Pike NFA fast path (lib/src/exec/nfa.dart).
 ///
 /// Three guarantees:
-///  1. Parity — for patterns the NFA accepts, it returns byte-identical results
+///  1. Parity: for patterns the NFA accepts, it returns byte-identical results
 ///     to the backtracking VM (checked by running both on the same inputs).
-///  2. Linear time — a classic catastrophic-backtracking pattern completes in
+///  2. Linear time: a classic catastrophic-backtracking pattern completes in
 ///     bounded time on a large input (the whole point of the fast path).
-///  3. Gating — unsupported constructs fall back (reg.nfa == null) and still
+///  3. Gating: unsupported constructs fall back (reg.nfa == null) and still
 ///     produce correct matches through the backtracking VM.
 library;
 
@@ -62,7 +62,7 @@ void main() {
     }
   });
 
-  // Flat / single-level patterns are NOT diverted — they are faster on the
+  // Flat / single-level patterns are NOT diverted. They are faster on the
   // backtracking VM (literal/BMH/map/anchor prefilters). They must still match.
   group('flat patterns keep the backtracking prefilter path', () {
     const cases = <(String, String, bool)>[

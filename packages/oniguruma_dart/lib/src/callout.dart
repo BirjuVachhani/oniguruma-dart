@@ -1,4 +1,4 @@
-/// Callouts (`(?{…})` contents callouts and `(*name…)` name callouts) — the
+/// Callouts (`(?{…})` contents callouts and `(*name…)` name callouts): the
 /// callback mechanism from `regext.c` / oniguruma.h, adapted to Dart.
 ///
 /// A callout is invoked while matching; its return value steers the match:
@@ -9,11 +9,11 @@
 library;
 
 /// Callout outcome:
-///  * [success] — continue matching (`ONIG_CALLOUT_SUCCESS`);
-///  * [fail] — backtrack, trying alternatives (`ONIG_CALLOUT_FAIL`, e.g. `(*FAIL)`);
-///  * [mismatch] — abort the current match attempt without trying alternatives
+///  * [success]: continue matching (`ONIG_CALLOUT_SUCCESS`);
+///  * [fail]: backtrack, trying alternatives (`ONIG_CALLOUT_FAIL`, e.g. `(*FAIL)`);
+///  * [mismatch]: abort the current match attempt without trying alternatives
 ///    (`ONIG_MISMATCH`, e.g. `(*MISMATCH)`);
-///  * [error] — abort the whole search with an error.
+///  * [error]: abort the whole search with an error.
 enum CalloutResult { success, fail, mismatch, error }
 
 /// Whether the callout fires as matching advances or on backtracking.
@@ -73,7 +73,7 @@ typedef CalloutFunc = CalloutResult Function(CalloutArgs args);
 class CalloutRegistry {
   final Map<String, CalloutFunc> _named = {};
 
-  /// Names that also fire on *retraction* (backtracking), not only progress —
+  /// Names that also fire on *retraction* (backtracking), not only progress:
   /// e.g. `COUNT`/`TOTAL_COUNT` with direction `X` decrement as the match
   /// unwinds. The executor pushes an undo frame for these on a successful firing.
   final Set<String> _retraction = {};

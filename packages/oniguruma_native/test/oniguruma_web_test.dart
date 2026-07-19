@@ -8,7 +8,7 @@ import 'package:oniguruma_native/oniguruma_native.dart';
 import 'package:test/test.dart';
 
 /// The web (WebAssembly) backend runs the same Oniguruma + shim as the FFI
-/// backend, so these mirror the IO suite's behavioural assertions — offsets and
+/// backend, so these mirror the IO suite's behavioural assertions: offsets and
 /// semantics must be byte-identical through the wasm boundary (UTF-8 in the
 /// module, mapped back to UTF-16 Dart String indices). Run under both compilers:
 ///   dart test test/oniguruma_web_test.dart -p chrome
@@ -343,7 +343,7 @@ void main() {
   // The web backend marshals through the wasm heap, which grows when a subject
   // exceeds the initial ~4 MB. Growth detaches every heap view, so the backend
   // re-derives views per call; these guard that offsets and counts stay exact
-  // across the growth point — a hazard the small subjects above never reach.
+  // across the growth point, a hazard the small subjects above never reach.
   group('memory growth (wasm heap view detachment)', () {
     test('a subject larger than the initial heap still matches correctly', () {
       final filler = ' ' * (6 * 1024 * 1024); // 6M spaces -> 12 MB UTF-16

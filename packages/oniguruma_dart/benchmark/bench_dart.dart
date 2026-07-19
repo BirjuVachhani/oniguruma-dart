@@ -1,4 +1,4 @@
-/// Dart-side benchmark harness — mirrors `benchmark/c/onig_cli` exactly so the
+/// Dart-side benchmark harness: mirrors `benchmark/c/onig_cli` exactly so the
 /// two are directly comparable (same encoding, syntax, options, and scan loop).
 ///
 /// Two modes:

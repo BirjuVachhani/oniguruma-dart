@@ -58,7 +58,7 @@ void main() {
       s.dispose();
       scanner.dispose();
     });
-    // "foo", "123", "bar" — three non-overlapping runs.
+    // "foo", "123", "bar": three non-overlapping runs.
     expect(scanner.scanCount(s), 3);
   });
 
@@ -211,7 +211,7 @@ void main() {
     });
 
     test('patterns that fail to compile are skipped, not fatal', () {
-      // '(' is an unterminated group — Oniguruma rejects it. The scanner must
+      // '(' is an unterminated group: Oniguruma rejects it. The scanner must
       // still work with the remaining valid pattern (forgiving behavior).
       final scanner = OnigScanner([r'(', r'\d+']);
       final s = OnigString('abc123');

@@ -2,12 +2,12 @@
 ///
 /// Two layers, backed by the real Oniguruma C engine everywhere:
 ///
-///  * **Layer 0 — the C API.** [onigNew], [onigSearch], [onigMatch],
+///  * **Layer 0: the C API.** [onigNew], [onigSearch], [onigMatch],
 ///    [OnigRegion], [OnigRegSet] and friends, mirroring `oniguruma.h` with
-///    byte offsets — the faithful binding. On every platform, over the same
+///    byte offsets, the faithful binding. On every platform, over the same
 ///    flat-int C shim accessors: `dart:ffi` on IO, `dart:js_interop` on web.
-///  * **Layer 1 — the vscode scanner.** [OnigScanner], [OnigString],
-///    [OnigScannerMatch] — the `vscode-oniguruma`-shaped surface a TextMate /
+///  * **Layer 1: the vscode scanner.** [OnigScanner], [OnigString],
+///    [OnigScannerMatch], the `vscode-oniguruma`-shaped surface a TextMate /
 ///    Shiki tokenizer drives, with UTF-16 offsets. Works on every platform.
 ///
 /// Backends:

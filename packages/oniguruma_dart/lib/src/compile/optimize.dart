@@ -2,11 +2,11 @@
 ///
 /// Computes where the engine should *attempt* matches, without changing which
 /// strings match. A conservative but high-impact subset of the C analysis:
-///   * `OPTIMIZE_STR`  — a mandatory literal prefix at the match start; the
+///   * `OPTIMIZE_STR`: a mandatory literal prefix at the match start; the
 ///     driver byte-searches for it instead of running the VM everywhere.
-///   * `OPTIMIZE_MAP`  — a 256-entry set of possible first bytes; the driver
+///   * `OPTIMIZE_MAP`: a 256-entry set of possible first bytes; the driver
 ///     skips positions whose byte can't begin a match.
-///   * start anchors (`\A`, `\G`) — attempt only at the search start.
+///   * start anchors (`\A`, `\G`): attempt only at the search start.
 /// Anything it can't prove stays [Optimize.none] (try every position), which is
 /// always correct.
 library;
@@ -50,7 +50,7 @@ void setOptimizeInfo(Regex reg, Node? root) {
     }
     // A leading `\b`: every match must satisfy the word boundary at its start,
     // so the driver can skip mid-word positions (both neighbours word chars)
-    // without entering the VM. Sound whatever else precedes/follows it — the
+    // without entering the VM. Sound whatever else precedes/follows it: the
     // boundary is a zero-width test at the start position, evaluated first.
     if (a.type == Anchor.wordBoundary) reg.leadingWordBoundary = true;
     // any other zero-width anchor: keep scanning (dist stays 0)
@@ -62,7 +62,7 @@ void setOptimizeInfo(Regex reg, Node? root) {
 
   // The literal-prefix / first-byte-map optimizations are byte-oriented and
   // assume an ASCII byte equals its code point (true for UTF-8, single-byte,
-  // EUC, SJIS — all minLength 1). For wide encodings (UTF-16/32) an ASCII char
+  // EUC, SJIS: all minLength 1). For wide encodings (UTF-16/32) an ASCII char
   // spans several bytes, so those maps would prune wrongly; skip them and let
   // the VM try every position. (Start anchors above still apply.)
   if (reg.enc.minLength != 1) return;
@@ -109,7 +109,7 @@ void setOptimizeInfo(Regex reg, Node? root) {
       // before the exact `L` (here `node`) is the leading greedy `C+` (j==i+1),
       // and `L`'s first byte is not a member of C (so C+ stops right at L). Then
       // for each `L` the leftmost match starts at the head of the maximal C-run
-      // ending at it — one matchAt instead of scanning the whole gap.
+      // ending at it: one matchAt instead of scanning the whole gap.
       if (j == i + 1 && !otherLeadingAnchor) {
         _setExactBack(reg, firstConsuming, node.bytes[0]);
       }
@@ -122,7 +122,7 @@ void setOptimizeInfo(Regex reg, Node? root) {
         : accMax + mx;
     if (accMax == infiniteLen && accMin > 0) {
       // Past this point distances are unbounded; a later literal is still a
-      // useful "must contain" filter — keep scanning for one.
+      // useful "must contain" filter: keep scanning for one.
     }
   }
 
@@ -135,8 +135,8 @@ void setOptimizeInfo(Regex reg, Node? root) {
   final icStr = _leadingIcStr(firstConsuming);
   // (3a′) If every char of the leading ic literal folds only within ASCII (so
   // no multibyte subject char can match it), a byte-level case-insensitive
-  // Sunday search jumps multiple bytes per step — like the plain-literal fast
-  // path, instead of a byte-by-byte map scan. (`(?i)lorem` → skip on "lorem".)
+  // Sunday search jumps multiple bytes per step (like the plain-literal fast
+  // path, instead of a byte-by-byte map scan). (`(?i)lorem` → skip on "lorem".)
   if (icStr != null && _setExactIc(reg, icStr)) return;
   if (icStr != null &&
       _icLeadingByteMap(icStr, map, reg.enc, reg.caseFoldFlag)) {
@@ -180,7 +180,7 @@ StrNode? _leadingIcStr(Node node) {
 
 /// Fill [map] with the first byte of every case fold of the leading code point
 /// of the ignore-case literal [node]. Returns false (→ no map) when it can't be
-/// proven complete — notably when the first char participates in a *multi-char*
+/// proven complete, notably when the first char participates in a *multi-char*
 /// fold (`ß↔ss`), where a match could start with a different byte entirely.
 bool _icLeadingByteMap(
   StrNode node,
@@ -323,7 +323,7 @@ bool _ctypeHasByte(CtypeNode c, int b) {
 
 /// Set up a case-insensitive Sunday search over the leading ic literal [icStr],
 /// returning true on success. Only valid when EVERY char is ASCII and its fold
-/// class is entirely ASCII (no multibyte fold member) — then no multibyte
+/// class is entirely ASCII (no multibyte fold member): then no multibyte
 /// subject char can match, and since every UTF-8 multibyte byte is >= 0x80, a
 /// byte-level fold (ASCII upper→lower) can never turn one into a needle byte, so
 /// a byte search is exact. Bails when multi-char folding is enabled (ß↔ss etc.).
@@ -350,7 +350,7 @@ bool _setExactIc(Regex reg, StrNode icStr) {
       if (m >= 0x80) return false;
     }
     // No char may participate in a multi-char fold (would let a single subject
-    // char stand in for a needle substring — invisible to a byte search). This
+    // char stand in for a needle substring, invisible to a byte search). This
     // is the compiler's `anyMulti` condition; for ASCII, only the forward
     // pair-fold can occur (e.g. `ss`←`ß`), inverse never (no ASCII char expands).
     if (multiChar) {
@@ -360,7 +360,7 @@ bool _setExactIc(Regex reg, StrNode icStr) {
       final inv = uni.fold2Inverse(cp);
       if (inv != null && inv.isNotEmpty) return false;
     }
-    // Fold to ASCII-lower — the SAME convention the search's `_foldByte` uses
+    // Fold to ASCII-lower: the SAME convention the search's `_foldByte` uses
     // (not `enc.caseFoldRep`, whose rep may be upper-case: consistency between
     // needle and the folded hay is what matters; matchAt verifies the rest).
     folded[j] = (cp >= 0x41 && cp <= 0x5a) ? cp + 0x20 : cp;
@@ -425,7 +425,7 @@ void _collectLeading(Node node, List<Node> out) {
 }
 
 /// Fill [map] with every byte that could begin a match of [node] (which must be
-/// mandatory — i.e. matches at least one char). Returns false if the set can't
+/// mandatory, i.e. matches at least one char). Returns false if the set can't
 /// be proven a proper subset (caller should not use the map).
 bool _firstByteSet(Node node, Uint8List map, OnigEncoding enc) {
   switch (node) {
@@ -460,7 +460,7 @@ bool _firstByteSet(Node node, Uint8List map, OnigEncoding enc) {
       // `\w`/`\d`/`\s` (and friends). Negated forms admit almost any byte, so
       // bail. Otherwise build a COMPLETE over-approximation of the first byte:
       // ASCII members directly, plus every byte that could begin a matching
-      // non-ASCII char — for single-byte encodings the exact 0x80..0xFF members,
+      // non-ASCII char: for single-byte encodings the exact 0x80..0xFF members,
       // for UTF-8 all valid lead bytes 0xC2..0xF4 (covers any Unicode member).
       if (node.ctype < 0 || node.not) return false; // anychar/grapheme/negated
       var any = false;

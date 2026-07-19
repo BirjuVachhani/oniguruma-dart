@@ -1,7 +1,7 @@
 # Workspace-wide ignores. Package-specific ignores live in each package's own
 # .gitignore (e.g. packages/oniguruma_dart/.gitignore).
 
-# Dart & pub build artifacts — https://dart.dev/tools/private-files
+# Dart & pub build artifacts (https://dart.dev/tools/private-files)
 .dart_tool/
 .packages
 build/

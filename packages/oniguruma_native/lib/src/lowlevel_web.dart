@@ -2,7 +2,7 @@
 ///
 /// The raw `onig_*` structs can't cross `js_interop`, so this drives the same
 /// engine through small flat-int **shim accessors** (`onig_shim_regex_new`,
-/// `onig_shim_search`, …, in `src/oniguruma_shim.c`) — all handles are heap
+/// `onig_shim_search`, …, in `src/oniguruma_shim.c`): all handles are heap
 /// offsets and all results are ints/byte arrays. The public surface is identical
 /// to the FFI backend (`lowlevel_ffi.dart`) and the pure-Dart `oniguruma_dart`,
 /// so low-level code is swappable across all of them.

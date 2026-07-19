@@ -3,7 +3,7 @@
 /// for a pattern that starts with a greedy `C+` immediately followed by a
 /// mandatory exact literal L (L[0] ∉ C), the driver walks back from each L to
 /// the C-run start (the unique leftmost candidate) instead of scanning the gap.
-/// Results must be byte-identical to a full scan — verified against an
+/// Results must be byte-identical to a full scan, verified against an
 /// independent oracle over thousands of random subjects.
 library;
 
@@ -38,7 +38,7 @@ void main() {
       expect(_c(r'\d+\.\d+').hasExactBack, isTrue);
     });
     test('NOT set when the exact byte is in the class', () {
-      // '.' matches `\w`? no; but `[a-z.]+/` — '/' not in class OK. Here the
+      // '.' matches `\w`? no; but `[a-z.]+/`: '/' not in class OK. Here the
       // exact 'a' IS in [a-z] → must not use walk-back.
       expect(_c(r'[a-z]+a[a-z]+').hasExactBack, isFalse);
     });
@@ -68,7 +68,7 @@ void main() {
       () => expect(_m(r'\w+@\w+', 'no at sign here'), isNull),
     );
     test(
-      'multiple @ — first complete wins',
+      'multiple @: first complete wins',
       () => expect(_m(r'\w+@\w+', 'a@ @ x@y'), (5, 8)),
     );
     test('mid-word start not chosen over run head', () {

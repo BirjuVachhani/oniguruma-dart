@@ -87,7 +87,7 @@ void main() {
 
     test('reused region: materialized matches keep DISTINCT snapshots', () {
       // allMatches reuses one OnigRegion; each OnigMatch must snapshot its own
-      // offsets/groups. Materialize everything first, then read out of order —
+      // offsets/groups. Materialize everything first, then read out of order:
       // a shared region would make every match report the LAST one's data.
       final ms = OnigRegex.compile(r'(\w)(\d)').allMatches('a1 b2 c3').toList();
       expect(ms.length, 3);
@@ -212,7 +212,7 @@ void main() {
       const a = 'foo bar baz'; // ASCII
       const b = 'héllo 東京 wörld'; // non-ASCII
       const c = 'x1 y2 z3'; // ASCII, different
-      // Hit (a,a), rebuild (b), back to a, alternate — every scan must be right.
+      // Hit (a,a), rebuild (b), back to a, alternate: every scan must be right.
       for (final s in [a, a, b, a, c, b, b, a]) {
         final ms = re.allMatches(s).toList();
         for (final m in ms) {

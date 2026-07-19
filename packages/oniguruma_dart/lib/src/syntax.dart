@@ -182,7 +182,7 @@ const int _synGnuRegexBv =
     SynBv.backslashEscapeInCc |
     SynBv.allowDoubleRangeOpInCc;
 
-/// `OnigSyntaxOniguruma` — the library DEFAULT (regparse.c:71).
+/// `OnigSyntaxOniguruma`: the library DEFAULT (regparse.c:71).
 const OnigSyntax onigSyntaxOniguruma = OnigSyntax(
   name: 'Oniguruma',
   op:
@@ -309,7 +309,7 @@ const int _perlLikeOp =
         SynOp.escCControl) &
     ~SynOp.escLtgtWordBeginEnd;
 
-/// `OnigSyntaxASIS` — literal text, no metacharacters.
+/// `OnigSyntaxASIS`: literal text, no metacharacters.
 const OnigSyntax onigSyntaxAsis = OnigSyntax(
   name: 'ASIS',
   op: 0,

@@ -106,7 +106,7 @@ const List<(String, String)> cases = [
   ('(ab){30}', 'abababababababababababababababababababababababababababababab'),
   ('a{40,}', 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'),
   // subexp calls (non-recursive: full parity). Recursive-call sub-capture
-  // *values* differ from C (positions are correct) — see REPORT.md.
+  // *values* differ from C (positions are correct). See REPORT.md.
   (r'(\d)\g<1>', '42'),
   (r'(ab)\g<1>', 'abab'),
   (r'(\w)(\d)\g<1>', 'a1b'),

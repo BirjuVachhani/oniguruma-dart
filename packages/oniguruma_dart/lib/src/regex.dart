@@ -66,8 +66,8 @@ class Regex {
   Uint16List? exactIcSkip; // Sunday skip table over [exactIc] (folded bytes)
   // Leading `C+ L…`: the match starts with a greedy one-or-more of char class C
   // immediately followed by the exact literal L (with L's first byte ∉ C). The
-  // driver walks back from an L occurrence over C to the run start — the unique
-  // leftmost candidate for that L — and tries matchAt there once, instead of
+  // driver walks back from an L occurrence over C to the run start, the unique
+  // leftmost candidate for that L, and tries matchAt there once, instead of
   // every position in the gap (turns `\w+@\w+`'s O(n) attempts into O(#L)).
   bool hasExactBack = false;
   int exactBackCtype = -1; // >=0: ctype id (word/digit/space/…); -1: use bs/mb
@@ -79,7 +79,7 @@ class Regex {
   Uint8List? map; // 256-entry char map / BMH skip
   int mapOffset = 0;
   // A leading zero-width `\b` (word boundary) is present, so the driver may
-  // skip any candidate where str[s] and str[s-1] are both ASCII word chars —
+  // skip any candidate where str[s] and str[s-1] are both ASCII word chars:
   // `\b` is provably false there, so matchAt would mismatch without entering.
   bool leadingWordBoundary = false;
   int distMin = 0;

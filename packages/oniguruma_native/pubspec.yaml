@@ -1,8 +1,8 @@
 name: oniguruma_native
 
 description: >-
-  Oniguruma regex bindings for Dart on every platform — native dart:ffi on IO,
-  WebAssembly on web — behind one vscode-oniguruma-compatible OnigScanner API.
+  Oniguruma regex bindings for Dart on every platform: native dart:ffi on IO,
+  WebAssembly on web, behind one vscode-oniguruma-compatible OnigScanner API.
 
 version: 1.0.0
 

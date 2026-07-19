@@ -1,7 +1,7 @@
 /// Regression tests for auto-possessification (`compiler.dart`
 /// `_markPossessiveStars`): a greedy single-item loop `X*`/`X+` is made
 /// possessive only when the following atom's first byte can't be an `X`. The
-/// results must be UNCHANGED — this only removes futile give-backs. The critical
+/// results must be UNCHANGED: this only removes futile give-backs. The critical
 /// safety cases are the ones that must NOT be possessified (follower overlaps the
 /// class), where a give-back is still required for a correct match.
 library;

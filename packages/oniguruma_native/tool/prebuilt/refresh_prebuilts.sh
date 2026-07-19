@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# refresh_prebuilts.sh — one-shot refresh of the committed prebuilt binaries.
+# refresh_prebuilts.sh: one-shot refresh of the committed prebuilt binaries.
 #
 # Triggers the `prebuild-oniguruma` GitHub Actions workflow, waits for it to
 # finish, downloads the combined artifact, installs it into
 # packages/oniguruma_native/prebuilt/, regenerates the embedded wasm and the
-# SHA-256 manifest, and verifies integrity. It does NOT commit — it leaves the
+# SHA-256 manifest, and verifies integrity. It does NOT commit: it leaves the
 # working tree ready for you to review and commit.
 #
 # This is the automated version of the manual steps in prebuild-oniguruma.yml's
@@ -16,7 +16,7 @@
 #
 #   ref  git ref the workflow builds from (default: current branch). CI compiles
 #        the shim AT THIS REF, so it must already be pushed with the source you
-#        want baked in — otherwise the fresh prebuilts will be stale.
+#        want baked in, otherwise the fresh prebuilts will be stale.
 #
 # Requirements: gh (authenticated), dart, unzip, rsync, and sha256sum|shasum.
 set -euo pipefail
@@ -40,7 +40,7 @@ else die "need sha256sum or shasum on PATH"; fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 PKG="$REPO_ROOT/packages/oniguruma_native"
-[ -d "$PKG/prebuilt" ] || die "$PKG/prebuilt not found — run from within the repo"
+[ -d "$PKG/prebuilt" ] || die "$PKG/prebuilt not found: run from within the repo"
 
 REF="${1:-$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)}"
 log "Building from ref: $REF"
@@ -81,7 +81,7 @@ log "Run $rid started: $(gh run view "$rid" --json url --jq .url)"
 
 # --- wait -------------------------------------------------------------------
 log "Waiting for completion (13 native targets + wasm; typically ~10-20 min) ..."
-gh run watch "$rid" --exit-status || die "workflow run $rid did not succeed — see the URL above"
+gh run watch "$rid" --exit-status || die "workflow run $rid did not succeed: see the URL above"
 
 # --- download + extract -----------------------------------------------------
 tmp="$(mktemp -d)"
@@ -93,13 +93,13 @@ gh run download "$rid" -n "$ARTIFACT" -D "$tmp/dl"
 
 log "Extracting ..."
 unzip -q -o "$tmp/dl/oniguruma-prebuilt.zip" -d "$tmp/extract"
-[ -d "$tmp/extract/prebuilt" ] || die "bundle root is not prebuilt/ — layout changed?"
+[ -d "$tmp/extract/prebuilt" ] || die "bundle root is not prebuilt/, layout changed?"
 
 # Sanity-check completeness BEFORE overwriting anything: 13 native libs + 1 wasm.
 count="$(find "$tmp/extract/prebuilt" -type f \
   \( -name '*.dylib' -o -name '*.so' -o -name '*.dll' -o -name '*.wasm' \) | wc -l | tr -d ' ')"
 log "Bundle contains $count binaries"
-[ "$count" -ge 14 ] || die "expected >=14 binaries, got $count — refusing to overwrite"
+[ "$count" -ge 14 ] || die "expected >=14 binaries, got $count: refusing to overwrite"
 
 # --- install ----------------------------------------------------------------
 # Overwrite the binaries; skip junk and the bundle's manifest (regenerated below
@@ -109,7 +109,7 @@ rsync -a --exclude='.DS_Store' --exclude='checksums.sha256' \
   "$tmp/extract/prebuilt/" "$PKG/prebuilt/"
 
 # The web wasm (prebuilt/web/*.wasm) is committed and published to the GitHub
-# Release by the release-wasm workflow — no embed step to regenerate.
+# Release by the release-wasm workflow: no embed step to regenerate.
 log "Regenerating checksums.sha256 ..."
 bash "$PKG/tool/prebuilt/gen_checksums.sh" >/dev/null
 

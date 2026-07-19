@@ -5,13 +5,13 @@ engines:
 
   ONIG_WASM       the package's real per-match API (OnigScanner.findNextMatch)
                   running under WebAssembly: one wasm crossing + one result
-                  object per match — the engine cost of oniguruma_native's *web*
+                  object per match: the engine cost of oniguruma_native's *web*
                   path (what a browser consumer pays to enumerate matches).
   ONIG_WASM_BULK  onig_shim_scan_count under wasm: the whole corpus scanned in a
                   single crossing into the module (the wasm throughput ceiling).
 
 It is the SAME Oniguruma 6.9.10 + shim as the FFI backend, compiled to
-wasm32-wasi and driven through the browser `WebAssembly` API — measured here
+wasm32-wasi and driven through the browser `WebAssembly` API, measured here
 under Node/V8 (the engine Chrome runs too), exactly like the suite's other V8
 engines, so the numbers are directly comparable. This isolates the wasm engine
 cost from the dart2js/dart2wasm compiler's own marshalling overhead.

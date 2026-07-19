@@ -179,7 +179,7 @@ void main() {
     test('(a*){2}\$', () => x3(r'(a*){2}$', 'a', 1, 1, 1));
     test('(a??){2} on aa', () => x3(r'(a??){2}$', 'aa', 1, 2, 1));
     // Non-push MEM under a fixed {n}: Oniguruma's "inverted" (beg>end) empty
-    // region — a failed later iteration leaves start ahead of end. Verified
+    // region: a failed later iteration leaves start ahead of end. Verified
     // against the C library (g1 = 1,0).
     test(
       'inverted region (^…){2}',

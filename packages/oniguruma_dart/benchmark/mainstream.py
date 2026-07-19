@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""THE mainstream benchmark — the canonical comparison from 2026-07-14 onward.
+"""THE mainstream benchmark: the canonical comparison from 2026-07-14 onward.
 
 Four engines, all measured as "median time to scan the whole corpus for every
 non-overlapping match" (match counts verified identical):
 
-  1. Oniguruma C            — the reference C library (byte API, native)
-  2. V8 regex interpreter   — Node --regexp-interpret-all (Irregexp BYTECODE
+  1. Oniguruma C            : the reference C library (byte API, native)
+  2. V8 regex interpreter   : Node --regexp-interpret-all (Irregexp BYTECODE
                               interpreter; JS around it still JIT'd). The honest
                               like-for-like interpreter, NOT V8's machine-code JIT.
-  3. Dart RegExp · VM       — dart:core RegExp on the Dart VM (V8 Irregexp
+  3. Dart RegExp · VM       : dart:core RegExp on the Dart VM (V8 Irregexp
                               bytecode interpreter, interpreter-only in AOT & JIT)
-  4. oniguruma_dart · VM    — this port's OnigRegex String API on the Dart VM
+  4. oniguruma_dart · VM    : this port's OnigRegex String API on the Dart VM
                               (our pure-Dart bytecode interpreter)
 
 Usage:
@@ -24,7 +24,7 @@ Notes:
 """
 import json, os, sys, re, math, subprocess, statistics
 
-# .../packages/oniguruma_dart (parent of benchmark/) — resolves correctly
+# .../packages/oniguruma_dart (parent of benchmark/), resolves correctly
 # regardless of where the repo lives (pub-workspace move safe).
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 JSON = os.path.join(ROOT, "benchmark/mainstream_results.json")
@@ -128,7 +128,7 @@ def gmean(xs):
 
 def render(data):
     count = data.get("COUNT", {})
-    print("# Mainstream benchmark — V8 interp · Dart RegExp · oniguruma_dart port · C\n")
+    print("# Mainstream benchmark: V8 interp · Dart RegExp · oniguruma_dart port · C\n")
     print("Median ns/ms to scan the corpus for all non-overlapping matches. "
           "V8 interp = Node --regexp-interpret-all (bytecode interpreter).\n")
 

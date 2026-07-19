@@ -3,27 +3,27 @@ name: test
 # Test CI for the oniguruma workspace (packages/oniguruma_dart +
 # packages/oniguruma_native). Runs on every push / PR across every host the
 # suites can be executed on, and validates the native-asset build hook from
-# both directions — bundling the committed prebuilts AND compiling from source.
+# both directions: bundling the committed prebuilts AND compiling from source.
 #
 # Jobs:
-#   * analyze            — static analysis of both packages (once, Linux).
-#   * test               — the native FFI VM suite + the pure-Dart suite on the
+#   * analyze            : static analysis of both packages (once, Linux).
+#   * test               : the native FFI VM suite + the pure-Dart suite on the
 #     hosted OS/arch combos (linux-x64, macos-arm64, windows-x64). The native run
 #     links each platform's committed prebuilt, so this is what proves the shipped
 #     binaries actually load and run. (Intel macOS / macos-13 is intentionally not
 #     covered: that runner is being retired and queues for hours; the code is
 #     architecture-independent and the x64 prebuilt is integrity-checked.)
-#   * wasm-node          — the WebAssembly module suite driven through Node's
+#   * wasm-node          : the WebAssembly module suite driven through Node's
 #     WebAssembly API + UTF-8 marshalling (test/wasm/*.test.mjs). This is the
 #     headless WASM gate.
-#   * native-from-source — the same native VM suite with the prebuilts removed,
+#   * native-from-source : the same native VM suite with the prebuilts removed,
 #     forcing the hook's compile-from-source fallback (branch C of
 #     hook/build.dart). Exercises the C toolchain path consumers hit on any
 #     platform without a prebuilt, on all three host toolchains (gcc/clang,
 #     Apple clang, MSVC).
 #
 # NOTE on the native suites: `dart test` MUST run from inside
-# packages/oniguruma_native — the native-asset build hook does not fire when
+# packages/oniguruma_native: the native-asset build hook does not fire when
 # invoked from the workspace root on a cold cache. `dart pub get` at the root
 # still resolves the whole workspace.
 #
@@ -97,7 +97,7 @@ jobs:
         working-directory: packages/oniguruma_native
         run: dart test
 
-      # The pure-Dart engine — self-contained, no native assets. Run everywhere
+      # The pure-Dart engine: self-contained, no native assets. Run everywhere
       # for cross-platform confidence.
       - name: Test pure-Dart
         working-directory: packages/oniguruma_dart
@@ -118,7 +118,7 @@ jobs:
           node-version: "22"
 
       # Drives the shipped prebuilt/web/oniguruma_native.wasm through Node's
-      # WebAssembly API — no browser, no Dart. `node --test` discovers
+      # WebAssembly API: no browser, no Dart. `node --test` discovers
       # test/wasm/*.test.mjs and exits non-zero on any failure.
       - name: Test wasm module
         run: node --test

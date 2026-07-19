@@ -1,16 +1,16 @@
 /// Measures the native Oniguruma engine *as driven from Dart through this
 /// package* on the canonical 13 "mainstream" patterns, over the exact same two
-/// corpora as the pure-Dart port's benchmark — so the numbers drop straight
+/// corpora as the pure-Dart port's benchmark, so the numbers drop straight
 /// into `oniguruma_dart/benchmark/mainstream_results.json` alongside the C,
 /// V8 and pure-Dart engines.
 ///
 /// Two numbers per pattern, both "median ns to scan the whole corpus for every
 /// non-overlapping match":
 ///
-///   * per-match  — the package's real [OnigScanner.findNextMatch] API: one FFI
+///   * per-match  : the package's real [OnigScanner.findNextMatch] API: one FFI
 ///                  crossing and one result object per match (what a consumer
 ///                  actually pays to enumerate matches from Dart).
-///   * bulk       — [OnigScanner.scanCount]: the entire scan in a single FFI
+///   * bulk       : [OnigScanner.scanCount]: the entire scan in a single FFI
 ///                  crossing, no per-match allocation (the native-from-Dart
 ///                  throughput ceiling, directly comparable to the C loop).
 ///
@@ -32,7 +32,7 @@ import 'package:oniguruma_native/oniguruma_native.dart';
 const trials = 5;
 const minMs = 250; // per timed run
 
-// label, pattern, corpus — identical set to the pure-Dart mainstream benchmark.
+// label, pattern, corpus: identical set to the pure-Dart mainstream benchmark.
 const patterns = <(String, String, String)>[
   ('literal', 'lorem', 'ascii'),
   ('literal-unicode', '東京', 'uni'),
@@ -99,7 +99,7 @@ void main(List<String> args) {
   final ascii = File(args[0]).readAsStringSync();
   final uni = File(args[1]).readAsStringSync();
 
-  print('# oniguruma_native (native Oniguruma via FFI) — mainstream benchmark');
+  print('# oniguruma_native (native Oniguruma via FFI): mainstream benchmark');
   print(
     '# ${onigVersion()}  ·  trials=$trials, adaptive (>= ${minMs}ms/run)\n',
   );

@@ -27,7 +27,7 @@ class OnigRegex {
 
   // One-entry memo of the last input's encoding, keyed by String identity.
   // Repeated scans of the same String (the common case: firstMatch then
-  // allMatches, replace, or a loop) then skip the O(n) encode — the analog of
+  // allMatches, replace, or a loop) then skip the O(n) encode, the analog of
   // the C/byte harness reading its byte buffer once and reusing it. Strings are
   // immutable, so caching the bytes is always safe; a fresh [Subject] (with a
   // fresh offset cursor) is built per call.
@@ -97,7 +97,7 @@ class OnigRegex {
     // One region reused across the whole scan: onigSearch overwrites it each
     // call and OnigMatch snapshots the offsets it needs at construction, so no
     // per-match OnigRegion allocation (the dominant per-match cost for dense,
-    // simple patterns — e.g. literal scans over a large corpus).
+    // simple patterns, e.g. literal scans over a large corpus).
     final region = OnigRegion();
     while (bpos <= end) {
       final r = onigSearch(_reg, map.bytes, end, bpos, end, region);

@@ -7,7 +7,7 @@ import '../onig_errors.dart';
 import '../unicode/unicode.dart' as uni;
 import 'encoding.dart';
 
-/// `EncLen_UTF8[256]` — byte length keyed by first byte (non-RFC3629 build,
+/// `EncLen_UTF8[256]`: byte length keyed by first byte (non-RFC3629 build,
 /// matching the default C configuration).
 final Uint8List _encLenUtf8 = _buildEncLen();
 

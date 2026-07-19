@@ -58,34 +58,34 @@ abstract class OnigEncoding {
   /// [isCodeCtype] + the encoding's own property tables (`add_ctype_to_cc`).
   bool get isUnicodeEncoding => false;
 
-  /// `ONIGENC_MBC_ENC_LEN` — byte length of the char starting at [p] in [s].
+  /// `ONIGENC_MBC_ENC_LEN`: byte length of the char starting at [p] in [s].
   int length(Uint8List s, int p, int end);
 
   /// Fast length by first byte only (valid for UTF-8 & single-byte encodings).
   int lengthByFirstByte(int b);
 
-  /// `ONIGENC_MBC_TO_CODE` — decode the char at [p] into a code point.
+  /// `ONIGENC_MBC_TO_CODE`: decode the char at [p] into a code point.
   int mbcToCode(Uint8List s, int p, int end);
 
-  /// `ONIGENC_CODE_TO_MBCLEN` — bytes needed to encode [code] (or a negative
+  /// `ONIGENC_CODE_TO_MBCLEN`: bytes needed to encode [code] (or a negative
   /// error code).
   int codeToMbcLen(int code);
 
-  /// `ONIGENC_CODE_TO_MBC` — encode [code] into [buf] at [p]; returns bytes
+  /// `ONIGENC_CODE_TO_MBC`: encode [code] into [buf] at [p]; returns bytes
   /// written (or a negative error code).
   int codeToMbc(int code, Uint8List buf, int p);
 
-  /// `ONIGENC_IS_MBC_NEWLINE` — is the char at [p] a newline?
+  /// `ONIGENC_IS_MBC_NEWLINE`: is the char at [p] a newline?
   bool isMbcNewline(Uint8List s, int p, int end);
 
-  /// `onigenc_get_left_adjust_char_head` — step back from [p] to the head byte
+  /// `onigenc_get_left_adjust_char_head`: step back from [p] to the head byte
   /// of the char it lands in (not before [start]).
   int leftAdjustCharHead(Uint8List s, int start, int p);
 
-  /// `ONIGENC_IS_CODE_CTYPE` — does [code] belong to character type [ctype]?
+  /// `ONIGENC_IS_CODE_CTYPE`: does [code] belong to character type [ctype]?
   bool isCodeCtype(int code, int ctype);
 
-  /// `ONIGENC_MBC_CASE_FOLD` — fold the char at [pp] into [fold]; returns the
+  /// `ONIGENC_MBC_CASE_FOLD`: fold the char at [pp] into [fold]; returns the
   /// number of fold bytes and the advanced input position.
   CaseFoldResult mbcCaseFold(
     int flag,
@@ -95,11 +95,11 @@ abstract class OnigEncoding {
     Uint8List fold,
   );
 
-  /// `apply_all_case_fold` — invoke [f] for every case-fold pair in this
+  /// `apply_all_case_fold`: invoke [f] for every case-fold pair in this
   /// encoding (used to expand ignore-case character classes).
   void applyAllCaseFold(int flag, ApplyAllCaseFoldFunc f);
 
-  /// `get_case_fold_codes_by_str` — fold variants of the string starting at [p].
+  /// `get_case_fold_codes_by_str`: fold variants of the string starting at [p].
   List<CaseFoldCodeItem> getCaseFoldCodesByStr(
     int flag,
     Uint8List s,
@@ -107,10 +107,10 @@ abstract class OnigEncoding {
     int end,
   );
 
-  /// `is_mbc_head` — is byte at [p] the first byte of a char?
+  /// `is_mbc_head`: is byte at [p] the first byte of a char?
   bool isMbcHead(Uint8List s, int p, int end);
 
-  /// `is_valid_mbc_string` — are the bytes `[p, end)` a well-formed sequence of
+  /// `is_valid_mbc_string`: are the bytes `[p, end)` a well-formed sequence of
   /// characters in this encoding? Default walks by [length]; encodings with
   /// stricter rules (e.g. UTF-8 continuation bytes) override this.
   bool isValidMbcString(Uint8List s, int p, int end) {
@@ -122,14 +122,14 @@ abstract class OnigEncoding {
     return true;
   }
 
-  /// `property_name_to_ctype` — resolve a `\p{name}` to a ctype id, or throw.
+  /// `property_name_to_ctype`: resolve a `\p{name}` to a ctype id, or throw.
   int propertyNameToCtype(String name) => throw UnsupportedError(
     '$name properties not supported by $name encoding',
   );
 
   /// Encoding-specific `\p{name}` ranges over this encoding's *own* code values
   /// (e.g. EUC-JP Hiragana/Katakana). Returns flat `[lo,hi,…]` pairs, or null
-  /// when [name] isn't an encoding property — Unicode encodings always return
+  /// when [name] isn't an encoding property. Unicode encodings always return
   /// null and let the shared Unicode property database resolve the name.
   List<int>? encodingPropertyRanges(String name) => null;
 
@@ -144,7 +144,7 @@ abstract class OnigEncoding {
 // Shared ASCII tables (regenc.c)
 // ---------------------------------------------------------------------------
 
-/// `OnigEncAsciiCtypeTable[256]` — per-byte ctype membership bit flags.
+/// `OnigEncAsciiCtypeTable[256]`: per-byte ctype membership bit flags.
 /// Bit `n` set ⇒ the byte belongs to `ONIGENC_CTYPE_n` (see [CType]).
 final Uint16List asciiCtypeTable = Uint16List.fromList(const <int>[
   // 0x00-0x0f
@@ -182,7 +182,7 @@ final Uint16List asciiCtypeTable = Uint16List.fromList(const <int>[
   0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 ]);
 
-/// `OnigEncAsciiToLowerCaseTable` — identity except A–Z ⇒ a–z.
+/// `OnigEncAsciiToLowerCaseTable`: identity except A–Z ⇒ a–z.
 final Uint8List asciiToLowerTable = _buildToLower();
 
 /// Upper-case counterpart (a–z ⇒ A–Z), used by some fold paths.
@@ -204,7 +204,7 @@ Uint8List _buildToUpper() {
   return t;
 }
 
-/// `ONIGENC_IS_ASCII_CODE_CTYPE` — ctype test for ASCII-range code points.
+/// `ONIGENC_IS_ASCII_CODE_CTYPE`: ctype test for ASCII-range code points.
 bool asciiIsCodeCtype(int code, int ctype) {
   if (code < 256) {
     return (asciiCtypeTable[code] & CType.bit(ctype)) != 0;

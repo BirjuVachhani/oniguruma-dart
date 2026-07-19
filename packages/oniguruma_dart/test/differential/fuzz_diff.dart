@@ -39,7 +39,7 @@ String _genPattern(_Rng r, int depth) {
       sb.write(')');
       sb.write(_quants[r.next(_quants.length)]);
     } else if (kind == 2 && depth > 0 && r.next(3) == 0) {
-      // look-around (no trailing quantifier — assertions can't be repeated)
+      // look-around (no trailing quantifier: assertions can't be repeated)
       const la = ['(?=', '(?!', '(?<=', '(?<!'];
       sb.write(la[r.next(la.length)]);
       sb.write(_atoms[r.next(_atoms.length)]);

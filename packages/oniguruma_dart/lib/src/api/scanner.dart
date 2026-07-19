@@ -2,8 +2,8 @@
 /// engine.
 ///
 /// This is the same API surface `oniguruma_native` exposes (`OnigScanner`,
-/// `OnigString`, `OnigScannerMatch`, `OnigCapture`) — the interface a TextMate /
-/// Shiki tokenizer drives — so the two packages are drop-in swappable. Offsets
+/// `OnigString`, `OnigScannerMatch`, `OnigCapture`), the interface a TextMate /
+/// Shiki tokenizer drives, so the two packages are drop-in swappable. Offsets
 /// are **UTF-16 code-unit** indices (like `vscode-oniguruma`); the byte↔UTF-16
 /// mapping is the shared [Subject] used by the idiomatic String API.
 library;
@@ -19,7 +19,7 @@ import '../region.dart';
 import '../syntax.dart';
 import 'subject.dart';
 
-/// No-op on the pure-Dart engine — there is no WebAssembly module to load.
+/// No-op on the pure-Dart engine: there is no WebAssembly module to load.
 ///
 /// Mirrors `oniguruma_native`'s `loadWasm` so identical startup code
 /// (`await loadWasm()`) compiles and runs against either package.
@@ -70,7 +70,7 @@ class OnigString {
 
 /// A compiled set of patterns searched together. Patterns Oniguruma can't
 /// compile are skipped (they never match), mirroring `oniguruma_native`'s
-/// forgiving scanner — so pattern index N always lines up with input index N.
+/// forgiving scanner, so pattern index N always lines up with input index N.
 class OnigScanner {
   OnigScanner(List<String> patterns)
     : _regexes = List<Regex?>.filled(patterns.length, null) {

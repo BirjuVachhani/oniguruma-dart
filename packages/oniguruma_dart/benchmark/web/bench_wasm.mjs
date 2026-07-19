@@ -1,4 +1,4 @@
-// Web/WASM benchmark: the `oniguruma_native` package's WebAssembly backend — the
+// Web/WASM benchmark: the `oniguruma_native` package's WebAssembly backend, the
 // SAME Oniguruma 6.9.10 + shim the FFI backend uses, compiled to wasm32-wasi and
 // driven through the browser `WebAssembly` API (here under Node/V8, the engine
 // Chrome runs too). This is the engine cost of oniguruma_native's *web* path,
@@ -7,12 +7,12 @@
 // into mainstream_results.json alongside them.
 //
 // Two numbers per pattern, both "median ns to scan the whole corpus for every
-// non-overlapping match" — identical corpora + patterns as every other engine:
+// non-overlapping match", identical corpora + patterns as every other engine:
 //
-//   per-match  — the package's real OnigScanner.findNextMatch loop: one wasm
+//   per-match  : the package's real OnigScanner.findNextMatch loop: one wasm
 //                crossing + one result object per match (what a web consumer pays
 //                to enumerate matches).
-//   bulk       — onig_shim_scan_count: the entire scan in a single crossing into
+//   bulk       : onig_shim_scan_count: the entire scan in a single crossing into
 //                wasm, no per-match allocation (the wasm throughput ceiling).
 //
 //   node benchmark/web/bench_wasm.mjs
@@ -27,9 +27,9 @@ const ASCII = new URL('../datasets/corpus.txt', HERE);
 const UNI = new URL('../datasets/unicode_corpus.txt', HERE);
 
 const trials = 5;
-const minMs = 250; // per timed run, adaptive — matches the FFI Dart harness
+const minMs = 250; // per timed run, adaptive, matches the FFI Dart harness
 
-// label, pattern, corpus — identical set to the pure-Dart + FFI mainstream runs.
+// label, pattern, corpus: identical set to the pure-Dart + FFI mainstream runs.
 const patterns = [
   ['literal', 'lorem', 'ascii'],
   ['literal-unicode', '東京', 'uni'],
@@ -147,7 +147,7 @@ const corpora = {
   uni: readFileSync(UNI, 'utf8'),
 };
 
-console.log('# oniguruma_native WebAssembly backend — mainstream benchmark');
+console.log('# oniguruma_native WebAssembly backend: mainstream benchmark');
 console.log(`# ${readCString(ex.onig_shim_version())}  ·  WebAssembly under Node ${process.version}`);
 console.log(`# trials=${trials}, adaptive (>= ${minMs}ms/run)\n`);
 console.log('| pattern | matches | per-match (findNextMatch) | bulk (scanCount) |');

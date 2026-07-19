@@ -1,4 +1,4 @@
-// Example usage of oniguruma_native — the real Oniguruma C engine driven from
+// Example usage of oniguruma_native: the real Oniguruma C engine driven from
 // Dart (via dart:ffi on IO, WebAssembly on web) behind a
 // vscode-oniguruma-compatible OnigScanner. This is the API you'd use to drive a
 // TextMate grammar / Shiki tokenizer.
@@ -18,7 +18,7 @@ Future<void> main() async {
   print('oniguruma ${onigVersion()}');
 
   // A scanner compiles several patterns at once and, from a given position,
-  // returns the left-most/earliest match across all of them — exactly the
+  // returns the left-most/earliest match across all of them, exactly the
   // operation a tokenizer performs for each token.
   final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
   final input = OnigString('ab 12');

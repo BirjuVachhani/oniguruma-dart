@@ -16,11 +16,11 @@ import 'encoding.dart';
 /// `ONIGENC_MAX_STD_CTYPE` (== `ONIGENC_CTYPE_ASCII`).
 const int maxStdCtype = CType.ascii;
 
-/// `CTYPE_IS_WORD_GRAPH_PRINT` — word / graph / print ctypes.
+/// `CTYPE_IS_WORD_GRAPH_PRINT`: word / graph / print ctypes.
 bool ctypeIsWordGraphPrint(int ctype) =>
     ctype == CType.word || ctype == CType.graph || ctype == CType.print;
 
-/// `onigenc_mbn_mbc_to_code` — big-endian accumulate of the char's bytes.
+/// `onigenc_mbn_mbc_to_code`: big-endian accumulate of the char's bytes.
 int mbnMbcToCode(OnigEncoding enc, Uint8List s, int p, int end) {
   final len = enc.length(s, p, end);
   var n = s[p++];
@@ -33,7 +33,7 @@ int mbnMbcToCode(OnigEncoding enc, Uint8List s, int p, int end) {
   return n;
 }
 
-/// `onigenc_mbn_mbc_case_fold` — ASCII lower for ASCII bytes, otherwise copy the
+/// `onigenc_mbn_mbc_case_fold`: ASCII lower for ASCII bytes, otherwise copy the
 /// char's bytes verbatim.
 CaseFoldResult mbnMbcCaseFold(
   OnigEncoding enc,
@@ -54,7 +54,7 @@ CaseFoldResult mbnMbcCaseFold(
   return (foldLen: len, newPos: pp + len);
 }
 
-/// `onigenc_mb2_code_to_mbc` — encode a code that occupies up to 2 bytes.
+/// `onigenc_mb2_code_to_mbc`: encode a code that occupies up to 2 bytes.
 int mb2CodeToMbc(OnigEncoding enc, int code, Uint8List buf, int p) {
   final start = p;
   if ((code & 0xff00) != 0) {
@@ -68,7 +68,7 @@ int mb2CodeToMbc(OnigEncoding enc, int code, Uint8List buf, int p) {
   return p - start;
 }
 
-/// `onigenc_mb4_code_to_mbc` — encode a code that occupies up to 4 bytes.
+/// `onigenc_mb4_code_to_mbc`: encode a code that occupies up to 4 bytes.
 int mb4CodeToMbc(OnigEncoding enc, int code, Uint8List buf, int p) {
   final start = p;
   if ((code & 0xff000000) != 0) {
@@ -102,7 +102,7 @@ bool mbIsCodeCtype(OnigEncoding enc, int code, int ctype) {
   return false;
 }
 
-/// `onigenc_ascii_apply_all_case_fold` — the A–Z ⇔ a–z pairs.
+/// `onigenc_ascii_apply_all_case_fold`: the A–Z ⇔ a–z pairs.
 void asciiApplyAllCaseFold(int flag, ApplyAllCaseFoldFunc f) {
   for (var c = 0x41; c <= 0x5a; c++) {
     f(c, [c + 0x20]);
@@ -131,10 +131,10 @@ List<CaseFoldCodeItem> asciiGetCaseFoldCodesByStr(
   return const [];
 }
 
-/// `onigenc_is_mbc_newline_0x0a` — the ASCII-compatible newline test.
+/// `onigenc_is_mbc_newline_0x0a`: the ASCII-compatible newline test.
 bool isMbcNewline0x0a(Uint8List s, int p, int end) => p < end && s[p] == 0x0a;
 
-/// `onigenc_minimum_property_name_to_ctype` — the POSIX bracket names common to
+/// `onigenc_minimum_property_name_to_ctype`: the POSIX bracket names common to
 /// the non-Unicode encodings. Throws [OnigException] on an unknown name.
 int minimumPropertyNameToCtype(String name) {
   switch (name) {
@@ -170,7 +170,7 @@ int minimumPropertyNameToCtype(String name) {
   throw OnigException(OnigErr.invalidCharPropertyName, detail: name);
 }
 
-/// `onig_is_in_code_range` — binary search a flat range table `[n, lo0, hi0,
+/// `onig_is_in_code_range`: binary search a flat range table `[n, lo0, hi0,
 /// lo1, hi1, ...]` (`OnigCodePoint*`).
 bool onigIsInCodeRange(List<int> ranges, int code) {
   final n = ranges[0];

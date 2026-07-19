@@ -1,19 +1,19 @@
 /// A linear-time Thompson/Pike NFA fast path for the *safe subset* of patterns.
 ///
 /// A backtracking VM can blow up exponentially (`(a+)+$` on non-matching input).
-/// For patterns that use only regular-language constructs — literals, classes,
+/// For patterns that use only regular-language constructs (literals, classes,
 /// `\w`/`.`, alternation, concatenation, greedy/lazy quantifiers over a
-/// non-empty body, captures, and the simple anchors `\A ^ $ \z \Z \b \B` — this
+/// non-empty body, captures, and the simple anchors `\A ^ $ \z \Z \b \B`), this
 /// engine runs a Pike VM (NFA simulation with submatch tracking) that visits
 /// each program state at most once per input position, so it is **O(text ×
 /// program)** and cannot catastrophically backtrack.
 ///
 /// It is designed to be *byte-identical* to the backtracking engine on the
 /// subset it accepts (leftmost-first/greedy priority, the same code-point class
-/// membership, the same anchor semantics). Anything outside the subset —
+/// membership, the same anchor semantics). Anything outside the subset (
 /// back-references, atomic/possessive groups, look-around, conditionals,
 /// sub-routine calls, callouts, `\K`, ignore-case folding, or a quantifier whose
-/// body can match empty — makes [buildNfa] return `null`, and the search driver
+/// body can match empty) makes [buildNfa] return `null`, and the search driver
 /// falls back to the backtracking VM.
 library;
 
@@ -147,7 +147,7 @@ class _Builder {
           // anychar `.`
           _emit(_cChar, 0, 0, _Any(node.st(NdSt.multiLine)));
         } else if (node.ctype == CType.word) {
-          // \w / \W — same code-point test as OP_WORD (`enc.isCodeCtype`).
+          // \w / \W: same code-point test as OP_WORD (`enc.isCodeCtype`).
           _emit(_cChar, 0, 0, _Ct(node.ctype, node.not, node.asciiMode, enc));
         } else {
           // \X (ctype -2, a multi-code-point grapheme) and \d/\s/etc. (compiled
@@ -275,7 +275,7 @@ class _Builder {
 }
 
 /// True if [node] can match the empty string (used to reject quantifiers whose
-/// body may be empty — those have subtle empty-check semantics we don't model).
+/// body may be empty: those have subtle empty-check semantics we don't model).
 bool _canBeEmpty(Node? node) {
   if (node == null) return true;
   switch (node) {
@@ -314,12 +314,12 @@ bool _canBeEmpty(Node? node) {
 /// Effective options whose *search-time* semantics the Pike VM does not model.
 /// If any is set (in the search option or `reg.options`), the driver must fall
 /// back to the backtracking engine even when an NFA program exists:
-///  - findLongest      — leftmost-longest, not leftmost-first
-///  - findNotEmpty     — empty matches suppressed
-///  - matchWholeString — the match must span the whole string
-///  - posixRegion      — a different region layout
-///  - ignoreCase*      — case folding (incl. multi-char)
-///  - checkValidity*   — input-encoding validation may reject/alter results
+///  - findLongest: leftmost-longest, not leftmost-first
+///  - findNotEmpty: empty matches suppressed
+///  - matchWholeString: the match must span the whole string
+///  - posixRegion: a different region layout
+///  - ignoreCase*: case folding (incl. multi-char)
+///  - checkValidity*: input-encoding validation may reject/alter results
 const int nfaUnsafeOptions =
     OnigOption.findLongest |
     OnigOption.findNotEmpty |
@@ -330,7 +330,7 @@ const int nfaUnsafeOptions =
     OnigOption.checkValidityOfString;
 
 /// True if [node] can itself branch/repeat (a quantifier or alternation),
-/// looking through groups/lists — the shape that, nested under a quantifier,
+/// looking through groups/lists: the shape that, nested under a quantifier,
 /// causes exponential backtracking.
 bool _canBranch(Node? node) {
   switch (node) {
@@ -355,7 +355,7 @@ bool _canBranch(Node? node) {
   }
 }
 
-/// True if [node] contains a quantifier whose body can itself branch/repeat —
+/// True if [node] contains a quantifier whose body can itself branch/repeat,
 /// i.e. nested repetition, the classic super-linear-backtracking hazard
 /// (`(a+)+`, `(a|ab)*`). Flat / single-level patterns are linear under the
 /// backtracking VM and keep its literal/map prefilters, so only these "risky"

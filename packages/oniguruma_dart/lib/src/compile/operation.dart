@@ -118,7 +118,7 @@ abstract final class Op {
   // Dart-specific literal-switch alternation: every branch has a fixed, DISTINCT
   // single first byte, so at most one branch can match at any position. Dispatch
   // straight to the one branch via a 256-entry byte→relative-addr table (`disp`,
-  // 0 = no branch → fail) with NO PUSH/backtrack frame — there is never another
+  // 0 = no branch → fail) with NO PUSH/backtrack frame: there is never another
   // branch to give back to. Collapses the whole PUSH/JUMP (or peekByte) chain
   // into one table lookup. Emitted by _compileAlt only when heads are distinct.
   static const int dispatchByte = 93;
@@ -190,7 +190,7 @@ final class Operation {
   Operation(this.opcode);
 }
 
-/// The [Operation] stream decomposed into parallel arrays — flat `Int32List`
+/// The [Operation] stream decomposed into parallel arrays: flat `Int32List`
 /// slots for the scalar fields, typed lists for the object payloads. The
 /// executor's hot loop reads `code[pc]`, `opFlag[pc]`, … directly instead of
 /// chasing a pointer to a heap [Operation] object on every instruction (one

@@ -1,15 +1,15 @@
-// WebAssembly module reliability tests — run under Node's built-in test runner:
+// WebAssembly module reliability tests, run under Node's built-in test runner:
 //
 //   node --test packages/oniguruma_native/test/wasm/
 //
 // These exercise the SHIPPED wasm artifact (prebuilt/web/oniguruma_native.wasm,
 // whose SHA-256 wasm_provenance_test.dart checks against prebuilt/checksums.sha256)
-// through the SAME WebAssembly API + UTF-8 marshalling that lib/src/web/ uses —
+// through the SAME WebAssembly API + UTF-8 marshalling that lib/src/web/ uses:
 // backend_web.dart for the scanner (Layer 1) and lowlevel_web.dart for the raw
 // onig_* accessors (Layer 0). Oniguruma runs in UTF-8; byte offsets are mapped
 // back to UTF-16 code-unit indices via a per-string offset map (see
 // lib/src/utf8_offsets.dart). So a failure here is a real bug in the wasm module
-// or the marshalling contract, caught headlessly — no browser required, unlike
+// or the marshalling contract, caught headlessly, no browser required, unlike
 // test/oniguruma_web_test.dart.
 //
 // The behavioural cases mirror the IO/FFI suite (test/oniguruma_test.dart) so the
@@ -144,7 +144,7 @@ class OnigWasm {
     const byteLen = bytes.length;
     const p = this.malloc(byteLen === 0 ? 1 : byteLen);
     if (byteLen !== 0) {
-      // View derived AFTER malloc (growth-safe), one crossing — as backend_web.
+      // View derived AFTER malloc (growth-safe), one crossing, as backend_web.
       new Uint8Array(this.ex.memory.buffer, p, byteLen).set(bytes);
     }
     return { p, byteLen, units: str.length, enc };
@@ -309,10 +309,10 @@ describe('wasm module structure', () => {
     const names = WebAssembly.Module.exports(module_).map((e) => e.name);
     for (const required of [
       'memory', '_initialize', 'malloc', 'free',
-      // Layer 1 — scanner
+      // Layer 1: scanner
       'onig_shim_scanner_new', 'onig_shim_scanner_free', 'onig_shim_find',
       'onig_shim_scan_count', 'onig_shim_version',
-      // Layer 0 — raw onig_* accessors
+      // Layer 0: raw onig_* accessors
       'onig_shim_regex_new', 'onig_shim_regex_free', 'onig_shim_error_string',
       'onig_shim_search', 'onig_shim_match', 'onig_shim_number_of_captures',
       'onig_shim_number_of_names', 'onig_shim_name_to_group_numbers',
@@ -560,7 +560,7 @@ describe('edge cases', () => {
   });
 });
 
-describe('memory growth (buffer detachment) — the web marshalling hazard', () => {
+describe('memory growth (buffer detachment): the web marshalling hazard', () => {
   test('a subject larger than the initial heap forces growth and still matches', () => {
     // Initial linear memory is ~4.3 MB. A subject well past that forces malloc
     // to grow the memory, detaching every previously-created view. If the

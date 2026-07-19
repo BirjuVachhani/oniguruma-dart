@@ -11,7 +11,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 prebuilt="$here/../../prebuilt"
 cd "$prebuilt"
 
-# shasum on macOS, sha256sum on Linux — both emit "<hash>  <path>".
+# shasum on macOS, sha256sum on Linux: both emit "<hash>  <path>".
 if command -v sha256sum >/dev/null 2>&1; then
   SHA="sha256sum"
 elif command -v shasum >/dev/null 2>&1; then

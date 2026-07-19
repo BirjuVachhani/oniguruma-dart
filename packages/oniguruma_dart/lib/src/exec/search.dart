@@ -32,7 +32,7 @@ class _CachedExecutor {
   _CachedExecutor(this.ex, this.str, this.end, this.option, this.retryLimit);
 }
 
-/// `onig_search` — find the first match beginning in `[start, range]`.
+/// `onig_search`: find the first match beginning in `[start, range]`.
 /// Returns the match **start** byte offset, or [OnigResult.mismatch], or a
 /// negative error code. Fills [region] on success.
 int onigSearch(
@@ -48,7 +48,7 @@ int onigSearch(
 }) {
   // Linear-time NFA fast path for the safe subset: forward, leftmost-first.
   // FIND_LONGEST needs longest-match semantics this Pike VM doesn't model, and
-  // backward search (range < start) isn't supported — both fall through.
+  // backward search (range < start) isn't supported. Both fall through.
   final nfa = reg.nfa;
   final effOptions = option | reg.options;
   if (nfa != null && (effOptions & nfaUnsafeOptions) == 0 && range >= start) {
@@ -151,7 +151,7 @@ int onigSearch(
       final anyChar = reg.exactAnchorAnyChar;
       final anyCharMl = reg.exactAnchorAnyCharMl;
       // Pure-literal fast path: the whole pattern is the exact literal, so a
-      // Sunday hit at `found` IS the match — fill the region directly and skip
+      // Sunday hit at `found` IS the match: fill the region directly and skip
       // the per-match matchAt. Disabled under options that change OP_END
       // semantics (whole-string / not-empty; find-longest early-returns above).
       final wholeLit =
@@ -176,8 +176,8 @@ int onigSearch(
 
         if (hasBack) {
           // The match is `C+ exact …`; walk back over C from `found` to the
-          // run start — the unique leftmost candidate for this occurrence of
-          // the exact — and try matchAt there once (not every gap position).
+          // run start (the unique leftmost candidate for this occurrence of
+          // the exact) and try matchAt there once (not every gap position).
           var q = found;
           while (q > s) {
             final prev = enc.leftAdjustCharHead(str, s, q - 1);
@@ -239,7 +239,7 @@ int onigSearch(
       final map = reg.map!;
       final wordStart = reg.leadingWordBoundary;
       while (s <= range) {
-        // Tight skip over a run of ASCII bytes that can't begin a match — no
+        // Tight skip over a run of ASCII bytes that can't begin a match: no
         // virtual `enc.length` per byte (map-optimized regexes always use a
         // minLength==1 encoding, so an ASCII byte is exactly one char). This is
         // our analog of V8's SkipUntilBitInTable.
@@ -256,7 +256,7 @@ int onigSearch(
         }
         // Leading `\b`: when this candidate and the byte before it are both
         // ASCII word chars, the boundary is provably false here, so matchAt
-        // would mismatch without consuming — skip it without entering the VM.
+        // would mismatch without consuming: skip it without entering the VM.
         // (Both ASCII ⇒ single-byte, so advancing by 1 stays on a char head.)
         if (wordStart &&
             s > 0 &&
@@ -309,7 +309,7 @@ int onigSearch(
 }
 
 /// ASCII upper→lower fold of a single byte (non-ASCII bytes pass through, so a
-/// UTF-8 multibyte byte — always >= 0x80 — never folds into a needle byte).
+/// UTF-8 multibyte byte, always >= 0x80, never folds into a needle byte).
 int _foldByte(int b) => (b >= 0x41 && b <= 0x5a) ? b + 0x20 : b;
 
 /// Is code point [code] a member of the recorded leading class C (for the
@@ -363,7 +363,7 @@ int _searchExactIc(
   }
 }
 
-/// ASCII word char (`[0-9A-Za-z_]`) — the `\w` membership test used by the
+/// ASCII word char (`[0-9A-Za-z_]`): the `\w` membership test used by the
 /// leading-`\b` word-start skip (byte already known to be `< 0x80`).
 bool _asciiWord(int b) =>
     (b >= 0x30 && b <= 0x39) || // 0-9
@@ -431,7 +431,7 @@ int _nextLineStart(Uint8List str, int found, int end, OnigEncoding enc) {
   return end + 1;
 }
 
-/// `onig_match` — attempt a match anchored exactly at [at] (no scanning).
+/// `onig_match`: attempt a match anchored exactly at [at] (no scanning).
 int onigMatch(
   Regex reg,
   Uint8List str,

@@ -40,7 +40,7 @@ void main() {
 
   group('branches that must NOT be skipped by the peek', () {
     test('nullable head branch (a?)b matches a bare b', () {
-      // (a?)b : first byte can be a OR b — the helper must decline the peek.
+      // (a?)b : first byte can be a OR b. The helper must decline the peek.
       expect(_m(r'(a?)b|xyz', 'zzb'), (2, 3));
       expect(_m(r'(a?)b|xyz', 'ab'), (0, 2));
     });

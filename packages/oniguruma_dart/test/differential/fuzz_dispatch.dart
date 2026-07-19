@@ -1,9 +1,9 @@
 /// Targeted differential fuzz for the literal-switch alternation opcode
 /// (`Op.dispatchByte`). The generic fuzzer only builds 2-way alternations, so
 /// this one specifically generates multi-branch alternations with DISTINCT
-/// first bytes (the exact shape that compiles to a dispatch table) — bare,
+/// first bytes (the exact shape that compiles to a dispatch table) (bare,
 /// embedded with a continuation that forces backtracking, quantified, and
-/// captured — and asserts byte-identical results against the C reference CLI.
+/// captured) and asserts byte-identical results against the C reference CLI.
 ///
 ///   dart run test/differential/fuzz_dispatch.dart [count] [seed] [cli]
 library;

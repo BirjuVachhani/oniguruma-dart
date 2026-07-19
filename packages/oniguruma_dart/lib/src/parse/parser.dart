@@ -261,7 +261,7 @@ class _Parser {
       root = zero;
     }
     // `check_whole_options_position`: a scoped `(?I:…)` whole-option must span
-    // the entire pattern — if it sits in a list beside other content, reject.
+    // the entire pattern. If it sits in a list beside other content, reject.
     if (_hasWholeOptions && root != null) _checkWholeOptionsPosition(root);
     return root;
   }
@@ -419,12 +419,12 @@ class _Parser {
     }
   }
 
-  /// `prs_alts` — one or more `|`-separated branches. [term] is the closing
+  /// `prs_alts`: one or more `|`-separated branches. [term] is the closing
   /// token expected by the caller ([TokenType.eot] at top level).
   Node? _prsAlts(TokenType term, {bool topLevel = false}) {
     _incDepth();
     // `prs_alts`: env->options is restored only at the END, not between
-    // branches — so an isolated `(?s)` in one branch leaks into the following
+    // branches, so an isolated `(?s)` in one branch leaks into the following
     // branches (ONIG_SYN_ISOLATED_OPTION_CONTINUE_BRANCH).
     final savedOptions = options;
     final branches = <Node>[_prsBranch(term) ?? _emptyNode()];
@@ -443,7 +443,7 @@ class _Parser {
     return tail;
   }
 
-  /// `prs_branch` — concatenation of expressions up to `|` / [term] / EOT.
+  /// `prs_branch`: concatenation of expressions up to `|` / [term] / EOT.
   Node? _prsBranch(TokenType term) {
     _incDepth();
     final items = <Node>[];
@@ -478,7 +478,7 @@ class _Parser {
 
   // --- expression ----------------------------------------------------------
 
-  /// `prs_exp` — one element plus any trailing quantifiers. Enters with [_tok]
+  /// `prs_exp`: one element plus any trailing quantifiers. Enters with [_tok]
   /// holding the element's first token; returns with [_tok] at the lookahead.
   Node? _prsExp(TokenType term) {
     _incDepth();
@@ -503,7 +503,7 @@ class _Parser {
               return _emptyNode();
             }
             // Default (Oniguruma/Ruby): the option scopes to the end of the
-            // enclosing alternation — wrap the remainder in an option group.
+            // enclosing alternation: wrap the remainder in an option group.
             final rest = _prsAlts(term) ?? _emptyNode();
             options = prevOptions;
             final bag = BagNode(BagType.option)..options = optNew;
@@ -688,7 +688,7 @@ class _Parser {
       str.catByte(_tok.byteVal);
       str.setCrude();
     } else if (_tok.codePoints != null) {
-      // Extended `\x{a b c}` — append each code point.
+      // Extended `\x{a b c}`: append each code point.
       final buf = Uint8List(enc.maxLength);
       for (final cp in _tok.codePoints!) {
         final n = enc.codeToMbc(cp, buf, 0);
@@ -713,7 +713,7 @@ class _Parser {
   /// Handle trailing quantifiers (`repeat:` / `re_entry:` loop), including the
   /// `{1,1}` drop and the `/abc+/` string-split. [prefix] holds the concatenated
   /// part peeled off by string splits; further quantifiers apply to [target]
-  /// (the split-off last char) only — e.g. `ax{2}*a` = `a(x{2})*a`.
+  /// (the split-off last char) only, e.g. `ax{2}*a` = `a(x{2})*a`.
   Node? _maybeQuantify(Node node, TokenType term) {
     var target = node;
     Node? prefix;
@@ -833,7 +833,7 @@ class _Parser {
   //  Tokenizer  (fetch_token)
   // ======================================================================
 
-  /// `fetch_token` — read the next token into [_tok] (outside a char class).
+  /// `fetch_token`: read the next token into [_tok] (outside a char class).
   void _fetchToken() {
     _skipCommentsAndExtended();
     _tok.backp = p;
@@ -1015,19 +1015,19 @@ class _Parser {
         upper = infiniteRepeat;
       }
     } else {
-      upper = lower; // {n} — exact/fixed form (no comma)
+      upper = lower; // {n}: exact/fixed form (no comma)
       hasUpper = true;
       fixedN = true;
     }
     if (_pend || _peekCode() != 0x7d) {
-      // not a '}' — invalid; treat '{' as a literal
+      // not a '}': invalid; treat '{' as a literal
       p = save;
       return false;
     }
     _skipCode(); // consume '}'
 
     if (!hasLower && !hasUpper) {
-      // `{,}` (neither bound) is never a quantifier — treat `{` as literal.
+      // `{,}` (neither bound) is never a quantifier. Treat `{` as literal.
       p = save;
       return false;
     }
@@ -1058,7 +1058,7 @@ class _Parser {
     _tok.repeatGreedy = true;
     _tok.repeatPossessive = swappedPossessive;
     // FIXED_INTERVAL_IS_GREEDY_ONLY: a fixed `{n}` is greedy-only, so a trailing
-    // `?` is a separate optional quantifier — `a{n}?` == `(?:a{n})?`.
+    // `?` is a separate optional quantifier: `a{n}?` == `(?:a{n})?`.
     final greedyOnly =
         fixedN && syn.isBehavior(SynBv.fixedIntervalIsGreedyOnly);
     _readGreedyPossessiveSuffix(allowLazy: !greedyOnly);
@@ -1092,7 +1092,7 @@ class _Parser {
         return _setCharType(CType.space, false);
       case 0x53: // \S
         return _setCharType(CType.space, true);
-      case 0x68: // \h  (xdigit) — ONIG_SYN_OP2_ESC_H_XDIGIT
+      case 0x68: // \h  (xdigit): ONIG_SYN_OP2_ESC_H_XDIGIT
         if (syn.isOp2(SynOp2.escHXdigit)) {
           return _setCharType(CType.xdigit, false);
         }
@@ -1299,7 +1299,7 @@ class _Parser {
     return c & 0x9f;
   }
 
-  /// `fetch_escaped_value_raw` — used by `\M-`/`\C-` recursion.
+  /// `fetch_escaped_value_raw`: used by `\M-`/`\C-` recursion.
   int _fetchEscapedValueRaw() {
     if (_pend) throw _err(OnigErr.endPatternAtEscape);
     final c = _fetchChar();
@@ -1320,7 +1320,7 @@ class _Parser {
     return _convBackslashValue(c);
   }
 
-  /// `conv_backslash_value` — `\n \t \r \f \a \e \v \b` → code, else identity.
+  /// `conv_backslash_value`: `\n \t \r \f \a \e \v \b` → code, else identity.
   int _convBackslashValue(int c) {
     if (!syn.isOp(SynOp.escControlChars)) return c;
     switch (c) {
@@ -1345,7 +1345,7 @@ class _Parser {
     }
   }
 
-  /// `\o{ooo ooo ...}` braced octal — one or more code points (cursor at `{`).
+  /// `\o{ooo ooo ...}` braced octal: one or more code points (cursor at `{`).
   void _fetchOctalBrace() {
     _skipCode(); // '{'
     final cps = _readBracedCodePoints(8);
@@ -1361,7 +1361,7 @@ class _Parser {
     return (c >= 0x30 && c <= 0x37) ? c - 0x30 : -1; // octal
   }
 
-  /// `scan_number_of_base` — read up to [maxDigits] digits of [base] (≥ 1).
+  /// `scan_number_of_base`: read up to [maxDigits] digits of [base] (≥ 1).
   /// A further digit after the max signals `TOO_LONG_WIDE_CHAR_VALUE`.
   int _scanBaseDigits(int base, int maxDigits) {
     var val = 0;
@@ -1380,7 +1380,7 @@ class _Parser {
     return val;
   }
 
-  /// `check_code_point_sequence` — read `{ v (SP|NL v)* }` in [base]; cursor is
+  /// `check_code_point_sequence`: read `{ v (SP|NL v)* }` in [base]; cursor is
   /// just past `{`. Dividers are space (0x20) and newline (0x0a).
   List<int> _readBracedCodePoints(int base) {
     final cps = <int>[];
@@ -1466,7 +1466,7 @@ class _Parser {
 
   void _fetchHex() {
     if (_peekCode() == 0x7b && syn.isOp(SynOp.escXBraceHex8)) {
-      // \x{ h... [ (SP|NL) h... ]* } — one or more code points.
+      // \x{ h... [ (SP|NL) h... ]* }: one or more code points.
       _skipCode();
       final cps = _readBracedCodePoints(16);
       if (cps.isEmpty) throw _err(OnigErr.invalidCodePointValue);
@@ -1505,7 +1505,7 @@ class _Parser {
   /// Read a `<name>` / `'name'` / `<n>` / `<name+L>` delimited reference.
   /// Returns (name-or-number-string, level) and consumes through the close.
   /// Decode pattern bytes `[start, endPos)` into a String of **code points**
-  /// (not raw bytes) — used for group names, `\g`/`\k` targets, `(?(name))`
+  /// (not raw bytes): used for group names, `\g`/`\k` targets, `(?(name))`
   /// checkers, and `\p{}` property names so ASCII names/numbers parse correctly
   /// under multi-byte encodings (regparse.c reads names through the encoding).
   /// Single-byte encodings keep the exact byte-wise form; definitions and every
@@ -1542,7 +1542,7 @@ class _Parser {
     _skipCode(); // close
     var level = 0;
     var hasLevel = false;
-    // optional +N / -N nesting level — only when a name/number precedes it, so
+    // optional +N / -N nesting level: only when a name/number precedes it, so
     // a bare `\g<-1>` / `\g<+2>` stays a (relative) reference, not a level.
     final m = RegExp(r'^(.+?)([+-]\d+)$').firstMatch(body);
     if (m != null) {
@@ -1632,7 +1632,7 @@ class _Parser {
   }
 
   // ======================================================================
-  //  Groups  (prs_bag)  — subset: (), (?:), (?<name>), (?'name'), (?imsx[:])
+  //  Groups  (prs_bag). Subset: (), (?:), (?<name>), (?'name'), (?imsx[:])
   // ======================================================================
 
   /// Returns the group node, or null for an option-only `(?flags)` group
@@ -1847,14 +1847,14 @@ class _Parser {
     // enclosed name (`<name>`/`'name'`). Anything else is a sub-pattern
     // condition (evaluated like a look-ahead). (regparse.c `prs_bag` `(?(`.)
     if (c == 0x2a && syn.isOp2(SynOp2.asteriskCalloutName)) {
-      // (?(*NAME){args})THEN|ELSE) — name-callout condition.
+      // (?(*NAME){args})THEN|ELSE): name-callout condition.
       _skipCode(); // consume '*'
       cond = _parseNameCallout(); // reads until and consumes the ')'
       _fetchToken();
     } else if (c == 0x3f &&
         _peekCode2() == 0x7b &&
         syn.isOp2(SynOp2.qmarkBraceCalloutContents)) {
-      // (?(?{...})THEN|ELSE) — contents (code) callout condition.
+      // (?(?{...})THEN|ELSE): contents (code) callout condition.
       _skipCode(); // consume '?'
       cond = _parseContentsCallout(); // at '{', consumes the ')'
       _fetchToken();
@@ -1876,9 +1876,9 @@ class _Parser {
       _fetchToken(); // past the condition's ')'
     }
 
-    // Empty body — `(?(cond))` with nothing after the condition: the whole
+    // Empty body (`(?(cond))` with nothing after the condition): the whole
     // conditional IS just the checker (regparse.c "empty body: make backref
-    // checker"). It asserts the group matched and FAILS when it didn't — unlike
+    // checker"). It asserts the group matched and FAILS when it didn't, unlike
     // `(?(cond)then)` whose implicit empty else matches. The condition must be a
     // checker (backref/name); a sub-pattern/callout body here is a syntax error.
     if (_tok.type == TokenType.subexpClose) {
@@ -1950,7 +1950,7 @@ class _Parser {
       any = true;
     }
     if (!any) throw _err(OnigErr.invalidIfElseSyntax);
-    // optional +level / -level suffix (backref-with-level) — consume, ignore.
+    // optional +level / -level suffix (backref-with-level): consume, ignore.
     if (!_pend && (_peekCode() == 0x2b || _peekCode() == 0x2d)) {
       _skipCode();
       while (!_pend && _isDigit(_peekCode())) {
@@ -2042,48 +2042,48 @@ class _Parser {
           } else {
             throw _err(OnigErr.undefinedGroupOption);
           }
-        case 0x73: // s (Perl only) — dot-all
+        case 0x73: // s (Perl only): dot-all
           if (syn.isOp2(SynOp2.optionPerl)) {
             opt = _optNegate(opt, OnigOption.multiLine, neg);
           } else {
             throw _err(OnigErr.undefinedGroupOption);
           }
-        case 0x57: // W — word is ASCII
+        case 0x57: // W: word is ASCII
           if (!onig) throw _err(OnigErr.undefinedGroupOption);
           opt = _optNegate(opt, OnigOption.wordIsAscii, neg);
-        case 0x44: // D — digit is ASCII
+        case 0x44: // D: digit is ASCII
           if (!onig) throw _err(OnigErr.undefinedGroupOption);
           opt = _optNegate(opt, OnigOption.digitIsAscii, neg);
-        case 0x53: // S — space is ASCII
+        case 0x53: // S: space is ASCII
           if (!onig) throw _err(OnigErr.undefinedGroupOption);
           opt = _optNegate(opt, OnigOption.spaceIsAscii, neg);
-        case 0x50: // P — POSIX is ASCII
+        case 0x50: // P: POSIX is ASCII
           if (!onig) throw _err(OnigErr.undefinedGroupOption);
           opt = _optNegate(opt, OnigOption.posixIsAscii, neg);
-        case 0x79: // y{g} / y{w} — text-segment mode
+        case 0x79: // y{g} / y{w}: text-segment mode
           if (!onig || neg) throw _err(OnigErr.undefinedGroupOption);
           opt = _parseTextSegmentOption(opt);
-        case 0x61: // a — Python: POSIX is ASCII
+        case 0x61: // a (Python: POSIX is ASCII)
           if (!syn.isBehavior(SynBv.python)) {
             throw _err(OnigErr.undefinedGroupOption);
           }
           opt = _optNegate(opt, OnigOption.posixIsAscii, neg);
-        case 0x43: // C — whole: don't capture group
+        case 0x43: // C (whole: don't capture group)
           if (!whole || neg) throw _err(OnigErr.invalidGroupOption);
           opt = _optNegate(opt, OnigOption.dontCaptureGroup, neg);
           wholeUsed = true;
-        case 0x49: // I — whole: ignorecase is ASCII
+        case 0x49: // I (whole: ignorecase is ASCII)
           if (!whole || neg) throw _err(OnigErr.invalidGroupOption);
           opt = _optNegate(opt, OnigOption.ignoreCaseIsAscii, neg);
           wholeUsed = true;
-        case 0x4c: // L — whole: find longest
+        case 0x4c: // L (whole: find longest)
           if (!whole || neg) throw _err(OnigErr.invalidGroupOption);
           opt = _optNegate(opt, OnigOption.findLongest, neg);
           wholeUsed = true;
-        case 0x3a: // ':' — scoped option group body
+        case 0x3a: // ':': scoped option group body
           if (wholeUsed) _setWholeOptions(opt);
           return _parseScopedOptionBody(opt, wholeOptions: wholeUsed);
-        case 0x29: // ')' — set options for rest of branch
+        case 0x29: // ')': set options for rest of branch
           if (wholeUsed) _setWholeOptions(opt);
           options = opt;
           return null;
@@ -2146,7 +2146,7 @@ class _Parser {
   void _setWholeOptions(int opt) {
     if (_hasWholeOptions) throw _err(OnigErr.invalidGroupOption);
     // Position check (`check_whole_options_position`): the option group must be
-    // at the pattern head — everything before its '(' can only be `(?:` opens.
+    // at the pattern head: everything before its '(' can only be `(?:` opens.
     var q = 0;
     while (q < _groupOpenPos) {
       if (q + 3 <= _groupOpenPos &&
@@ -2289,7 +2289,7 @@ class _Parser {
     return (save, alt);
   }
 
-  /// `make_range_clear` — `(?~|)`.
+  /// `make_range_clear`: `(?~|)`.
   Node _makeRangeClear() {
     final save = _saveGimmick(SaveType.rightRange);
     final id = save.id;
@@ -2404,7 +2404,7 @@ class _Parser {
 
   /// `\R` general newline: `(?>\x0D\x0A | [\x0A-\x0D\x{85}\x{2028}\x{2029}])`.
   Node _generalNewlineNode() {
-    // The CRLF branch is the encoded code points 0x0d, 0x0a — not raw bytes, so
+    // The CRLF branch is the encoded code points 0x0d, 0x0a (not raw bytes), so
     // it spans one char each under multi-byte encodings (regcomp.c encodes via
     // ONIGENC_CODE_TO_MBC). The char-class branch matches code points directly.
     final buf = Uint8List(enc.codeToMbcLen(0x0d) + enc.codeToMbcLen(0x0a));
@@ -2494,7 +2494,7 @@ class _Parser {
       }
       first = false;
 
-      // POSIX bracket [[:name:]] — only when it's a well-formed start
+      // POSIX bracket [[:name:]]: only when it's a well-formed start
       // (`is_posix_bracket_start`); otherwise `[` falls through to the
       // nested-class / literal handling below.
       if (startc == 0x5b && _peekCode2() == 0x3a && _isPosixBracketStart()) {
@@ -2760,7 +2760,7 @@ class _Parser {
   /// A raw byte from a numeric escape (`\xHH` / `\ooo`) inside a class. In a
   /// multi-byte encoding it begins a *crude* multi-byte character: continuation
   /// bytes must arrive as same-[base] numeric escapes (regparse.c `parse_cc`
-  /// `TK_CRUDE_BYTE`) — e.g. `[\000\044]` in UTF-16BE is one char U+0024. Too
+  /// `TK_CRUDE_BYTE`), e.g. `[\000\044]` in UTF-16BE is one char U+0024. Too
   /// few → `-206`, an invalid sequence → `-400`. In a single-byte encoding the
   /// byte is used as-is. Returns the decoded code point.
   int _ccCrudeByte(int firstByte, int base) {
@@ -2795,7 +2795,7 @@ class _Parser {
       }
       return _readHexValue();
     }
-    // base 8 — octal digits directly after the backslash.
+    // base 8: octal digits directly after the backslash.
     if (_pend) {
       p = save;
       return -1;
@@ -2813,12 +2813,12 @@ class _Parser {
   /// Adds every value / `lo - hi` range directly to [cc] and returns the last
   /// code point (so a following external `-` can range from it). Mirrors
   /// `fetch_token_cc` + `check_code_point_sequence_cc`: a single value must be
-  /// immediately closed by `}` — `\x{V }` (trailing divider) is invalid.
+  /// immediately closed by `}`. `\x{V }` (trailing divider) is invalid.
   int _readCcBracedSeq(CClassNode cc, int base) {
     if (_pend) throw _err(OnigErr.invalidCodePointValue);
     final first = _scanBaseDigits(base, base == 16 ? 8 : 11);
     if (!_pend && _peekCode() == 0x7d) {
-      // Single value, immediate '}'. Return it without adding/validating — the
+      // Single value, immediate '}'. Return it without adding/validating: the
       // class loop decides (a standalone member must be encodable, but a range
       // bound may reach ONIG_MAX_CODE_POINT).
       _skipCode();
@@ -2969,7 +2969,7 @@ class _Parser {
     }
     final ctype = _propertyCtype(name);
     if (ctype != null) {
-      // POSIX/ctype property — honours ASCII-mode options via _ccAddCtype.
+      // POSIX/ctype property: honours ASCII-mode options via _ccAddCtype.
       _ccAddCtype(cc, ctype, not);
       return;
     }
@@ -3020,7 +3020,7 @@ class _Parser {
   // -- class set operations (or_cclass / and_cclass) -----------------------
 
   BitSet _bsEff(CClassNode cc) {
-    final b = BitSet()..orWith(cc.bs); // always a copy — callers mutate it
+    final b = BitSet()..orWith(cc.bs); // always a copy: callers mutate it
     if (cc.isNot) b.invert();
     return b;
   }
@@ -3121,7 +3121,7 @@ class _Parser {
     if (wgp != not) _ccAddRange(cc, 0x80, mbMax);
   }
 
-  /// `is_posix_bracket_start` — with the cursor at `[` (followed by `:`), is the
+  /// `is_posix_bracket_start`: with the cursor at `[` (followed by `:`), is the
   /// text a well-formed POSIX bracket start: `[:` `^`? alpha+ `:]`?
   bool _isPosixBracketStart() {
     var q = p;
@@ -3132,7 +3132,7 @@ class _Parser {
       final x = enc.mbcToCode(s, q, end);
       q += enc.length(s, q, end);
       if (x == 0x3a) {
-        // ':' — must be immediately followed by ']', with a non-empty name.
+        // ':': must be immediately followed by ']', with a non-empty name.
         if (q < end && enc.mbcToCode(s, q, end) == 0x5d) return n != 0;
         return false;
       } else if (x == 0x5e && n == 0) {
@@ -3146,7 +3146,7 @@ class _Parser {
   }
 
   void _parsePosixBracket(CClassNode cc) {
-    // _peek is '['; consume "[:" (encoding-aware — each may be multi-byte).
+    // _peek is '['; consume "[:" (encoding-aware: each may be multi-byte).
     _skipCode(); // past '['
     _skipCode(); // past ':'
     var neg = false;

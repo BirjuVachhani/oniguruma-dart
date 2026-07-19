@@ -1,4 +1,4 @@
-/// Web backend — selected when `dart:ffi` is unavailable (browsers).
+/// Web backend: selected when `dart:ffi` is unavailable (browsers).
 ///
 /// This drives a WebAssembly build of the **same** Oniguruma + shim the FFI
 /// backend uses (`src/oniguruma_shim.c`, wasm32-wasi), so `OnigScanner`,
@@ -6,8 +6,8 @@
 /// is instantiated by the JS host and driven over `dart:js_interop`; it works
 /// under both dart2js and dart2wasm (see [wasm_bindings]).
 ///
-/// Because `WebAssembly.instantiate` is asynchronous — and browsers refuse to
-/// instantiate a module this size synchronously on the main thread — web code
+/// Because `WebAssembly.instantiate` is asynchronous, and browsers refuse to
+/// instantiate a module this size synchronously on the main thread, web code
 /// must call [loadWasm] **once** before constructing an [OnigScanner] or
 /// [OnigString]. After it completes, every call here is synchronous, exactly
 /// like the FFI backend. On IO, [loadWasm] exists as a no-op so startup code is
@@ -25,10 +25,10 @@ import 'web/wasm_bindings.dart';
 /// using [OnigScanner]/[OnigString] on web.
 ///
 /// Resolution order:
-/// 1. [bytes] — instantiate the module you supply directly.
-/// 2. [url] — fetch and instantiate from that URL (used as-is; no fallback).
+/// 1. [bytes]: instantiate the module you supply directly.
+/// 2. [url]: fetch and instantiate from that URL (used as-is; no fallback).
 /// 3. Otherwise the **default**: fetch `oniguruma_native.wasm` from the app's
-///    web root — where `dart run oniguruma_native:setup` writes it — and, if
+///    web root (where `dart run oniguruma_native:setup` writes it) and, if
 ///    that isn't present (setup was never run), fall back to the version-matched
 ///    module on the GitHub Release. So web works with zero setup, and running
 ///    `setup` upgrades you to a locally-hosted, cached, offline/CSP-friendly copy.

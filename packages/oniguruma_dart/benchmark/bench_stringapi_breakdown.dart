@@ -124,7 +124,7 @@ void main() {
   // NOTE: the encode/c2b/b2c rows below measure the OLD (pre-S1/S2) index-build
   // components in isolation, kept for reference. The live String API now uses
   // the ASCII identity fast path (no maps), so "String API end-to-end" no longer
-  // includes them — that is the point of the comparison.
+  // includes them: that is the point of the comparison.
   final oldSetup = encMs + c2bMs + b2cMs;
   stdout.writeln(
     '| encode (String->UTF-8)       | ${f(encMs)} | reference only |',

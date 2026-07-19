@@ -43,8 +43,8 @@ DESC = {
 }
 ORDER = list(DESC.keys())
 CORPUS = {
-    "ascii": "corpus.txt — 1,135,637 bytes, 100% ASCII",
-    "uni": "unicode_corpus.txt — 904,352 bytes / 568,854 UTF-16 units, 38% ASCII",
+    "ascii": "corpus.txt: 1,135,637 bytes, 100% ASCII",
+    "uni": "unicode_corpus.txt: 904,352 bytes / 568,854 UTF-16 units, 38% ASCII",
 }
 
 # (json key, display label)
@@ -64,7 +64,7 @@ ENGINES = [
 
 def ms(ns):
     if ns is None:
-        return "—"
+        return "n/a"
     if ns >= 1e6:
         return f"{ns / 1e6:.2f} ms"
     if ns >= 1e3:
@@ -84,7 +84,7 @@ def main():
     L = []
     w = L.append
 
-    w("# oniguruma_dart — Benchmarks\n")
+    w("# oniguruma_dart: Benchmarks\n")
     w("Pure-Dart port of the [Oniguruma](https://github.com/kkos/oniguruma) "
       "regex engine, measured head-to-head against the native C library and the "
       "two production regex interpreters available to Dart programs.\n")
@@ -104,16 +104,16 @@ def main():
     w("### Engines\n")
     w("| engine | what it is |")
     w("|---|---|")
-    w("| **Oniguruma C** | the original C library (native machine code) — the reference |")
-    w("| **V8 JIT** | the default Node.js `RegExp` — native-compiled Irregexp (fastest; shown for reference) |")
-    w("| **V8 interp** | that same engine forced to bytecode-interpret (`node --regexp-interpret-all`) — like-for-like with the other interpreters |")
+    w("| **Oniguruma C** | the original C library (native machine code), the reference |")
+    w("| **V8 JIT** | the default Node.js `RegExp`: native-compiled Irregexp (fastest; shown for reference) |")
+    w("| **V8 interp** | that same engine forced to bytecode-interpret (`node --regexp-interpret-all`), like-for-like with the other interpreters |")
     w("| **Dart RegExp** | the Dart SDK's built-in `RegExp` (V8 Irregexp inside the Dart VM) |")
-    w("| **FFI · per-match** | the [`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native) package — the *same* native C library, driven from Dart via `dart:ffi` through its real `OnigScanner.findNextMatch` API (one FFI crossing + one result object per match). Uses UTF-16LE so offsets line up with Dart `String` indices. |")
-    w("| **FFI · bulk** | `oniguruma_native`'s `OnigScanner.scanCount` — the whole corpus scanned in a **single** FFI crossing (no per-match allocation): the native-from-Dart throughput ceiling, directly comparable to Oniguruma C. |")
-    w("| **wasm · per-match** | `oniguruma_native`'s **web** backend — the *same* Oniguruma + shim compiled to wasm32-wasi and driven through the browser `WebAssembly` API (measured under Node/V8, the engine Chrome runs), via the same `findNextMatch` API. Isolates the wasm engine cost from the dart2js/dart2wasm marshalling layer. |")
-    w("| **wasm · bulk** | the web backend's `scanCount` — the whole corpus scanned in a **single** crossing into the wasm module: the wasm throughput ceiling. |")
-    w("| **port · byte** | this port's byte API — matches a `Uint8List` (UTF-8), returns byte offsets |")
-    w("| **port · String** | this port's idiomatic `String` API (`OnigRegex.allMatches`) — encodes + maps offsets back to UTF-16 |")
+    w("| **FFI · per-match** | the [`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native) package: the *same* native C library, driven from Dart via `dart:ffi` through its real `OnigScanner.findNextMatch` API (one FFI crossing + one result object per match). Uses UTF-16LE so offsets line up with Dart `String` indices. |")
+    w("| **FFI · bulk** | `oniguruma_native`'s `OnigScanner.scanCount`, the whole corpus scanned in a **single** FFI crossing (no per-match allocation): the native-from-Dart throughput ceiling, directly comparable to Oniguruma C. |")
+    w("| **wasm · per-match** | `oniguruma_native`'s **web** backend: the *same* Oniguruma + shim compiled to wasm32-wasi and driven through the browser `WebAssembly` API (measured under Node/V8, the engine Chrome runs), via the same `findNextMatch` API. Isolates the wasm engine cost from the dart2js/dart2wasm marshalling layer. |")
+    w("| **wasm · bulk** | the web backend's `scanCount`, the whole corpus scanned in a **single** crossing into the wasm module: the wasm throughput ceiling. |")
+    w("| **port · byte** | this port's byte API: matches a `Uint8List` (UTF-8), returns byte offsets |")
+    w("| **port · String** | this port's idiomatic `String` API (`OnigRegex.allMatches`): encodes + maps offsets back to UTF-16 |")
     w("")
 
     w("### Environment\n")
@@ -142,7 +142,7 @@ def main():
       f"({CHARTS}absolute.png)\n")
 
     # ---- Table 2: normalized to C ----
-    w("## Normalized to Oniguruma C  (×C — <1.00 faster than C, >1.00 slower)\n")
+    w("## Normalized to Oniguruma C  (×C: <1.00 faster than C, >1.00 slower)\n")
     cols = [e for e in ENGINES if e[0] != "ONIG_C"]
     w("| pattern | " + " | ".join(lbl for _, lbl in cols) + " |")
     w("|---|" + "--:|" * len(cols))
@@ -170,9 +170,9 @@ def main():
     w("The two packages in this repo solve the same problem two ways: "
       "[`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native) binds the **real C library** through "
       "`dart:ffi`, while `oniguruma_dart` is a **pure-Dart** re-implementation. "
-      "Same corpora, same patterns, identical match counts — so this is a direct "
+      "Same corpora, same patterns, identical match counts. So this is a direct "
       "apples-to-apples of the two ways to run Oniguruma from Dart.\n")
-    w("![oniguruma_native (native FFI) vs the pure-Dart port — median time per "
+    w("![oniguruma_native (native FFI) vs the pure-Dart port: median time per "
       "full-corpus scan, log scale, shorter is faster]"
       f"({CHARTS}ffi-vs-port.png)\n")
     w("| pattern | matches | FFI · per-match | FFI · bulk | port · String | port · byte | port·String ÷ FFI·per-match |")
@@ -190,35 +190,35 @@ def main():
     port_wins = sum(d["ONIG_VM"][p] < d["ONIG_FFI"][p] for p in ORDER)
     br = d["ONIG_VM"]["backref-dup"] / d["ONIG_FFI"]["backref-dup"]
     w("**Head-to-head (geomean over the 13 patterns):**\n")
-    w(f"- **port · String ÷ FFI · per-match = {g_ps_fp:.2f}×** — for bulk find-all-matches "
+    w(f"- **port · String ÷ FFI · per-match = {g_ps_fp:.2f}×**: for bulk find-all-matches "
       f"the pure-Dart String API is ~{1 / g_ps_fp:.1f}× *faster* than the FFI package's "
       f"real per-match API, and wins on **{port_wins}/13** patterns.")
-    w(f"- **port · byte ÷ FFI · bulk = {g_pb_fb:.2f}×** — even against FFI's single-crossing "
+    w(f"- **port · byte ÷ FFI · bulk = {g_pb_fb:.2f}×**: even against FFI's single-crossing "
       f"bulk scan, the pure-Dart byte API is ~{1 / g_pb_fb:.1f}× faster.")
-    w(f"- **FFI · bulk ÷ C = {g_fb_c:.2f}×** — the native library driven from Dart in one "
+    w(f"- **FFI · bulk ÷ C = {g_fb_c:.2f}×**: the native library driven from Dart in one "
       f"crossing runs at ~{g_fb_c:.2f}× raw C; the gap is mostly UTF-16LE scanning ~2× the "
       f"bytes of UTF-8 on ASCII text.")
     w("")
     w("**Why the pure-Dart port wins this workload:**\n")
     w("- **Encoding.** `oniguruma_native` uses **UTF-16LE** so match offsets map 1:1 to Dart "
-      "`String` indices with no remapping — but on ASCII-heavy text that is *twice* the bytes "
+      "`String` indices with no remapping, but on ASCII-heavy text that is *twice* the bytes "
       "the port's UTF-8 engine scans, so skip-search and class scans cover 2× the memory.")
     w("- **Crossings.** Enumerating matches via `findNextMatch` costs one FFI call **per "
       "match** (plus a result object); on the 100k+-match patterns that boundary cost "
-      "dominates. `scanCount` (bulk) removes it and closes most — but not all — of the gap.")
+      "dominates. `scanCount` (bulk) removes it and closes most, but not all, of the gap.")
     w("- **In-process fast paths.** The port stays in the Dart heap with no marshalling and "
       "applies pattern-specific optimizations (e.g. the `email-like` walk-back is ~12× C).")
     w("")
-    w("**Where the FFI package wins — and why you'd still reach for it:**\n")
+    w("**Where the FFI package wins, and why you'd still reach for it:**\n")
     w(f"- **`backref-dup`**: native Oniguruma is **{br:.1f}× faster** than the port "
       f"({ms(d['ONIG_FFI']['backref-dup'])} vs {ms(d['ONIG_VM']['backref-dup'])}). The port's "
       f"backtracking back-reference is O(word²); the C engine handles pathological "
       f"backtracking far better.")
-    w("- **This benchmark is bulk find-all-matches** — the pure-Dart port's home turf. "
+    w("- **This benchmark is bulk find-all-matches**: the pure-Dart port's home turf. "
       "`oniguruma_native` targets **TextMate / Shiki tokenizers** (one `findNextMatch` per token "
       "over short lines, with vscode-oniguruma-compatible `OnigScanner` semantics). Reach for "
       "it when you need the real engine's exact behaviour/robustness or drop-in "
-      "vscode-oniguruma compatibility on IO platforms — see `../oniguruma_native` and its replay "
+      "vscode-oniguruma compatibility on IO platforms. See `../oniguruma_native` and its replay "
       "benchmark for that workload.")
     w("")
 
@@ -227,7 +227,7 @@ def main():
     w("`oniguruma_native` also runs on the web: the **same** Oniguruma 6.9.10 + shim "
       "compiled to a wasm32-wasi module and driven over `dart:js_interop` (byte-identical "
       "results to native). The numbers below measure that wasm module through the browser "
-      "`WebAssembly` API under **Node/V8** — the engine Chrome runs too — so they sit on the "
+      "`WebAssembly` API under **Node/V8**, the engine Chrome runs too, so they sit on the "
       "same footing as the other V8 rows and isolate the **wasm engine cost** from whatever "
       "the dart2js/dart2wasm compiler adds on top. `oniguruma_dart` runs on the web as plain "
       "compiled Dart (no wasm module), so this is the head-to-head for the two packages' web "
@@ -244,13 +244,13 @@ def main():
     g_wb_fb = gmean([d["ONIG_WASM_BULK"][p] / d["ONIG_FFI_BULK"][p] for p in ORDER])
     g_wb_ps = gmean([d["ONIG_WASM_BULK"][p] / d["ONIG_VM"][p] for p in ORDER])
     w("**Head-to-head (geomean over the 13 patterns):**\n")
-    w(f"- **wasm · bulk ÷ C = {g_wb_c:.2f}×** (per-match {g_wp_c:.2f}×) — the wasm build runs at "
+    w(f"- **wasm · bulk ÷ C = {g_wb_c:.2f}×** (per-match {g_wp_c:.2f}×): the wasm build runs at "
       f"~{g_wb_c:.1f}× native C; wasm is an interpreter-free but still-sandboxed target, so it "
       f"trails native machine code.")
-    w(f"- **wasm · bulk ÷ FFI · bulk = {g_wb_fb:.2f}×** — the *same* engine is ~{g_wb_fb:.1f}× "
+    w(f"- **wasm · bulk ÷ FFI · bulk = {g_wb_fb:.2f}×**: the *same* engine is ~{g_wb_fb:.1f}× "
       f"slower compiled to wasm than as native code (plus the JS↔wasm marshalling the web path "
       f"pays).")
-    w(f"- **wasm · bulk ÷ port · String = {g_wb_ps:.2f}×** — against the pure-Dart port's web "
+    w(f"- **wasm · bulk ÷ port · String = {g_wb_ps:.2f}×**: against the pure-Dart port's web "
       f"story, `oniguruma_native`'s wasm path is ~{g_wb_ps:.1f}× slower for bulk scanning, on top "
       f"of shipping a ~600 KB module. **For web, `oniguruma_dart` is the lighter and faster "
       f"choice**; reach for `oniguruma_native` on the web only when you need exact native-engine "
@@ -278,15 +278,15 @@ def main():
     beats_v8 = sum(d["ONIG_VM"][p] < d["V8_INTERP"][p] for p in ORDER)
     w("## How to read the results\n")
     w(f"- On the **String API** (the number Dart programs actually get), the port "
-      f"is on average **{gmean([d['ONIG_VM'][p] / C[p] for p in ORDER]):.2f}× C** — "
+      f"is on average **{gmean([d['ONIG_VM'][p] / C[p] for p in ORDER]):.2f}× C**: "
       f"i.e. faster than the native library across the suite. It beats/ties C on "
       f"**{beats_c}/13**, beats **Dart RegExp on {beats_re}/13**, and beats the "
       f"**V8 interpreter on {beats_v8}/13**.")
     w("- The **byte API** is faster still (no encode, no offset mapping, no match "
-      "objects) — it's the right choice when working with `Uint8List` directly.")
+      "objects). It's the right choice when working with `Uint8List` directly.")
     w(f"- Against the **native library over FFI** (`oniguruma_native`), the pure-Dart String "
       f"API is ~{1 / gmean([d['ONIG_VM'][p] / d['ONIG_FFI'][p] for p in ORDER]):.1f}× faster "
-      f"for bulk scanning — see the primary comparison above. The FFI package's per-match "
+      f"for bulk scanning. See the primary comparison above. The FFI package's per-match "
       f"crossings and UTF-16LE scanning cost more than in-process pure-Dart matching here; it "
       f"pays off for tokenizer workloads and pathological backtracking (`backref-dup`).")
     w("- `email-like` is an *algorithmic* win: the driver walks back from each "
@@ -295,11 +295,11 @@ def main():
     w("- The patterns where an engine still leads the port are **capability "
       "floors**, not tuning gaps:")
     w("  - **V8 interp** leads on `literal` / `alt-5` / `class-digit` via SIMD "
-      "(`memchr`, Boyer–Moore lookahead, vectorized class scan) — no byte-level "
+      "(`memchr`, Boyer–Moore lookahead, vectorized class scan): no byte-level "
       "SIMD exists in pure Dart.")
     w("  - **`literal-unicode`** ≈ C: the residual vs RegExp is the UTF-8↔UTF-16 "
       "bridge (RegExp scans the String's native UTF-16 with zero copy).")
-    w("  - **`backref-dup`** is O(word²) backtracking — even V8's interpreter is "
+    w("  - **`backref-dup`** is O(word²) backtracking: even V8's interpreter is "
       "2.5× C here.")
     w("")
     w("## Correctness\n")
