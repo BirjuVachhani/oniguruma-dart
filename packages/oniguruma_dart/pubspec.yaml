@@ -5,7 +5,7 @@ description: >-
   Full Unicode, ~28 encodings, an idiomatic String API. No FFI; verified
   against the C library.
 
-version: 1.0.0
+version: 1.0.1
 
 repository: https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart
 issue_tracker: https://github.com/BirjuVachhani/oniguruma-dart/issues

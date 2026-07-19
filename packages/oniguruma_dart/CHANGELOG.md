@@ -1,4 +1,4 @@
-## 1.0.1 (Unreleased)
+## 1.0.1
 
 - Docs: add "Advanced features" and "Examples" sections to the README, with
   runnable examples for possessive quantifiers, atomic groups, subroutine calls
