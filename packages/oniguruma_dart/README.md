@@ -1,27 +1,27 @@
 # oniguruma_dart
 
 A **pure-Dart** port of the [Oniguruma](https://github.com/kkos/oniguruma)
-regular-expression engine — the rich, Ruby-flavoured regex dialect — with **no
+regular-expression engine (the rich, Ruby-flavoured regex dialect) with **no
 FFI and no native code**. It runs anywhere Dart runs (VM, AOT, Flutter, and
 **Web/WASM**), needs zero toolchain or build setup, and is verified byte-for-byte
 against the reference C library.
 
-You get Oniguruma's full feature set — named groups, look-around, atomic groups,
+You get Oniguruma's full feature set, named groups, look-around, atomic groups,
 possessive quantifiers, conditionals, subroutine calls, `\K`, `\R`, `\X`,
 callouts, `\p{Script}`, multi-character case folds, ~28 text encodings, and a
-choice of regex dialects (Ruby, Perl, Java, Python, grep, POSIX, …) — behind an
+choice of regex dialects (Ruby, Perl, Java, Python, grep, POSIX, …), behind an
 idiomatic `String` API that works just like `dart:core`'s `RegExp`.
 
 Three API surfaces, all pure Dart:
 
-- **`OnigRegex`** — the idiomatic `String` API (`firstMatch` / `allMatches` /
+- **`OnigRegex`**: the idiomatic `String` API (`firstMatch` / `allMatches` /
   `replace`), the default choice ([Usage](#usage)).
-- **`OnigScanner`** — a `vscode-oniguruma`-shaped multi-pattern scanner for
+- **`OnigScanner`**: a `vscode-oniguruma`-shaped multi-pattern scanner for
   **TextMate-grammar / Shiki** tokenizers; the same surface the sibling FFI
   package [`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native)
   exposes, so tokenizer code is swappable between them
   ([Scanner](#scanner-vscode-oniguruma--textmate-grammars)).
-- **The low-level byte C API** — `onigNew` / `onigSearch` / `onigMatch` /
+- **The low-level byte C API**: `onigNew` / `onigSearch` / `onigMatch` /
   `OnigRegion` / `OnigRegSet`, mirroring `oniguruma.h` with byte offsets
   ([byte API](#non-utf-8-text--the-low-level-byte-api)).
 
@@ -31,22 +31,22 @@ Three API surfaces, all pure Dart:
 
 Dart's built-in `RegExp` is an ECMAScript engine (V8's Irregexp). It's fast and
 perfectly fine for everyday patterns, but its dialect is comparatively small.
-`oniguruma_dart` gives you the far richer Oniguruma/Ruby dialect — the same one
-Ruby, TextMate grammars, and many editors are written for — while keeping a
+`oniguruma_dart` gives you the far richer Oniguruma/Ruby dialect (the same one
+Ruby, TextMate grammars, and many editors are written for) while keeping a
 `RegExp`-like surface. Reach for it when you need:
 
-- **Regex constructs ECMAScript doesn't have** — atomic groups, possessive
+- **Regex constructs ECMAScript doesn't have**: atomic groups, possessive
   quantifiers, conditionals, subroutine/recursion `\g<>`, `\K`, `\R`, `\X`,
   POSIX classes, inline modifiers, free-spacing mode, and more (see the table).
-- **True Unicode case-insensitivity** — multi-character folds such as `ß` ↔ `ss`
+- **True Unicode case-insensitivity**: multi-character folds such as `ß` ↔ `ss`
   and `ﬁ` ↔ `fi`, which `RegExp` does not perform.
-- **Unicode properties without a flag** — `\p{Han}`, `\p{L}`, `\p{Greek}` work by
+- **Unicode properties without a flag**: `\p{Han}`, `\p{L}`, `\p{Greek}` work by
   default; in `RegExp` they require `unicode: true`.
-- **Non-UTF-8 / non-Unicode text** — match over Shift-JIS, EUC-JP/KR/TW, Big5,
+- **Non-UTF-8 / non-Unicode text**: match over Shift-JIS, EUC-JP/KR/TW, Big5,
   GB18030, the ISO-8859 family, KOI8, and ~28 encodings, directly on bytes.
-- **A specific regex dialect** — run patterns written for Ruby, Perl, Java,
+- **A specific regex dialect**: run patterns written for Ruby, Perl, Java,
   Python, grep, Emacs, or POSIX BRE/ERE with those exact semantics.
-- **Byte offsets** — C-identical byte positions, alongside the usual `String`
+- **Byte offsets**: C-identical byte positions, alongside the usual `String`
   (UTF-16) offsets.
 
 ### Supported patterns vs. `dart:core` `RegExp`
@@ -100,12 +100,12 @@ Then import it:
 import 'package:oniguruma_dart/oniguruma_dart.dart';
 ```
 
-No build hooks, native toolchain, or prebuilt binaries — it's pure Dart, so it
+No build hooks, native toolchain, or prebuilt binaries: it's pure Dart, so it
 works out of the box on every target including Web/WASM.
 
 ## Usage
 
-Use the idiomatic **`OnigRegex`** API — it works like `dart:core`'s `RegExp`,
+Use the idiomatic **`OnigRegex`** API. It works like `dart:core`'s `RegExp`,
 with `String` in and `String` out (offsets are UTF-16 code-unit indices):
 
 ```dart
@@ -217,24 +217,25 @@ m.captureIndices.first.end;    // 2  ("ab")
 
 ## Advanced features
 
-Everything below is standard Oniguruma syntax — the rich constructs that make
+Everything below is standard Oniguruma syntax: the rich constructs that make
 the dialect worth reaching for, none of which Dart's built-in `RegExp` can
 express. Every snippet runs as-is against the `OnigRegex` API shown above.
 
 ### Possessive quantifiers & atomic groups
 
 `a++`, `a*+`, `a?+` and `(?>…)` match without ever giving anything back, so they
-don't backtrack — the fast, ReDoS-resistant way to say "take it all or fail":
+never backtrack. That is the fast, ReDoS-resistant way to say "take it all or
+fail":
 
 ```dart
-OnigRegex.compile(r'a+a').hasMatch('aaaa');     // true  — greedy a+ backtracks one 'a'
-OnigRegex.compile(r'a++a').hasMatch('aaaa');    // false — possessive a++ keeps them all
-OnigRegex.compile(r'(?>a+)a').hasMatch('aaaa'); // false — atomic group, same effect
+OnigRegex.compile(r'a+a').hasMatch('aaaa');     // true  (greedy a+ backtracks one 'a')
+OnigRegex.compile(r'a++a').hasMatch('aaaa');    // false (possessive a++ keeps them all)
+OnigRegex.compile(r'(?>a+)a').hasMatch('aaaa'); // false (atomic group, same effect)
 ```
 
 ### Named & numbered back-references
 
-Match text that has to repeat — `\k<name>` (or `\1`) must re-match exactly what
+Match text that has to repeat. `\k<name>` (or `\1`) must re-match exactly what
 the group captured:
 
 ```dart
@@ -270,7 +271,7 @@ re.hasMatch('ac'); // false
 
 ### Look-around, including variable-length look-behind
 
-Full look-ahead and look-behind — and, unlike many engines, the look-behind may
+Full look-ahead and look-behind, and unlike many engines the look-behind may
 be variable-length:
 
 ```dart
@@ -342,7 +343,7 @@ final m = OnigRegex.compile(r'(?<y>\d{4})-(?<mo>\d{2})-(?<d>\d{2})')
 
 ### Match an HTML/XML element and its matching close tag
 
-The closing tag has to reuse the opening tag's name — a back-reference:
+The closing tag has to reuse the opening tag's name, a back-reference:
 
 ```dart
 final m = OnigRegex.compile(r'<(?<tag>\w+)>(?<body>.*?)</\k<tag>>')
@@ -422,20 +423,20 @@ and more. A runnable version is in
 
 - **5025 / 5025** of Oniguruma's own C test cases pass (all 8 suites).
 - **113** curated differential cases + **thousands** of randomized fuzz cases run
-  against the C CLI with **0 divergences** — byte-identical match offsets,
+  against the C CLI with **0 divergences**: byte-identical match offsets,
   captures, and error codes.
 
 ## Performance
 
-Pure-Dart and AOT-compiled, `oniguruma_dart` is **competitive with — and on this
-benchmark suite, on average faster than — the native C library**, and it beats
+Pure-Dart and AOT-compiled, `oniguruma_dart` is **competitive with (and on this
+benchmark suite, on average faster than) the native C library**, and it beats
 Dart's built-in `RegExp` on nearly every pattern:
 
 - **String API** (what you get from `OnigRegex`): **0.73× the C library's time**
-  on average (geometric mean over 13 patterns) — i.e. faster than native C across
-  the suite — beating C on 10 of 13 patterns and `dart:core`'s `RegExp` on
+  on average (geometric mean over 13 patterns), i.e. faster than native C across
+  the suite, beating C on 10 of 13 patterns and `dart:core`'s `RegExp` on
   **12 of 13**.
-- The lower-level **byte API** is faster still — **0.58× C** on average.
+- The lower-level **byte API** is faster still: **0.58× C** on average.
 
 It is even faster than the **native C library driven from Dart over FFI**: for
 bulk find-all-matches the String API is **~2× faster** than the sibling
@@ -445,7 +446,7 @@ FFI crossing per match), winning on 12 of 13 patterns.
 ![Geometric-mean scan time per engine, normalized to Oniguruma C (shorter is faster; dashed line = C). The port's byte (0.58×) and String (0.73×) APIs sit left of the C baseline; Dart RegExp, the FFI paths, and the web WebAssembly path sit right of it.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/geomean.png)
 
 Throughput is workload-dependent, and a few pathological cases (heavy
-back-references) remain slower than C — and than `oniguruma_native`. Full
+back-references) remain slower than C, and than `oniguruma_native`. Full
 methodology, per-pattern tables, the FFI head-to-head, and an interactive chart
 are in [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md).
 
@@ -454,28 +455,28 @@ are in [`benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/ma
 This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 (`oniguruma_dart`, pure Dart) when you want:
 
-- **The lightest, fastest web build** — pure Dart, so no embedded WebAssembly
+- **The lightest, fastest web build**: pure Dart, so no embedded WebAssembly
   module to download (the FFI package runs on web too, but ships a ~600 KB wasm
   blob and is ~3× slower here for bulk scanning).
-- **Zero native setup** — no C toolchain, no build hooks, no prebuilt binaries to
+- **Zero native setup**: no C toolchain, no build hooks, no prebuilt binaries to
   ship, no `flutter config --enable-native-assets`.
-- **Bulk matching** — `firstMatch` / `allMatches` / `replace` over `String` or
+- **Bulk matching**: `firstMatch` / `allMatches` / `replace` over `String` or
   `Uint8List`; it's ~2× faster than the FFI package here and often faster than C
   itself.
 - A **full idiomatic regex API**: named groups, captures, replace, and both
   `String` and byte offsets.
-- The **same three surfaces on every platform** — the low-level C API
+- The **same three surfaces on every platform**: the low-level C API
   (`onigNew` / `onigSearch` / `OnigRegion`), the idiomatic `OnigRegex` String
   API, **and** a `vscode-oniguruma`-shaped `OnigScanner` / `OnigString` /
-  `OnigScannerMatch` for **TextMate grammars / Shiki** tokenizers — byte-identical
+  `OnigScannerMatch` for **TextMate grammars / Shiki** tokenizers, byte-identical
   to the C engine, with no wasm to host on web.
 
 Reach for **[`oniguruma_native`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native)** instead when you want the
-**reference C engine itself** — for provenance (behaviour tracks Ruby / VS Code /
+**reference C engine itself**: for provenance (behaviour tracks Ruby / VS Code /
 Shiki by construction), incremental per-token tokenization (one match per FFI
 crossing, its sweet spot), or robustness on pathological backtracking. Both
 packages ship the same `OnigScanner` surface and are byte-identical, so for
-TextMate / Shiki either works — `oniguruma_native` is the drop-in when you're
+TextMate / Shiki either works. `oniguruma_native` is the drop-in when you're
 porting code already written against the `vscode-oniguruma` npm package. It runs
 on every platform too (WebAssembly on web), just with a heavier web bundle. See the
 [comparison in the root README](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/README.md#which-package-should-i-use)

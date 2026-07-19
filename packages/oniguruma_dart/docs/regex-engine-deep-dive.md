@@ -1,4 +1,4 @@
-# Regex Engine Deep Dive — Q&A
+# Regex Engine Deep Dive: Q&A
 
 A preserved question-and-answer record covering the `oniguruma_dart` benchmarks
 against Dart's built-in `RegExp` and Oniguruma C, and the engine-architecture
@@ -50,7 +50,7 @@ patterns where `RegExp` has a fast literal/case-fold scan (literal, unicode
 literal, case-insensitive).
 
 Reach for `oniguruma_dart` for what `RegExp` **cannot do** (the Oniguruma/Ruby
-dialect, ~28 encodings, byte-offset parity), not for raw speed — for everyday
+dialect, ~28 encodings, byte-offset parity), not for raw speed. For everyday
 UTF-16 matching the built-in `RegExp` is faster.
 
 ---
@@ -63,7 +63,7 @@ UTF-16 matching the built-in `RegExp` is faster.
 
 - Built with `dart compile exe` → an **AOT-compiled native executable** (ARM64
   machine code), run on the Dart Native runtime.
-- The "Dart JIT" column in the C benchmark used `dart run` — same VM in JIT mode,
+- The "Dart JIT" column in the C benchmark used `dart run`: same VM in JIT mode,
   still native, still not web.
 - None of it was `dart compile js` (web) or `dart compile wasm`. The harness even
   reads the corpus with `dart:io`, which only exists on native.
@@ -78,26 +78,26 @@ Why it matters: `RegExp`'s implementation differs per target.
 
 `oniguruma_dart` is pure Dart, so it *also* changes target: on native it's AOT
 machine code; on the web it becomes JavaScript, while `RegExp` there is the
-browser's native regex — so the gap would likely be **larger** on the web. The
+browser's native regex, so the gap would likely be **larger** on the web. The
 measured ratios therefore apply to the native/AOT Dart VM, not the web.
 
 ---
 
 ## 3. Five-way comparison with % and × metrics
 
-**Q: I want all 5 side by side — Oniguruma Dart VM, Oniguruma Web, Dart RegExp VM,
+**Q: I want all 5 side by side: Oniguruma Dart VM, Oniguruma Web, Dart RegExp VM,
 Dart RegExp Web, Oniguruma C. Use % and × faster/slower metrics.**
 
 Same 13 patterns / same corpora / same work (scan whole corpus for all
 non-overlapping matches). Match counts verified identical across all five configs.
 
-- **oniguruma_dart · VM** — this port, AOT native (`dart compile exe`)
-- **oniguruma_dart · Web** — this port, `dart compile js -O2` under Node/V8
-- **Dart RegExp · VM** — SDK `RegExp`, native
-- **Dart RegExp · Web** — SDK `RegExp` under dart2js → Node/V8's native regex
-- **Oniguruma C** — reference libonig 6.9.10
+- **oniguruma_dart · VM**: this port, AOT native (`dart compile exe`)
+- **oniguruma_dart · Web**: this port, `dart compile js -O2` under Node/V8
+- **Dart RegExp · VM**: SDK `RegExp`, native
+- **Dart RegExp · Web**: SDK `RegExp` under dart2js → Node/V8's native regex
+- **Oniguruma C**: reference libonig 6.9.10
 
-### Table A — absolute (median time to scan the corpus for all matches)
+### Table A: absolute (median time to scan the corpus for all matches)
 
 | pattern | matches | onig·VM | onig·Web | RegExp·VM | RegExp·Web | C |
 |---|--:|--:|--:|--:|--:|--:|
@@ -115,7 +115,7 @@ non-overlapping matches). Match counts verified identical across all five config
 | backref-dup | 15,606 | 472.87 ms | 665.00 ms | 181.69 ms | 18.21 ms | 46.95 ms |
 | greedy-dotstar | 6,518 | 881.21 ms | 1177.50 ms | 472.10 ms | 102.67 ms | 12.16 ms |
 
-### Table B — × and % relative to Oniguruma C (=1.00×); ×>1 slower, %<0 faster
+### Table B: × and % relative to Oniguruma C (=1.00×); ×>1 slower, %<0 faster
 
 | pattern | onig·VM | onig·Web | RegExp·VM | RegExp·Web |
 |---|--:|--:|--:|--:|
@@ -148,13 +148,13 @@ non-overlapping matches). Match counts verified identical across all five config
 
 ### Takeaways
 
-- **Native `RegExp` ≈ C** (2.2×) — it's the bar to beat, not this port.
+- **Native `RegExp` ≈ C** (2.2×): it's the bar to beat, not this port.
 - **`RegExp` on the web is the fastest thing here** (2.8× faster than C) because
   dart2js maps it onto Node/V8's native regex; that's also why it's **6.3× faster
   on web than on the VM**.
 - **This port pays a web tax** (~1.7× vs its own AOT build); since its opponent
   speeds up on web, the gap widens from ~6× (native) to ~68× (web).
-- **`greedy-dotstar` is C's blowout** (72× vs this port) — see §8.5.
+- **`greedy-dotstar` is C's blowout** (72× vs this port). See §8.5.
 - Choose `oniguruma_dart` for dialect/encodings/byte-parity, not raw speed.
 
 ---
@@ -176,24 +176,24 @@ used) shows the "magnitudes" are mostly *not* the engine.
 | case-insens | 6.62 ms | 40.39 ms | 164.63 ms | 6.10× | 4.1× |
 | greedy-dotstar | 12.16 ms | 786 ms | 881 ms | **64.7×** | 1.1× |
 
-### (1) Port vs C — three stacked factors, only one is the "engine"
+### (1) Port vs C: three stacked factors, only one is the "engine"
 
-**(a) The String convenience layer — biggest factor for most patterns.** Per scan,
+**(a) The String convenience layer: biggest factor for most patterns.** Per scan,
 `OnigRegex.allMatches(String)` UTF-8-encodes the subject, builds **two dense O(n)
 index arrays** mapping byte↔UTF-16 offsets, and allocates a region + match object
-per match — none of which C's raw-byte harness pays. For `literal`, actual
+per match, none of which C's raw-byte harness pays. For `literal`, actual
 matching is 3 ms but String-wrapping makes it 140 ms (a 45× tax unrelated to regex
 speed). Strip it and the byte engine is **1.3–1.8× off C** on ordinary patterns.
 
 **(b) The irreducible interpreter tax (~1.3–2×).** Both C-Oniguruma and the port
-are the same algorithm — a backtracking bytecode interpreter — but C gets three
+are the same algorithm, a backtracking bytecode interpreter, but C gets three
 things Dart can't: **computed-goto** dispatch (Dart has no `&&label`),
 **contiguous struct opcodes** (the port has a `List<Operation>` of heap references,
 one pointer-hop per instruction), and **no bounds checks / safepoints** on every
 byte access.
 
 **(c) A couple of real optimizer gaps.** `greedy-dotstar` is 65× slower *at the
-byte level* — a genuine deficiency (see §8.5). The exact-search is a naive
+byte level*, a genuine deficiency (see §8.5). The exact-search is a naive
 first-byte scan, not C's Boyer-Moore-Sunday skip table.
 
 ### (2) V8 vs hand-tuned C
@@ -208,12 +208,12 @@ up on pathological patterns.
 
 ### (3) Port vs Dart's RegExp
 
-Dart's `RegExp` *is* V8's Irregexp — so this is (1)+(2) compounding: compiled-native
+Dart's `RegExp` *is* V8's Irregexp, so this is (1)+(2) compounding: compiled-native
 (or a heavily-tuned engine) vs an interpreted Dart VM driven through the String
 layer. That's the 6.4× native gap. The **web** gap balloons to 68× mechanically:
 compiled to JS the port becomes an interpreter running on another interpreter
 (~1.7× slower than its native build), while `RegExp` maps onto Node/V8's native
-regex (~6× faster than on the VM) — numerator slows, denominator speeds up.
+regex (~6× faster than on the VM). Numerator slows, denominator speeds up.
 
 **Honest summary:** the port's *core byte engine* is only ~1.3–2× off C on ordinary
 patterns. The "magnitudes" come from the ergonomic String API, two optimizer gaps,
@@ -228,7 +228,7 @@ a correctness cost.
 
 **Irregexp is V8's regular-expression engine** (Chrome, Node). Its defining trait:
 instead of *interpreting* a pattern, it **compiles each regex into native machine
-code** at construction — parse → automaton-node graph → optimization passes →
+code** at construction: parse → automaton-node graph → optimization passes →
 per-architecture code generator emits a specialized machine-code matcher. On
 platforms without runtime codegen it falls back to an **Irregexp bytecode**
 interpreter.
@@ -241,7 +241,7 @@ too.
 
 **"Newer in Node vs Dart":** Dart's `RegExp` is a **port of V8's Irregexp** into the
 SDK. Node embeds a **current** V8 (updated every release); Dart carries its **own
-in-tree copy** that doesn't track upstream. Same engine lineage, different vintage —
+in-tree copy** that doesn't track upstream. Same engine lineage, different vintage,
 consistent with web `RegExp` (host V8) beating VM `RegExp` (Dart's copy). *(This
 vintage framing is refined by proof in §8.1: on Dart 3.12+ the VM copy is bytecode-
 interpreter-only, so the decisive factor is interpreter-vs-native-JIT, not vintage.)*
@@ -251,7 +251,7 @@ interpreter-only, so the decisive factor is interpreter-vs-native-JIT, not vinta
 ## 6. Backtracking vs other engine types; compiled vs interpreted
 
 **Q: (1) What does "still backtracking" mean, and what are the alternatives?
-(2) Why is Oniguruma interpreted — do its features require it? (3) Why is V8
+(2) Why is Oniguruma interpreted? Do its features require it? (3) Why is V8
 "compiled" but not Oniguruma C, when both are C/C++? (4) What does Oniguruma buy
 you over V8/RegExp? (5) Could a package give Dart a compiled engine?**
 
@@ -263,27 +263,27 @@ backreferences, lookaround, atomic groups, recursion; worst case **exponential**
 Irregexp.
 
 **Automaton engines** (Thompson NFA / DFA) track the *set of all possible states at
-once* → **linear time**, no blowup — but can't do backreferences (non-regular) and
+once* → **linear time**, no blowup, but can't do backreferences (non-regular) and
 traditionally not lookaround. → RE2, Rust `regex`, Go `regexp`, grep, Hyperscan.
 
 "Irregexp is *still* backtracking" = compiling it to fast native code made each step
-quicker but kept the family-A algorithm — rich features *and* exponential worst
+quicker but kept the family-A algorithm: rich features *and* exponential worst
 case. (Terminology trap: Friedl's book calls the backtracking engine the "NFA
-engine" — the opposite of CS usage.)
+engine", the opposite of CS usage.)
 
 ### (2) Why Oniguruma is interpreted, and features are orthogonal
 
 It compiles patterns to its own **bytecode** walked by a fixed `match_at` switch.
-Reasons: **portability** (runs anywhere a C compiler exists — a JIT needs a
+Reasons: **portability** (runs anywhere a C compiler exists: a JIT needs a
 machine-code generator per arch), **embeddability/safety** (no writable-executable
 memory), **cheap pattern build**.
 
 Crucially, **compiled-vs-interpreted is orthogonal to features.** Compilation
-governs speed per step, not expressiveness — V8 is compiled *and* supports
+governs speed per step, not expressiveness: V8 is compiled *and* supports
 lookaround/backrefs. Oniguruma's rich features come from being **backtracking**
 (which V8 also is); JS lacks `\g<>`/callouts because the **spec** omits them, not
 because a compiled engine can't. The one feature more *natural* in an interpreter
-is callouts — but PCRE supports callouts with its JIT too.
+is callouts, but PCRE supports callouts with its JIT too.
 
 ### (3) Why V8 is "compiled" but Oniguruma isn't (both are C/C++)
 
@@ -301,32 +301,32 @@ data.
 
 ### (4) What Oniguruma C buys you over V8 / RegExp
 
-1. **A far richer dialect** — `\g<>` recursion, `\k<n+1>`, conditionals, callouts,
+1. **A far richer dialect**: `\g<>` recursion, `\k<n+1>`, conditionals, callouts,
    `\K`, `(?~…)`, plus **12 selectable syntaxes**.
 2. **~20 native encodings** (EUC-JP, Shift-JIS, Big5, GB18030, ISO-8859-*, …) on
    raw bytes; V8/Dart only match UTF-16.
 3. **Byte-accurate offsets** in the source encoding.
 4. **Portability & JIT-free operation** (sandboxes/iOS, smaller attack surface).
 5. **Predictable, cheap compile cost**.
-6. **It *is* Ruby's engine** — port Ruby regexes verbatim.
+6. **It *is* Ruby's engine**: port Ruby regexes verbatim.
 
 Trade-off: raw throughput on hot patterns. That list is exactly why the pure-Dart
-port exists — dialect/encodings/byte-parity, not speed.
+port exists: dialect/encodings/byte-parity, not speed.
 
 ### (5) Could a package give Dart a compiled engine?
 
-**A pure-Dart package cannot JIT** — Dart exposes no runtime code-generation API, so
+**A pure-Dart package cannot JIT**: Dart exposes no runtime code-generation API, so
 any pure-Dart regex engine is structurally an **interpreter**. Options:
 
-1. **FFI to a native compiled engine** — PCRE2 (has a real JIT), RE2, Rust `regex`.
+1. **FFI to a native compiled engine**: PCRE2 (has a real JIT), RE2, Rust `regex`.
    Native-only, no web; the FFI route this project avoided.
-2. **Build-time codegen for *static* patterns** — a macro/build_runner that turns a
+2. **Build-time codegen for *static* patterns**: a macro/build_runner that turns a
    regex literal into a specialized Dart function, AOT-compiled to native. Works
    everywhere, but only for compile-time-known patterns.
-3. **Improve the pure-Dart interpreter** — BMH prefilters, flattened `Int32List`
+3. **Improve the pure-Dart interpreter**: BMH prefilters, flattened `Int32List`
    bytecode, a linear Thompson-NFA fast path (RE2-style guarantees). No JIT, but
    closes most of the gap and removes catastrophic backtracking.
-4. **Web-only curiosity** — `eval`/`new Function` via JS interop borrows the host
+4. **Web-only curiosity**: `eval`/`new Function` via JS interop borrows the host
    JIT, i.e. basically "use the host RegExp."
 
 Updating the SDK's `RegExp` itself is only the SDK team's call (re-syncing their
@@ -336,31 +336,31 @@ Irregexp fork); a package can't touch it.
 
 ## 7. Linear engines, JIT vs AOT, and how JS regex is compiled
 
-**Q: (1) Why are RE2/Rust always linear — don't they need backtracking? How do you
+**Q: (1) Why are RE2/Rust always linear? Don't they need backtracking? How do you
 backtrack in those languages? (2) Would Dart JIT RegExp be faster than AOT? (3) Does
 Oniguruma use an interpreter internally too? (4) Because JS is "not compiled" on web,
 it JITs the regex to native code and is fastest?**
 
-### (1) RE2/Rust never backtrack — and reject backref patterns
+### (1) RE2/Rust never backtrack, and reject backref patterns
 
 They use a different algorithm. Example `a(b|c)d` on `acd`: a backtracking engine
 tries `b`, fails, backs up, tries `c`. A linear engine, after `a`, is in the state-
 *set* {expecting-b, expecting-c}; reading `c`, "expecting-b" dies and "expecting-c"
-advances — no backing up. It reads each character once and the state-set is bounded
+advances, no backing up. It reads each character once and the state-set is bounded
 by the pattern size → **O(input × pattern)**, linear. The deep reason: linear
 engines never revisit the same (position, state) twice; pure backtracking has no
 such memory and re-explores exponentially.
 
-**How do you do backreferences there? You don't — they refuse.** A regex without
+**How do you do backreferences there? You don't. They refuse.** A regex without
 backrefs is a **regular language** (linear-time recognizable); one with a backref
 like `(a+)\1` is **non-regular** and matching is **NP-complete**. So RE2 and Rust's
 `regex` **reject backreferences and lookaround at compile time**. If you need them
-you switch to a *backtracking* library — Rust's `fancy-regex`, or bindings to
+you switch to a *backtracking* library: Rust's `fancy-regex`, or bindings to
 PCRE2/Oniguruma; Go would cgo to PCRE. (Capturing groups for *extraction* work in
 linear engines via tagged-NFA; it's *back-references* specifically that force
 backtracking.)
 
-### (2) JIT vs AOT RegExp — measured: no difference
+### (2) JIT vs AOT RegExp (measured: no difference)
 
 Running the same benchmark under JIT (`dart run`) vs AOT (`dart compile exe`):
 
@@ -373,19 +373,19 @@ Running the same benchmark under JIT (`dart run`) vs AOT (`dart compile exe`):
 
 `RegExp` is **identical within noise** across JIT and AOT (and the port ran *slower*
 under JIT). So the earlier hypothesis "AOT interprets, JIT compiles-native" is
-**wrong for this SDK** — on the Dart VM, JIT vs AOT makes no difference for `RegExp`.
+**wrong for this SDK**: on the Dart VM, JIT vs AOT makes no difference for `RegExp`.
 The genuine JIT-to-native win only appeared on the **web** (host V8). *(Proven and
 explained in §8.1: Dart 3.12 removed native regex codegen entirely.)*
 
 ### (3) Oniguruma is always an interpreter
 
-**Oniguruma has no JIT — ever.** The C *engine* is compiled to native code, but the
+**Oniguruma has no JIT, ever.** The C *engine* is compiled to native code, but the
 *pattern* is always bytecode walked by `match_at`. Contrast PCRE2, which is normally
 an interpreter but ships an *optional* JIT (`pcre2_jit_compile`). Oniguruma-C,
 Dart-VM `RegExp`, and this port are the same shape: native engine + interpreted
 pattern.
 
-### (4) JS *is* compiled — by the JIT — at runtime
+### (4) JS *is* compiled, by the JIT, at runtime
 
 Fix the premise: JS on the web **is compiled**, by the browser's JIT, at runtime.
 Modern engines compile hot JS *and* regexes to native machine code, and browser/Node
@@ -397,25 +397,25 @@ beat web-V8 on `greedy-dotstar`.
 
 **Unifying rule:** every engine is `{backtracking | linear} × {interpreted |
 JIT-native}`, and you only get the JIT-native half where the platform permits
-runtime code generation — desktop/Node: yes; iOS and any AOT build (Flutter release,
+runtime code generation. Desktop/Node: yes; iOS and any AOT build (Flutter release,
 this compiled port): no.
 
 ---
 
 ## 8. Primary-source proofs
 
-**Q: (1) Look into current Dart SDK internals for JIT and AOT and Node's V8 — no
+**Q: (1) Look into current Dart SDK internals for JIT and AOT and Node's V8, no
 assumptions. (2) Where do `RegExp`'s `external` methods come from; can packages use
 `external`? (3) Oniguruma vs PCRE2. (4) If Node is compiled to an exe, does it lose
 native regex and get slower? (5) How did Oniguruma C beat web-V8 on greedy-dotstar?**
 
-### 8.1 Dart VM — JIT and AOT both interpret (as of 3.12)
+### 8.1 Dart VM: JIT and AOT both interpret (as of 3.12)
 
 **Headline (proven):** Dart **3.12.0 removed native regex code generation from the
 VM entirely.** On 3.12.2, `RegExp` runs the V8 Irregexp **bytecode interpreter in
-both JIT and AOT** — which is exactly why the JIT≈AOT benchmark held.
+both JIT and AOT**, which is exactly why the JIT≈AOT benchmark held.
 
-**Your era (3.12.0+):** native target is unreachable —
+**Your era (3.12.0+):** native target is unreachable,
 [`regexp.cc` @ 3.12.2 L399](https://github.com/dart-lang/sdk/blob/3.12.2/runtime/vm/regexp/regexp.cc#L399):
 ```cpp
 if (data->compilation_target == RegExpCompilationTarget::kNative) {
@@ -426,10 +426,10 @@ if (data->compilation_target == RegExpCompilationTarget::kNative) {
 Matching runs `IrregexpInterpreter::MatchForCallFromRuntime(...)`; tier-up is stubbed
 `UNREACHABLE(); // No tier up in Dart.` The `--interpret-irregexp` flag is gone.
 
-**Old era (≤ 3.11):** the classic model held — JIT compiled to native, AOT used the
+**Old era (≤ 3.11):** the classic model held: JIT compiled to native, AOT used the
 interpreter. `CompileIR` (native) exists only under `!FLAG_interpret_irregexp` and is
 `#if !defined(DART_PRECOMPILED_RUNTIME)`-compiled out of AOT, and AOT force-sets the
-flag —
+flag,
 [`compiler.cc` @ 3.11.0 L91](https://github.com/dart-lang/sdk/blob/3.11.0/runtime/vm/compiler/jit/compiler.cc#L91):
 ```cpp
 static void PrecompilationModeHandler(bool value) {
@@ -442,10 +442,10 @@ authors`, with `IrregexpInterpreter`, `RegExpBytecodeGenerator`, and Dart edits 
 `// No tier up in Dart.`
 
 **Correction this proves:** the web `RegExp` being ~6× faster than VM `RegExp` is
-decisively **interpreter (VM, 3.12+) vs native-JIT (host V8 on web)** — not "newer
+decisively **interpreter (VM, 3.12+) vs native-JIT (host V8 on web)**, not "newer
 vintage."
 
-### 8.2 Node's V8 — native by default
+### 8.2 Node's V8: native by default
 
 Default mode "compile[s] directly to native code on first use." `regexp.cc` picks
 `CompilationTarget::kNative`; the arch macro-assembler emits instructions finalized
@@ -453,7 +453,7 @@ into a `Code` object of `CodeKind::REGEXP`
 ([v8/regexp.cc](https://github.com/v8/v8/blob/main/src/regexp/regexp.cc),
 [regexp-macro-assembler-x64.cc](https://github.com/v8/v8/blob/main/src/regexp/x64/regexp-macro-assembler-x64.cc)).
 > "Irregexp jit-compiles RegExps to specialized native code … and is thus extremely
-> fast for most patterns." — [v8.dev/blog/non-backtracking-regexp](https://v8.dev/blog/non-backtracking-regexp)
+> fast for most patterns." ([v8.dev/blog/non-backtracking-regexp](https://v8.dev/blog/non-backtracking-regexp))
 
 Only `--jitless` (or a JIT-forbidden OS) drops to the interpreter:
 `DEFINE_IMPLICATION(jitless, regexp_interpret_all)`. iOS/smart-TVs/consoles forbid
@@ -461,7 +461,7 @@ executable memory → interpreter ([v8.dev/blog/jitless](https://v8.dev/blog/jit
 V8 also ships an opt-in **linear-time non-backtracking** engine under
 `src/regexp/experimental/` (the `l` flag).
 
-### 8.3 `external` methods — where they come from; packages
+### 8.3 `external` methods: where they come from; packages
 
 `RegExp`'s public API is `external`
 ([dart-sdk/lib/core/regexp.dart L274](https://github.com/dart-lang/sdk/blob/main/sdk/lib/core/regexp.dart)):
@@ -470,19 +470,19 @@ external factory RegExp(String source, {bool multiLine, bool caseSensitive, ...}
 ```
 `external` means "the implementation is supplied elsewhere," resolved per platform:
 
-- **VM (native/AOT):** bound to a **VM C++ native** via a pragma —
+- **VM (native/AOT):** bound to a **VM C++ native** via a pragma:
   `@pragma("vm:external-name", "RegExp_ExecuteMatch") external Int32List? _ExecuteMatch(...)`
   (the Irregexp engine compiled into the runtime).
-- **Web (dart2js):** calls the **host JS RegExp** —
+- **Web (dart2js):** calls the **host JS RegExp**:
   `JS('...', 'new RegExp(source, modifiers)')` and `#.exec(#)`.
-- **Wasm:** JS interop —
+- **Wasm:** JS interop:
   `extension type JSNativeRegExp implements JSObject { external JSNativeMatch? exec(JSString s); }`.
 
-**Can a package use `external`? Yes** — the wasm file above *is* the package-style
+**Can a package use `external`? Yes**: the wasm file above *is* the package-style
 mechanism. Packages get two sanctioned bindings: **`dart:ffi`** (`@Native<...>()
 external ...` → a symbol in a native library) and **JS interop** (`@JS` external
 members → JavaScript, web only). What's **SDK-only** is the mechanism `RegExp`
-happens to use: `@patch` files and `vm:external-name` VM natives — a package cannot
+happens to use: `@patch` files and `vm:external-name` VM natives. A package cannot
 register new VM C++ natives or patch core libraries. So a package can have `external`
 methods, just not backed by hand-written VM C++.
 
@@ -490,10 +490,10 @@ methods, just not backed by hand-written VM C++.
 
 | | Oniguruma | PCRE2 |
 |---|---|---|
-| Core matcher | backtracking interpreter — **no JIT, no DFA** | backtracking interpreter |
-| JIT (→ native) | **none** | **yes** — `pcre2_jit_compile` (SLJIT) |
-| Non-backtracking mode | none | **yes** — `pcre2_dfa_match` (no captures/backrefs) |
-| Native byte encodings | **~20+** (EUC-JP, Shift-JIS, Big5, GB18030, …) | 8/16/32-bit units, UTF only — **no legacy CJK** |
+| Core matcher | backtracking interpreter: **no JIT, no DFA** | backtracking interpreter |
+| JIT (→ native) | **none** | **yes**: `pcre2_jit_compile` (SLJIT) |
+| Non-backtracking mode | none | **yes**: `pcre2_dfa_match` (no captures/backrefs) |
+| Native byte encodings | **~20+** (EUC-JP, Shift-JIS, Big5, GB18030, …) | 8/16/32-bit units, UTF only: **no legacy CJK** |
 | Selectable syntaxes | **12** | **one** (Perl-compatible) |
 | Lookbehind | fixed-width only | **variable-length** (bounded, since 10.43) |
 | Licence | BSD-2-Clause | BSD-3-Clause + PCRE2 exception |
@@ -506,7 +506,7 @@ executes much faster" ([pcre2jit](https://www.pcre.org/current/doc/html/pcre2jit
 and `pcre2_dfa_match()` gives a non-backtracking mode ("does not backtrack," "no
 captured substrings," "substantially slower")
 ([pcre2matching](https://www.pcre.org/current/doc/html/pcre2matching.html)).
-**Oniguruma has neither** — its API exposes no JIT and no DFA entry point. PCRE2-JIT
+**Oniguruma has neither**: its API exposes no JIT and no DFA entry point. PCRE2-JIT
 speedups (from the SLJIT author's own benchmarks, not the man page) are ~3–5× average,
 up to ~10.9× best case.
 
@@ -523,7 +523,7 @@ the vendored `oniguruma-master/src`):
    table** (`regcomp.c` `set_optimize_exact`): `reg->exact = "lorem"`,
    `set_sunday_quick_search_or_bmh_skip_table(...)`, `reg->optimize = OPTIMIZE_STR_FAST`.
 2. **Skips multiple bytes at a time** (`regexec.c` `sunday_quick_search`):
-   `s += reg->map[*(s + map_offset)];` — sublinear scan, landing only near "lorem".
+   `s += reg->map[*(s + map_offset)];`: sublinear scan, landing only near "lorem".
 3. **Recognizes the leading `.*` as an anchor** (`ANCR_ANYCHAR_INF`), so it matches
    `.*` back to the line start **once** instead of retrying every offset.
 4. **`.*` is a dedicated `OP_ANYCHAR_STAR` opcode**, dispatched via **computed-goto**
@@ -533,12 +533,12 @@ Net: C touches only a fraction of the corpus → **12 ms**.
 
 **Why V8 loses here:** V8's fast-skip is a *bounded-window* Boyer-Moore lookahead. A
 leading `.*` makes "lorem" appear at an **unbounded** offset from the match start,
-defeating the window — so V8 runs the greedy `.*` (consume to end-of-line, then
+defeating the window, so V8 runs the greedy `.*` (consume to end-of-line, then
 backtrack) line after line, including lines with no "lorem" → **103 ms**.
 
 **Why this port was even slower (786 ms):** it *does* extract "lorem" but searches
 with a naive first-byte scan (no skip table) and, with `distMax = ∞`, retries
-`matchAt` at **every** offset up to the "lorem" hit — it never learned the
+`matchAt` at **every** offset up to the "lorem" hit: it never learned the
 `ANCR_ANYCHAR_INF` anchor trick. That's the specific, fixable gap.
 
 ---
@@ -554,8 +554,8 @@ only get the native-code half where the platform permits runtime code generation
   SLJIT; V8 is native-JIT except jitless/iOS; **Dart's VM `RegExp` (3.12+) is now
   always interpreted**, and Dart's only native regex is on the **web**, borrowed from
   the host JS engine.
-- **This port** is pure-Dart *interpreted backtracking* — the same category as Dart's
-  own VM `RegExp` today — which is why its real gap to `RegExp` on the VM is far
+- **This port** is pure-Dart *interpreted backtracking*, the same category as Dart's
+  own VM `RegExp` today, which is why its real gap to `RegExp` on the VM is far
   smaller than the headline number, and why its reason to exist is Oniguruma's
   **encodings + dialects + byte-parity**, not raw throughput.
 

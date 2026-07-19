@@ -1,20 +1,20 @@
 # oniguruma_native
 
 Dart bindings to the [Oniguruma](https://github.com/kkos/oniguruma)
-regular-expression library — the engine TextMate grammars (and therefore
+regular-expression library: the engine TextMate grammars (and therefore
 Shiki / VS Code syntax highlighting) are written for.
 
 It exposes Oniguruma in **two layers**, backed by the **same real C engine
-everywhere** — native `dart:ffi` on IO, the same engine compiled to WebAssembly
-on web — so results are bit-for-bit identical to the C library the rest of the
+everywhere** (native `dart:ffi` on IO, the same engine compiled to WebAssembly
+on web) so results are bit-for-bit identical to the C library the rest of the
 tooling ecosystem uses:
 
-- **Layer 0 — the C API.** `onigNew`, `onigSearch`, `onigMatch`, `OnigRegion`,
+- **Layer 0: the C API.** `onigNew`, `onigSearch`, `onigMatch`, `OnigRegion`,
   `OnigRegSet` and friends, mirroring `oniguruma.h` with byte offsets. On every
-  platform, over the same flat-int C shim accessors — `dart:ffi` on IO,
+  platform, over the same flat-int C shim accessors: `dart:ffi` on IO,
   `dart:js_interop` on web.
-- **Layer 1 — the vscode scanner.** `OnigScanner`, `OnigString`,
-  `OnigScannerMatch` — the `vscode-oniguruma`-shaped surface a TextMate / Shiki
+- **Layer 1: the vscode scanner.** `OnigScanner`, `OnigString`,
+  `OnigScannerMatch`: the `vscode-oniguruma`-shaped surface a TextMate / Shiki
   tokenizer drives, with UTF-16 offsets. Works on every platform.
 
 The sibling pure-Dart [`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)
@@ -35,30 +35,30 @@ TextMate grammar: those grammars are written in the **Oniguruma dialect**, and
 tokenizers drive them through a very specific multi-pattern *scanner* interface.
 This package gives you exactly that. Reach for it when you need:
 
-- **The real Oniguruma engine, bit-for-bit** — the same behaviour as Ruby,
+- **The real Oniguruma engine, bit-for-bit:** the same behaviour as Ruby,
   VS Code, and Shiki, so a TextMate grammar tokenizes identically to those tools.
-- **vscode-oniguruma-compatible scanning** — an `OnigScanner` that compiles many
+- **vscode-oniguruma-compatible scanning:** an `OnigScanner` that compiles many
   patterns at once and returns the winning match from a position, the exact
   operation a syntax-highlighting tokenizer performs per token.
-- **The full Oniguruma dialect** — atomic groups, possessive quantifiers,
+- **The full Oniguruma dialect:** atomic groups, possessive quantifiers,
   conditionals, subroutine/recursion `\g<>`, `\K`, `\R`, `\X`, POSIX classes,
-  and more (see the table) — the constructs `RegExp` simply doesn't have.
-- **Robustness on pathological patterns** — the mature C engine handles heavy
+  and more (see the table): the constructs `RegExp` simply doesn't have.
+- **Robustness on pathological patterns:** the mature C engine handles heavy
   back-references / catastrophic backtracking far better than a from-scratch
   backtracker.
-- **One import, every platform** — a conditional import selects `dart:ffi` on IO
+- **One import, every platform:** a conditional import selects `dart:ffi` on IO
   and WebAssembly on web automatically; you write one `import` and never deal
   with platform specifics.
 
 > If you want an idiomatic `firstMatch` / `allMatches` / `replace` API over
 > `String` (rather than a scanner) and don't need native-engine parity, the
 > sibling pure-Dart [`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)
-> is usually the better fit — see [below](#when-to-use-this-vs-oniguruma_dart-pure-dart).
+> is usually the better fit. See [below](#when-to-use-this-vs-oniguruma_dart-pure-dart).
 
 ### Supported patterns vs. `dart:core` `RegExp`
 
-Because this is the real Oniguruma engine, it accepts the full Oniguruma dialect
-— the syntax TextMate grammars rely on and that ECMAScript's `RegExp` cannot
+Because this is the real Oniguruma engine, it accepts the full Oniguruma dialect:
+the syntax TextMate grammars rely on and that ECMAScript's `RegExp` cannot
 express. `✅` = supported, `⚠️` = supported with a caveat, `❌` = not supported.
 
 | Pattern / feature | `oniguruma_native` | Dart `RegExp` |
@@ -99,14 +99,14 @@ On IO the native library is provided by a Dart build hook: it bundles a
 SHA-256-verified prebuilt for your target when one ships (macOS, iOS, Linux,
 Android, Windows), otherwise it downloads and compiles the pinned Oniguruma
 source (which needs a C toolchain). On web the WebAssembly module is fetched at
-runtime, with an optional one-line step to self-host it — see
+runtime, with an optional one-line step to self-host it. See
 [How the native build works](#how-the-native-build-works) and
 [Web (WebAssembly)](#web-webassembly).
 
 ## Usage
 
 An `OnigScanner` compiles several patterns at once and, from a position, returns
-the earliest / left-most match across all of them — the operation a TextMate /
+the earliest / left-most match across all of them: the operation a TextMate /
 Shiki tokenizer performs per token. Match offsets are UTF-16 code units (matching
 Dart `String` indices).
 
@@ -114,7 +114,7 @@ Dart `String` indices).
 import 'package:oniguruma_native/oniguruma_native.dart';
 
 Future<void> main() async {
-  await loadWasm(); // once at startup — no-op on IO; on web see "Web Setup" below
+  await loadWasm(); // once at startup: no-op on IO; on web see "Web Setup" below
 
   final scanner = OnigScanner([r'\d+', r'[a-z]+', r'\s+']);
   final input = OnigString('ab 12');
@@ -137,14 +137,14 @@ Future<void> main() async {
 }
 ```
 
-`OnigString` and `OnigScanner` hold native memory — call `dispose()` on each when
+`OnigString` and `OnigScanner` hold native memory: call `dispose()` on each when
 you're done. A runnable version is in
 [`example/`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_native/example/oniguruma_native_example.dart).
 
 ### Low-level C API (Layer 0)
 
 When you need the raw engine rather than a scanner, the `onig_*` surface mirrors
-`oniguruma.h` (byte offsets, `Uint8List` subjects) on every platform — driven
+`oniguruma.h` (byte offsets, `Uint8List` subjects) on every platform, driven
 through the same flat-int C shim accessors (`dart:ffi` on IO, `dart:js_interop`
 on web). This is the same API `oniguruma_dart` exposes, so low-level code is
 swappable between the two packages. On web, `await loadWasm()` first (as for the
@@ -168,7 +168,7 @@ reg.dispose(); // frees native memory (onig_free)
 
 ## Advanced features
 
-Because this is the real Oniguruma engine, it accepts the full dialect — the
+Because this is the real Oniguruma engine, it accepts the full dialect: the
 rich constructs `RegExp` can't express. They're engine-level pattern features,
 so you drive them through an `OnigScanner` (or the low-level C API). The small
 helper below compiles one pattern and returns the first match's text; each
@@ -191,17 +191,17 @@ String? firstMatch(String pattern, String input) {
 ```
 
 ```dart
-firstMatch(r'a++a', 'aaaa');                      // null — possessive quantifier: no backtracking
-firstMatch(r'(?>a+)a', 'aaaa');                   // null — atomic group, same effect
-firstMatch(r'\b(?<w>\w+)\s+\k<w>\b', 'the the');  // "the the" — named back-reference
-firstMatch(r'(?<n>\d+)-\g<n>-\g<n>', '12-34-56'); // "12-34-56" — subroutine call \g<n>
-firstMatch(r'\((?:[^()]|\g<0>)*\)', 'a(b(c)d)e'); // "(b(c)d)" — recursion \g<0>
-firstMatch(r'^(a)?(?(1)b|c)$', 'ab');             // "ab" — conditional (?(1)yes|no)
-firstMatch(r'[a-z&&[^aeiou]]+', 'xyzaei');        // "xyz" — character-class intersection &&
-firstMatch(r'foo\Kbar', 'foobar');                // "bar" — \K drops text before it
-firstMatch(r'(?<=\w{2,4}@)\w+', 'bob@host');      // "host" — variable-length look-behind
-firstMatch(r'\p{Han}+', '東京タワー');              // "東京" — Unicode property, no flag needed
-firstMatch(r'[[:alpha:]]+', 'ab12');              // "ab" — POSIX class
+firstMatch(r'a++a', 'aaaa');                      // null (possessive quantifier, no backtracking)
+firstMatch(r'(?>a+)a', 'aaaa');                   // null (atomic group, same effect)
+firstMatch(r'\b(?<w>\w+)\s+\k<w>\b', 'the the');  // "the the" (named back-reference)
+firstMatch(r'(?<n>\d+)-\g<n>-\g<n>', '12-34-56'); // "12-34-56" (subroutine call \g<n>)
+firstMatch(r'\((?:[^()]|\g<0>)*\)', 'a(b(c)d)e'); // "(b(c)d)" (recursion \g<0>)
+firstMatch(r'^(a)?(?(1)b|c)$', 'ab');             // "ab" (conditional (?(1)yes|no))
+firstMatch(r'[a-z&&[^aeiou]]+', 'xyzaei');        // "xyz" (character-class intersection &&)
+firstMatch(r'foo\Kbar', 'foobar');                // "bar" (\K drops text before it)
+firstMatch(r'(?<=\w{2,4}@)\w+', 'bob@host');      // "host" (variable-length look-behind)
+firstMatch(r'\p{Han}+', '東京タワー');              // "東京" (Unicode property, no flag needed)
+firstMatch(r'[[:alpha:]]+', 'ab12');              // "ab" (POSIX class)
 ```
 
 Subroutine `\g<name>`/`\g<0>` re-runs a group's *sub-pattern* (whereas a
@@ -267,14 +267,14 @@ firstMatch(r'\{(?:[^{}]|\g<0>)*\}', 'cfg = {a {b} c};'); // "{a {b} c}"
 This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 (`oniguruma_native`, the real C library over FFI) when you want:
 
-- **A `vscode-oniguruma`-shaped API** — `OnigScanner` / `OnigString` /
+- **A `vscode-oniguruma`-shaped API:** `OnigScanner` / `OnigString` /
   `findNextMatch(line, pos)` mirror the JS package Shiki and VS Code are built on,
   so a ported TextMate tokenizer drops straight in. (`oniguruma_dart` is *also*
-  byte-identical to the C engine and *also* ships this scanner — the difference is
+  byte-identical to the C engine and *also* ships this scanner: the difference is
   provenance and the performance profile below, not correctness.)
-- **Incremental tokenization** — one `OnigScanner.findNextMatch` per token over
+- **Incremental tokenization:** one `OnigScanner.findNextMatch` per token over
   short lines (what a tokenizer does), rather than bulk find-all-matches.
-- **The reference engine itself** — this *is* the C library, so behaviour tracks
+- **The reference engine itself:** this *is* the C library, so behaviour tracks
   Ruby / VS Code / Shiki by construction; and it handles pathological patterns
   (heavy back-references, catastrophic backtracking) more robustly (e.g. ~3×
   faster than the pure-Dart port on `backref-dup`).
@@ -282,7 +282,7 @@ This repo ships two ways to run Oniguruma from Dart. Reach for **this package**
 Reach for **[`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)** (pure Dart) instead when you
 want **zero native setup** (no build hooks or prebuilt binaries), a **lighter web
 story** (no separate ~600 KB WebAssembly module to fetch or host), or are doing
-**bulk matching** — for scanning a whole input for every match, the pure-Dart
+**bulk matching**: for scanning a whole input for every match, the pure-Dart
 port is about **2× faster** than this package and works everywhere Dart runs.
 Both packages run on web; on web `oniguruma_dart` is the lighter, faster choice.
 
@@ -292,7 +292,7 @@ byte→UTF-16 offset map. Those are the right trade-offs for a tokenizer scannin
 short lines, not for enumerating hundreds of thousands of matches in one call.
 (The benchmark numbers linked below were measured against the previous UTF-16LE
 build; the switch to UTF-8 mainly affects ASCII byte counts and shifts the FFI
-figures somewhat — the overall picture is unchanged.)
+figures somewhat. The overall picture is unchanged.)
 
 ![Per-pattern, per-full-corpus-scan time (log scale, shorter is faster): this package's FFI per-match and bulk paths (pink) vs oniguruma_dart's byte and String APIs (blue/green). The pure-Dart port is faster on 12 of 13 patterns; this package wins backref-dup, where the native engine handles pathological backtracking far better.](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/packages/oniguruma_dart/benchmark/charts/ffi-vs-port.png)
 
@@ -305,12 +305,12 @@ See the full head-to-head in
 one of two ways:
 
 1. **Prebuilt (default).** If a library ships for the target under `prebuilt/`,
-   it is bundled directly — no compiler and no network — after a SHA-256 check
+   it is bundled directly (no compiler and no network) after a SHA-256 check
    against `prebuilt/checksums.sha256` (a mismatch fails the build). Each blob is
    one dynamic library containing Oniguruma plus our shim
    (`src/oniguruma_shim.c`). Since Oniguruma is archived, they never change.
-2. **Build from source (fallback).** For any target without a prebuilt — or
-   when a consumer sets the `oniguruma.from_source` user-define — the hook
+2. **Build from source (fallback).** For any target without a prebuilt, or
+   when a consumer sets the `oniguruma.from_source` user-define, the hook
    downloads the pinned Oniguruma source release, verifies its SHA-256,
    extracts it, and compiles it with the shim via `package:native_toolchain_c`'s
    `CBuilder`. The C sources are **not** vendored in the package; they are
@@ -327,8 +327,8 @@ exactly one FFI crossing per query.
 On web the same Oniguruma + shim is compiled to a self-contained wasm32-wasi
 module and driven over `dart:js_interop`; it works under both dart2js and
 dart2wasm. There is no shared memory between Dart and the module, so subjects and
-patterns are marshalled into its heap through the module's own `malloc`/`free` —
-the same UTF-8 bytes the FFI backend passes natively — so results are
+patterns are marshalled into its heap through the module's own `malloc`/`free`,
+the same UTF-8 bytes the FFI backend passes natively, so results are
 byte-identical to the native engine.
 
 **Call `await loadWasm()` once** before constructing a scanner. Instantiation is
@@ -337,7 +337,7 @@ main thread), so this step is required on web; it is a no-op on IO.
 
 ### Web Setup
 
-The WebAssembly module (~600 KB) is **not** bundled into your app — it ships as a
+The WebAssembly module (~600 KB) is **not** bundled into your app. It ships as a
 per-version asset on this package's GitHub Release. On web, `loadWasm()` loads a
 local `web/oniguruma_native.wasm` if present and otherwise falls back to that
 release asset, so it works with **zero setup**. For production, self-host it (one
@@ -362,7 +362,7 @@ code, and works **offline and under a strict CSP** (no third-party fetch).
    verifies it against the package's SHA-256 manifest, and writes
    `web/oniguruma_native.wasm`.
 
-3. Commit `web/oniguruma_native.wasm` — or add it to `.gitignore` and run the
+3. Commit `web/oniguruma_native.wasm`, or add it to `.gitignore` and run the
    command from step 2 in CI before building for web.
 
 4. Load it once at startup, before constructing a scanner:
@@ -373,10 +373,10 @@ code, and works **offline and under a strict CSP** (no third-party fetch).
 
 **How `loadWasm()` resolves the module** (first match wins):
 
-1. `loadWasm(bytes: ...)` / `loadWasm(url: ...)` — a module you supply explicitly.
-2. `web/oniguruma_native.wasm` — the local copy from step 2 (the default; served
+1. `loadWasm(bytes: ...)` / `loadWasm(url: ...)`: a module you supply explicitly.
+2. `web/oniguruma_native.wasm`: the local copy from step 2 (the default; served
    from your app's web root).
-3. The version-matched **GitHub Release** asset — the zero-setup fallback used
+3. The version-matched **GitHub Release** asset: the zero-setup fallback used
    when no local copy is found.
 
 One file serves both the JS (dart2js) and WasmGC (dart2wasm) builds. To host the
@@ -385,8 +385,8 @@ Flutter asset via `rootBundle`) pass `loadWasm(bytes: ...)`.
 
 Web is the portability option, not the speed option. The wasm build runs at
 roughly **2.3× native C** for a bulk scan (the same engine is ~1.7× slower as
-sandboxed wasm than as native machine code) and marshals across the JS boundary —
-measured under Node/V8, the engine Chrome runs; see the
+sandboxed wasm than as native machine code) and marshals across the JS boundary
+(measured under Node/V8, the engine Chrome runs); see the
 [web head-to-head in `benchmarks.md`](https://github.com/BirjuVachhani/oniguruma-dart/blob/main/packages/oniguruma_dart/benchmarks.md#web-oniguruma_native-webassembly-vs-the-pure-dart-port).
 If you only target web and want the smallest, fastest option, prefer the
 pure-Dart [`oniguruma_dart`](https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_dart)

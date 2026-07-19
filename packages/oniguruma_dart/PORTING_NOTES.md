@@ -1,4 +1,4 @@
-# Oniguruma 6.9.10 → Dart port — engineering notes
+# Oniguruma 6.9.10 → Dart port: engineering notes
 
 Reference source: `oniguruma-master/src/` (all line numbers below are into those C files).
 This doc is the durable spec for the port; the approved plan is at
@@ -21,12 +21,12 @@ pattern bytes ─► regparse.c (prs_*) ─► Node AST ─► regcomp.c (tune_t
 - Op addresses are **op-index offsets**, all `OPSIZE_*`=`SIZE_INC`=1. Two-pass model:
   `compile_length_*` MUST equal `compile_*` emission count. Forward jumps precomputed; back jumps = negative sums.
   `OP_REPEAT`/`OP_CALL` targets patched after array finalized (`set_addr_in_repeat_range` regcomp.c:1242,
-  `fix_unset_addr_list` :3009) — in Dart can store target op refs directly, but keep `repeat_range[id]{lower,upper}`.
+  `fix_unset_addr_list` :3009). In Dart can store target op refs directly, but keep `repeat_range[id]{lower,upper}`.
 - Parse recursion guard: `INC/DEC_PARSE_DEPTH` limit 4096 (regparse.c:295, regint.h:108).
 - Feature macros ON in default build: USE_CALL, USE_CALLOUT, USE_BACKREF_WITH_LEVEL, USE_WHOLE_OPTIONS,
   USE_CAPTURE_HISTORY, USE_OP_PUSH_OR_JUMP_EXACT. Skip USE_DIRECT_THREADED_CODE.
 
-## Parser (regparse.c) — call chain
+## Parser (regparse.c): call chain
 
 `onig_parse_tree`(9428) → `prs_regexp`(9391) → `prs_alts`(9326, handles `|`, saves/restores env.options)
 → `prs_branch`(9273, concat → ND_LIST) → `prs_exp`(8852, one elem + trailing quantifier at label `repeat:` 9198)
@@ -49,7 +49,7 @@ pattern bytes ─► regparse.c (prs_*) ─► Node AST ─► regcomp.c (tune_t
 - Special escapes: `\R`→general_newline `(?>\x0D\x0A|[\x0A-\x0D..])`, `\N`/`\O`, `\X`→text_segment(EGC), `\K`→keep gimmick,
   `\p{}`, `\k<>`→BACKREF, `\g<>`→CALL.
 
-## Case folding — TWO phases (do NOT unify)
+## Case folding: TWO phases (do NOT unify)
 
 - **Classes: parse time** (regparse.c i_apply_case_fold 8740, via ONIGENC_APPLY_ALL_CASE_FOLD). Single-char folds
   → bitset/mbuf; multi-char folds (ß→ss) → ND_ALT OR-ed onto the class. Applied even in negative classes.
@@ -81,7 +81,7 @@ Addresses relative to own slot, include SIZE_INC(1); `pc += addr`.
 - Backref(2638): OP_BACKREF1/2, BACKREF_N[_IC], BACKREF_MULTI[_IC], BACKREF_WITH_LEVEL[_IC], BACKREF_CHECK[_WITH_LEVEL].
 - ALT(2569): per non-last branch: `OP_PUSH addr=SIZE_INC+branch_len+OPSIZE_JUMP` `<branch>` `OP_JUMP addr=goal-(off+1)`.
 
-### Quantifier templates — compile_quantifier_node(1399). tlen=len(body); mod_tlen=tlen(+2 if empty-check wrapped).
+### Quantifier templates: compile_quantifier_node(1399). tlen=len(body); mod_tlen=tlen(+2 if empty-check wrapped).
 - (A) anychar-inf greedy (1409): `lower×body` then `OP_ANYCHAR_STAR[_ML]` or `..._PEEK_NEXT{.c=next}`.
 - (B) greedy inf `* + {n,∞}`(1434): [if lower==1&tlen>10: `OP_JUMP addr=OPSIZE_PUSH+SIZE_INC`; else lower× body]
   then `OP_PUSH addr=SIZE_INC+mod_tlen+OPSIZE_JUMP` `<body′>` `OP_JUMP addr=-(mod_tlen+OPSIZE_PUSH)`.
@@ -123,7 +123,7 @@ OptNode{len(MinMax), anc, sb/sm/spr(OptStr, exact ≤24B), map(OptMap 256B)}.
   threshold_len=dist_min+exact_len. set_optimize_map(6980): 256B map, OPTIMIZE_MAP, threshold=dist_min+MBC_MINLEN.
 - optimize enum (regint.h:363): NONE, STR, STR_FAST, STR_FAST_STEP_FORWARD, MAP.
 
-## Executor (regexec.c) — match_at(3068), switch VM (BYTECODE_INTERPRETER_START 2967)
+## Executor (regexec.c): match_at(3068), switch VM (BYTECODE_INTERPRETER_START 2967)
 - Backtrack stack: growable StackType[] (union, 1289): type(unsigned int STK_*), zid, u.{state{pcode,pstr}, repeat_inc{count,prev_index},
   mem{pstr,prev_start,prev_end}, empty_check{pstr,prev_index}, call_frame{ret_addr,pstr}, val{type,v,v2}, callout}.
   Port as struct-of-arrays typed lists + stack pointer int (zero per-push alloc).

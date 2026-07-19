@@ -1,4 +1,4 @@
-# Oniguruma Dart port — benchmark report
+# Oniguruma Dart port: benchmark report
 
 Head-to-head performance comparison of the pure-Dart port against the original
 **Oniguruma 6.9.10** C library, running identical patterns over identical
@@ -12,7 +12,7 @@ datasets through byte-for-byte identical harnesses.
 | Match throughput (geomean, excl. `.*` outlier) | **2.53×** | 3.59× |
 | Match throughput (median) | **2.36×** | 3.61× |
 | Match throughput (best case) | **1.20×** | 2.19× |
-| **Compile time** (geomean) | **1.19×** — roughly at parity | — |
+| **Compile time** (geomean) | **1.19×**, roughly at parity | n/a |
 
 A pure-Dart backtracking VM lands **~2–3× the C library's match time** across a
 broad pattern mix, and is **at parity on compilation**. Every one of the 16
@@ -44,12 +44,12 @@ do exactly the same thing, in the same order:
 - **Timing** is wall-clock around the measured loop only (`clock_gettime` /
   `Stopwatch`), excluding I/O and process startup.
 - The driver ([`run_bench.py`](run_bench.py)) takes the **median of 3 trials**
-  and — critically — asserts the C and Dart engines report the **same match
+  and, critically, asserts the C and Dart engines report the **same match
   count** for every pattern before comparing timings. All 16 agreed.
 
 Datasets (in [`datasets/`](datasets/)):
-- `corpus.txt` — 1.14 MB ASCII (lorem-ipsum words + numbers), 20 000 lines.
-- `unicode_corpus.txt` — 904 KB UTF-8 (Latin+accents, CJK, Cyrillic, Greek,
+- `corpus.txt`: 1.14 MB ASCII (lorem-ipsum words + numbers), 20 000 lines.
+- `unicode_corpus.txt`: 904 KB UTF-8 (Latin+accents, CJK, Cyrillic, Greek,
   emoji, emails, numbers), 12 000 lines.
 
 Reproduce: `python3 benchmark/run_bench.py [trials] [match_iters] [compile_iters]`
@@ -85,18 +85,18 @@ Dart ÷ C (1.00× would be parity). All rows verified to the **same match count*
 
 ### Reading the results
 
-- **Literals, classes, anchors, Unicode properties (1.2–2.6×)** — the bulk of
+- **Literals, classes, anchors, Unicode properties (1.2–2.6×)**: the bulk of
   real-world patterns. The Dart port carries the C fast-paths (`OP_STR_N`, the
   char-map prefilter, BMH-style skip, anchor short-circuits), so these stay close
   to C. `class-digit` (1.20×) and `literal` (1.35×) are the closest.
-- **`\p{Han}+` (1.79×)** — Unicode-range membership on multi-byte input is
+- **`\p{Han}+` (1.79×)**: Unicode-range membership on multi-byte input is
   competitive: the range lookup is a tight binary search in both.
-- **`.*lorem` greedy scan (66×)** — the single biggest gap. C compiles `.*X` into
+- **`.*lorem` greedy scan (66×)**: the single biggest gap. C compiles `.*X` into
   the specialized `OP_ANYCHAR_STAR` with a required-literal skip, effectively
   turning it into a memchr-style search; the Dart VM currently walks `.*`
   greedily and backtracks byte-by-byte to locate the literal. This is the clearest
   optimization opportunity (see below).
-- **back-reference `(\w+) \1` (7.4×) and `(?i)` case-fold (6.1×)** — inherently
+- **back-reference `(\w+) \1` (7.4×) and `(?i)` case-fold (6.1×)**: inherently
   backtracking-heavy / per-char folding work where the interpreter overhead is
   most visible.
 - **JIT is consistently slower than AOT** (4.39× vs 3.06× geomean). Each `dart
@@ -127,7 +127,7 @@ Dart ÷ C (1.00× would be parity). All rows verified to the **same match count*
 | uni-prop-Han    | 829 ns  | 1.5 µs   | 1.75× |
 | uni-word        | 292 ns  | 348 ns   | 1.19× |
 
-**geomean compile AOT/C = 1.19× — effectively at parity**
+**geomean compile AOT/C = 1.19×, effectively at parity**
 
 The Dart AOT compiler is **at or ahead of C on most patterns** (it beats C on 6 of
 16, e.g. `two-words` 0.67×, `backtrack` 0.74×). The one outlier is `\p{L}+`
@@ -137,8 +137,8 @@ a one-time cost dwarfed by matching for any non-trivial subject.
 
 ## Honest characterization
 
-- **Where the port is strong:** compilation is at parity, and the common case —
-  literals, character classes, anchors, word boundaries, Unicode properties — runs
+- **Where the port is strong:** compilation is at parity, and the common case
+  (literals, character classes, anchors, word boundaries, Unicode properties) runs
   at **~1.2–2.6× C**, which is a good result for a pure-managed backtracking VM
   with no native code, `setjmp`, or computed-goto.
 - **Where it lags:** greedy `.*`/`.+` scans (missing the `OP_ANYCHAR_STAR`
@@ -198,14 +198,14 @@ Reproduce: `dart compile exe benchmark/bench_vs_regexp.dart -o benchmark/bench_v
 ## Reading the results
 
 - **`RegExp` is the right tool when its dialect is enough and speed is critical.**
-  It's native code; this port is an interpreter. Expect it to win, and it does —
+  It's native code; this port is an interpreter. Expect it to win, and it does,
   by ~5× typically.
-- **The gap is smallest exactly where regexes get expensive** — back-references
-  (2.6×), `.*` backtracking (1.9×), `email-like` greedy (1.9×) — because there the
+- **The gap is smallest exactly where regexes get expensive** (back-references
+  (2.6×), `.*` backtracking (1.9×), `email-like` greedy (1.9×)) because there the
   work is dominated by backtracking both engines must do, not by dispatch overhead.
 - **The gap is largest on trivial literals** (29–97×): Irregexp reduces a literal
   to a memchr/Boyer-Moore scan in native code, and `OnigRegex.allMatches` also
-  pays a String-API tax — it re-encodes the whole input to UTF-8 and builds a
+  pays a String-API tax: it re-encodes the whole input to UTF-8 and builds a
   char↔byte offset map on **every** call. (The byte API measured against C above
   avoids that and shows the engine core itself runs at ~2–3× C.)
 
@@ -214,7 +214,7 @@ Reproduce: `dart compile exe benchmark/bench_vs_regexp.dart -o benchmark/bench_v
 Reach for `oniguruma_dart` when you need what `RegExp` **cannot do**, not for raw
 speed against it:
 
-- the **Oniguruma / Ruby dialect** and constructs `RegExp` lacks — subroutine
+- the **Oniguruma / Ruby dialect** and constructs `RegExp` lacks: subroutine
   calls `\g<>` and recursion, conditionals `(?(…))`, named back-references by
   nesting level, atomic-group/possessive nuances, `\K`, `\R`, callouts, POSIX
   bracket semantics;
@@ -229,7 +229,7 @@ remains the faster choice.
 
 ---
 
-## Appendix: five-way comparison — VM vs Web × oniguruma_dart vs RegExp × C
+## Appendix: five-way comparison (VM vs Web × oniguruma_dart vs RegExp × C)
 
 The **same 13 patterns** over the **same two corpora**, doing the **same work**
 (compile once, then scan the whole corpus for every non-overlapping match via
@@ -237,15 +237,15 @@ each engine's idiomatic API). Match counts were verified **identical across all
 five configurations** before any timing, so every cell compares equal work.
 Figures are the median ns per full-corpus scan.
 
-- **oniguruma_dart · VM** — this port, AOT (`dart compile exe`), Dart native runtime.
-- **oniguruma_dart · Web** — this port, `dart compile js -O2`, run under Node/V8.
-- **Dart RegExp · VM** — SDK `RegExp` (bundled Irregexp), AOT/native.
-- **Dart RegExp · Web** — SDK `RegExp` under dart2js → host JS engine's native RegExp (Node/V8).
-- **Oniguruma C** — reference libonig 6.9.10, clang `-O3`.
+- **oniguruma_dart · VM**: this port, AOT (`dart compile exe`), Dart native runtime.
+- **oniguruma_dart · Web**: this port, `dart compile js -O2`, run under Node/V8.
+- **Dart RegExp · VM**: SDK `RegExp` (bundled Irregexp), AOT/native.
+- **Dart RegExp · Web**: SDK `RegExp` under dart2js → host JS engine's native RegExp (Node/V8).
+- **Oniguruma C**: reference libonig 6.9.10, clang `-O3`.
 
 Machine: Apple M1 Pro · Dart 3.12.2 (macos_arm64) · Node v26 (V8).
 
-### Table A — absolute (median time to scan the corpus for all matches)
+### Table A: absolute (median time to scan the corpus for all matches)
 
 | pattern | matches | oniguruma_dart · VM | oniguruma_dart · Web | Dart RegExp · VM | Dart RegExp · Web | Oniguruma C |
 |---|--:|--:|--:|--:|--:|--:|
@@ -263,7 +263,7 @@ Machine: Apple M1 Pro · Dart 3.12.2 (macos_arm64) · Node v26 (V8).
 | backref-dup | 15,606 | 472.87 ms | 665.00 ms | 181.69 ms | 18.21 ms | 46.95 ms |
 | greedy-dotstar | 6,518 | 881.21 ms | 1177.50 ms | 472.10 ms | 102.67 ms | 12.16 ms |
 
-### Table B — relative to Oniguruma C (= 1.00×); ×>1 = slower, %<0 = faster
+### Table B: relative to Oniguruma C (= 1.00×); ×>1 = slower, %<0 = faster
 
 | pattern | oniguruma_dart · VM | oniguruma_dart · Web | Dart RegExp · VM | Dart RegExp · Web | Oniguruma C |
 |---|--:|--:|--:|--:|--:|
@@ -297,21 +297,21 @@ Machine: Apple M1 Pro · Dart 3.12.2 (macos_arm64) · Node v26 (V8).
 ### Takeaways
 
 - **Native `RegExp` ≈ C.** The Dart VM's built-in `RegExp` (Irregexp) is only
-  ~2.2× off hand-tuned C on this mix — sometimes faster (case-fold, unicode
+  ~2.2× off hand-tuned C on this mix, sometimes faster (case-fold, unicode
   literal). It's the benchmark to beat, not this port.
 - **`RegExp` on the web is the fastest thing here** (2.8× *faster* than C on
   average) because dart2js maps `RegExp` straight to Node/V8's native regex, and
   V8-in-Node is a newer, better-tuned Irregexp than the one bundled in the Dart
-  SDK — hence `RegExp` is also **6.3× faster on web than on the VM**.
+  SDK. Hence `RegExp` is also **6.3× faster on web than on the VM**.
 - **This port pays a web tax.** As a pure-Dart interpreter compiled to JS, it's
-  ~1.7× slower on web than its own AOT/native build — and since its competitor
+  ~1.7× slower on web than its own AOT/native build, and since its competitor
   (`RegExp`) gets *faster* on web, the gap widens from ~6× (native) to ~68× (web).
 - **`greedy-dotstar` is C's blowout win** (72× vs this port, 39× vs native
   `RegExp`): Oniguruma's `.*` + exact-string prefilter skips almost the whole
   corpus; this port doesn't yet apply that optimization for anchored `.*literal`.
   A known optimization gap, not a correctness issue.
 - **Bottom line:** choose `oniguruma_dart` for the *dialect, encodings, and
-  byte-parity* it offers — not for raw speed. For plain UTF-16 matching in the
+  byte-parity* it offers, not for raw speed. For plain UTF-16 matching in the
   JS/Dart dialect, built-in `RegExp` wins on every platform, most decisively on
   the web.
 
@@ -350,7 +350,7 @@ bytes per step. Small broad gains on literal/word patterns (`\w+` 54.3 → 51.8 
 **Case-insensitive first-byte map.** A `(?i)literal` previously got *no* prefilter
 (the optimizer bailed on ignore-case), so it ran the per-char fold-compare at
 every position. The optimizer now builds an `OPTIMIZE_MAP` over the leading code
-point's whole case-fold class — e.g. `(?i)lorem` attempts only at `l`/`L` — and
+point's whole case-fold class (e.g. `(?i)lorem` attempts only at `l`/`L`) and
 bails safely to no-map when the lead char has a *multi-char* fold (`ß≡ss`), whose
 first byte the single-code-point fold class can't capture.
 
@@ -361,7 +361,7 @@ first byte the single-code-point fold class can't capture.
 (In the String API this engine win is masked by the ~120 ms byte↔UTF-16
 index-build overhead, which dominates once matching is fast.) Pinned by
 [test/optimize_test.dart](../test/optimize_test.dart), which asserts the
-prefilter *strategy* the oracle can't — the gap that let this slip through.
+prefilter *strategy* the oracle can't: the gap that let this slip through.
 
 ### 2. Leading-`.*` anchor (`ANCR_ANYCHAR_INF`)
 
@@ -371,23 +371,23 @@ lines, instead of retrying `matchAt` at every offset.
 
 | pattern | before | after | vs Dart `RegExp` |
 |---|--:|--:|--:|
-| `.*lorem` (byte API) | 668 ms | **10.1 ms** (66× faster) | — |
+| `.*lorem` (byte API) | 668 ms | **10.1 ms** (66× faster) | n/a |
 | `.*lorem` (String API) | 881 ms | **109 ms** | **3.3× faster** (was 1.9× slower) |
 
 ### 3. Thompson/Pike-NFA linear fast path
 
 A new NFA engine ([nfa.dart](../lib/src/exec/nfa.dart)) runs a Pike VM (NFA
 simulation with submatch tracking) that visits each program state at most once
-per input position — **O(text × program)**, so it cannot backtrack
+per input position, **O(text × program)**, so it cannot backtrack
 exponentially. It is byte-identical to the backtracking VM on the subset it
 accepts (leftmost-first priority, identical class/anchor semantics), and is
 **gated two ways**: it only accepts the *safe subset* (no back-references,
 atomic/possessive groups, look-around, conditionals, sub-routine calls,
 callouts, `\K`, ignore-case, empty-matchable loop bodies) **and** only takes over
-*risky* patterns (nested repetition — the super-linear-backtracking hazard). Flat
+*risky* patterns (nested repetition, the super-linear-backtracking hazard). Flat
 patterns stay on the faster prefilter path.
 
-`(a+)+$` on N `a`-chars then `!` (a classic exponential case) — **linear**:
+`(a+)+$` on N `a`-chars then `!` (a classic exponential case), **linear**:
 
 | N | 1 000 | 5 000 | 10 000 | 20 000 |
 |---|--:|--:|--:|--:|
@@ -406,13 +406,13 @@ them. The executor's hot loop ([executor.dart](../lib/src/exec/executor.dart))
 now dispatches on `sc[base + oOpcode]` and reads operands from `sc[base + …]`
 instead of dereferencing a heap `Operation` per instruction.
 
-Honest result: this is **performance-neutral** in Dart, not a speedup — within a
+Honest result: this is **performance-neutral** in Dart, not a speedup: within a
 few percent of the `Operation`-object version on common patterns (`lorem` 2.75 →
 2.78 ms, `[a-z]+` 47.0 → 48.9 ms). The reason: the pre-flatten loop already
 hoisted `op = ops[pc]` once per instruction, and Dart bounds-checks every
 typed-list index whereas object field reads are unchecked, so the removed
 pointer-chase is roughly offset by per-field index math + bounds checks. (An
-earlier *parallel*-arrays layout — one `Int32List` per field — was 15–50% slower
+earlier *parallel*-arrays layout, one `Int32List` per field, was 15–50% slower
 because it scattered an instruction's fields across many cache lines; the single
 interleaved array fixes that.) The measurable interpreter-tax wins came from the
 prefilters (§1–2) and the NFA (§3); the flatten's value is structural (no
@@ -420,23 +420,23 @@ per-instruction object dereference) rather than a throughput gain.
 
 ---
 
-# Appendix — String-API subject specialization (S1/S2) + executor ASCII fast decode (E1)
+# Appendix: String-API subject specialization (S1/S2) + executor ASCII fast decode (E1)
 
 Investigation ([docs/regexp-vs-dartvm-investigation.md](../docs/regexp-vs-dartvm-investigation.md))
 proved the String-API gap vs the SDK `RegExp` was **not** the VM: for `lorem` over
 the 1.14 MB ASCII corpus, 94% of the time was `_Utf8Index` building a
 `Map<int,int>` byte↔code-unit index (~1.1 M entries); the match itself was 3%.
 
-**S1 — ASCII subject fast path.** When every code unit is `< 0x80`, the code units
+**S1: ASCII subject fast path.** When every code unit is `< 0x80`, the code units
 *are* the UTF-8 bytes and byte offset == code-unit index. The String API now feeds
 `input.codeUnits` to the same UTF-8 regex with **identity offsets and no index maps**
 (`_AsciiSubject`). Zero semantic change (bytes are identical).
 
-**S2 — typed tables for non-ASCII.** Strings with a code unit `>= 0x80` keep UTF-8
+**S2: typed tables for non-ASCII.** Strings with a code unit `>= 0x80` keep UTF-8
 semantics but replace the hashmap + O(n) fallback with dense **`Int32List`** byte↔char
 tables built in one pass (`_Utf8Subject`), O(1) lookup, no hashing.
 
-**E1 — executor ASCII fast decode.** In the hot char ops (`cclass*`, `anychar`,
+**E1: executor ASCII fast decode.** In the hot char ops (`cclass*`, `anychar`,
 `word`/`noWord`), a byte `< 0x80` in an ASCII-compatible encoding (`enc.isAsciiFast`:
 UTF-8 + single-byte) is decoded as `code = byte, len = 1`, skipping the two virtual
 encoding calls (`enc.length` + `enc.mbcToCode`).
@@ -477,12 +477,12 @@ divergences** over 15 000 cases (5 seeds) + 113 fixed cases vs the C CLI;
 - **S3** (UTF-16 subject engine): S1+S2 already remove the measured tax with exact
   UTF-8 semantics; a UTF-16 engine risks per-encoding semantic divergence.
 - **E2/E3** (emit unused anychar-star/peek opcodes; deterministic-quantifier
-  no-backtrack): change generated bytecode / match core — real parity risk, deferred.
-- **E4** (first-byte map for `\w \d \s`): **proven unsafe/useless for UTF-8** — the
+  no-backtrack): change generated bytecode / match core. Real parity risk, deferred.
+- **E4** (first-byte map for `\w \d \s`): **proven unsafe/useless for UTF-8**. The
   port's `\d`/`\w`/`\s` match Unicode (Arabic-Indic digits, é, 漢, NBSP), so a correct
   first-byte map is near-saturated and a tight ASCII map would skip valid matches.
 
-### Byte API (AOT) vs cached C — after E1
+### Byte API (AOT) vs cached C: after E1
 
 | pattern | C (cached) | Dart AOT | AOT/C |
 |---|--:|--:|--:|
@@ -498,9 +498,9 @@ divergences** over 15 000 cases (5 seeds) + 113 fixed cases vs the C CLI;
 **Measurement caveat / no regression.** This run was taken with the VS Code renderer
 pegging a full core (101% CPU) the whole time; the earlier 2.24× baseline was measured
 editor-idle. The tell: `literal-ascii` uses the exact-match/Sunday-skip path that E1
-does **not** modify, yet it inflated 2.56 → 3.30 ms (**1.29×**) — pure contention.
+does **not** modify, yet it inflated 2.56 → 3.30 ms (**1.29×**): pure contention.
 Normalizing the board by that 1.29× gives class-lower ≈ 46.8 ms (**≈1.74×**, vs 1.79×
-pre-E1) and geomean **≈2.13×** — i.e. E1 is neutral-to-slightly-positive at the byte
+pre-E1) and geomean **≈2.13×**, i.e. E1 is neutral-to-slightly-positive at the byte
 level, no regression. E1's byte-API gain is modest because Dart AOT already partly
 devirtualizes the monomorphic encoding calls and the per-char bitset test + backtrack
 push dominate; E1's larger value is enabling the String-API ASCII fast path (S1) to feed
@@ -508,7 +508,7 @@ raw bytes to a decode-free hot loop.
 
 ---
 
-# FULL BENCHMARK — 2026-07-14 (post S1/S2/E1), all engines re-measured
+# FULL BENCHMARK: 2026-07-14 (post S1/S2/E1), all engines re-measured
 
 Cached in `benchmark/bench_results.json` + `benchmark/compute_5way.py` (regenerate via
 `benchmark/collect_5way.py`). All five engines measured fresh in one session, so every
@@ -519,7 +519,7 @@ a core at ~100% throughout (this run's C `literal` 2.28 ms vs 1.94 ms editor-idl
 Unit = median ns/ms to scan the whole corpus for all non-overlapping matches (match counts
 verified identical across engines). ASCII corpus 1.14 MB, Unicode corpus 0.90 MB.
 
-## 5-way — Table A (absolute)
+## 5-way: Table A (absolute)
 
 | pattern | matches | oniguruma_dart·VM | oniguruma_dart·Web | Dart RegExp·VM | Dart RegExp·Web | Oniguruma C |
 |---|--:|--:|--:|--:|--:|--:|
@@ -537,7 +537,7 @@ verified identical across engines). ASCII corpus 1.14 MB, Unicode corpus 0.90 MB
 | backref-dup | 15,606 | 356.50 ms | 496.00 ms | 179.20 ms | 17.89 ms | 46.38 ms |
 | greedy-dotstar | 6,518 | 14.33 ms | 26.30 ms | 455.26 ms | 102.83 ms | 11.85 ms |
 
-## 5-way — Geomean (13 patterns)
+## 5-way: Geomean (13 patterns)
 
 | comparison | geomean | |
 |---|--:|---|
@@ -550,10 +550,10 @@ verified identical across engines). ASCII corpus 1.14 MB, Unicode corpus 0.90 MB
 | oniguruma_dart Web vs  oniguruma_dart VM | 2.42× | web is 2.4× the VM |
 
 Port **beats** Dart RegExp·VM on `class-digit` (8.8 vs 43.2 ms, ~5×) and `greedy-dotstar`
-(14.3 vs 455 ms, ~32× — RegExp backtracks, our `.*`-anchor/NFA don't); near-parity on
+(14.3 vs 455 ms, ~32×: RegExp backtracks, our `.*`-anchor/NFA don't); near-parity on
 `literal`/`email-like`. Web `literal` improved 173 → 19 ms from S1 (ASCII fast path helps JS too).
 
-## Byte API — C vs Dart AOT vs JIT (fresh C, same conditions)
+## Byte API: C vs Dart AOT vs JIT (fresh C, same conditions)
 
 | pattern | matches | C | Dart AOT | AOT/C | Dart JIT | JIT/C |
 |---|--:|--:|--:|--:|--:|--:|
@@ -581,7 +581,7 @@ E1 being neutral-to-slightly-positive (no regression).
 
 ---
 
-# V8 regex: JIT vs bytecode interpreter — 2026-07-14
+# V8 regex: JIT vs bytecode interpreter (2026-07-14)
 
 Question: how fast is V8's *bytecode interpreter* (vs its JIT), so we can compare a
 like-for-like interpreter against our pure-Dart one. Node v26. Flags:
@@ -607,7 +607,7 @@ regex measurement). Same session; ratios fair (absolutes ~1.2× high under edito
 | backref-dup | 20.29 ms | 115.00 ms | 5.7× |
 | greedy-dotstar | 106.83 ms | 318.00 ms | 3.0× |
 
-**geomean interp/JIT = 3.0×** — the machine-code regex is 3× its own interpreter
+**geomean interp/JIT = 3.0×**: the machine-code regex is 3× its own interpreter
 (bigger on backtracking: word-boundary 8.5×, backref 5.7×; ~1× on literals, which are
 prefilter-bound not engine-bound).
 
@@ -619,16 +619,16 @@ prefilter-bound not engine-bound).
 | Dart RegExp·VM (V8 Irregexp interp, opts disabled) | 2.27× |
 | oniguruma_dart·VM (our Dart interp, String API) | 2.85× |
 | oniguruma_dart byte API (our Dart interp, engine only) | 2.41× |
-| — V8 regex JIT (machine code, for reference) | 0.36× (2.8× faster than C) |
+| V8 regex JIT (machine code, for reference) | 0.36× (2.8× faster than C) |
 
 Derived: our Dart interpreter is **~2.2–2.6× V8's regex interpreter**
 (byte engine 2.41/1.09 ≈ 2.2×; String API 2.6×). Notably **Dart-VM's own RegExp is 2.1×
-slower than Node's V8 interpreter despite being the same Irregexp** — because Dart's
+slower than Node's V8 interpreter despite being the same Irregexp**, because Dart's
 re-import disables `FLAG_regexp_optimization` (inline quick-check + node specialization)
 and peephole fusion (see investigation §A.5); Node keeps them on.
 
 Algorithm beats engine on `greedy-dotstar`: our Dart interpreter 14.3 ms and C 11.9 ms
-both crush **even V8's JIT** (106.8 ms) and its interpreter (318 ms) — V8 backtracks the
+both crush **even V8's JIT** (106.8 ms) and its interpreter (318 ms): V8 backtracks the
 `.*` where our `.*`-anchor / linear NFA do not.
 
 ---
@@ -637,16 +637,16 @@ both crush **even V8's JIT** (106.8 ms) and its interpreter (318 ms) — V8 back
 
 **The standard 4-engine comparison from now on.** Regenerate:
 `python3 benchmark/mainstream.py --run` (renders from `benchmark/mainstream_results.json`
-without `--run`). All are bytecode interpreters **except** none here is JIT'd — V8 is
+without `--run`). All are bytecode interpreters **except** none here is JIT'd. V8 is
 forced onto its interpreter so this is like-for-like. Unit = median ns/ms to scan the
 corpus for all matches; ratios are the signal (absolutes ~1.2× high under editor load).
 
-- **Oniguruma C** — reference C library (byte API, native)
-- **V8 interp** — Node `--regexp-interpret-all` (V8 Irregexp **bytecode interpreter**, not its JIT)
-- **Dart RegExp·VM** — `dart:core` RegExp on the Dart VM (V8 Irregexp interpreter, opts disabled)
-- **oniguruma_dart·VM** — this port's `OnigRegex` String API on the Dart VM (our pure-Dart interpreter)
+- **Oniguruma C**: reference C library (byte API, native)
+- **V8 interp**: Node `--regexp-interpret-all` (V8 Irregexp **bytecode interpreter**, not its JIT)
+- **Dart RegExp·VM**: `dart:core` RegExp on the Dart VM (V8 Irregexp interpreter, opts disabled)
+- **oniguruma_dart·VM**: this port's `OnigRegex` String API on the Dart VM (our pure-Dart interpreter)
 
-## Geomean vs Oniguruma C (13 patterns) — after the full /goal per-pattern push
+## Geomean vs Oniguruma C (13 patterns): after the full /goal per-pattern push
 
 | engine | geomean vs C |
 |---|--:|
@@ -664,7 +664,7 @@ which halved the backtracking patterns (`backref-dup` 6.8→3.4× C, `email-like
 
 **Executor reuse** (`search.dart` per-Regex Executor cache): `onigSearch` is called once
 per match, and previously built a fresh `Executor` (MatchStack of 6× `Int32List(128)` +
-mem buffers + `List.generate`) each time — ~166k allocations for `class-lower`. Reusing one
+mem buffers + `List.generate`) each time: ~166k allocations for `class-lower`. Reusing one
 Executor across a scan (same subject + params, no callouts) cut the byte geomean 2.06× →
 **1.50× C** and the String-API geomean 2.03× → **1.46× C**. The port now **beats C** on
 `class-lower` (0.82×), `named-group` (0.97×), `greedy-dotstar` (0.63×) and is at parity on
@@ -672,7 +672,7 @@ Executor across a scan (same subject + params, no callouts) cut the byte geomean
 
 Older summary (pre-reuse):
 
-Head-to-head: oniguruma_dart·VM / Dart RegExp·VM = **0.90× — the port is now FASTER than
+Head-to-head: oniguruma_dart·VM / Dart RegExp·VM = **0.90×: the port is now FASTER than
 Dart's built-in RegExp on the String-API geomean** (was 1.25×); oniguruma_dart·VM / V8
 interp = **1.84×** (was 2.61×). The jump from 2.39× to 2.03× C came from the String-API
 **encode memoization** (`OnigRegex._subjectFor`): repeated scans of the same String skip
@@ -727,26 +727,26 @@ all OFF in Dart per dart-lang/sdk@3.12.2 base.h):
 | Dart RegExp·VM | 2.27× |
 | **V8 interp, Dart's config (opts OFF)** | **3.22×** |
 
-Disabling those flags slows V8's own interpreter by **2.95× geomean** — past Dart RegExp.
+Disabling those flags slows V8's own interpreter by **2.95× geomean**, past Dart RegExp.
 So **Dart RegExp / V8(Dart-config) = 0.71×**: at equal settings Dart's engine is actually
 ~1.4× *faster* than Node's interpreter. The entire "Dart is 2× slower" is Dart shipping the
 same engine with **quick-check + peephole + unroll turned off**, emitting verbose bytecode
 the interpreter must chew through. Extreme case `class-digit` (`[0-9]+`, digits rare in the
 corpus): opts-ON emits a skip-to-next-digit loop = 1.55 ms; opts-OFF scans every char =
 88.8 ms (**57×**). Dart RegExp keeps a partial skip (43 ms). Secondary factors (V8 version,
-per-match host/harness overhead) net slightly in Dart's favor, so the flags fully explain —
-and over-explain — the gap.
+per-match host/harness overhead) net slightly in Dart's favor, so the flags fully explain,
+and over-explain, the gap.
 
 ---
 
-# Engine optimization: Op.starGreedy fast loop — 2026-07-14
+# Engine optimization: Op.starGreedy fast loop (2026-07-14)
 
 "Enable all optimizations we can": added a specialized greedy loop for single-item
 bodies (`[class]*/+`, `\w+`, `\d+`, `.*`, ctypes) mirroring C's `OP_ANYCHAR_STAR`
 idea. Instead of `PUSH; body; JUMP` pushing one backtrack frame **per character**, the
 new `Op.starGreedy` opcode scans the whole run in a tight loop and pushes **one**
 decrement-on-backtrack frame (`Stk.starLoop`). Semantics-preserving (longest-first, give
-back one char per backtrack) — validated byte-identical.
+back one char per backtrack), validated byte-identical.
 
 Validation: `dart test` **5290 pass** (+11 focused give-back tests); differential fuzz
 **0 divergences** over 18,000 cases (6 seeds) + 113 fixed; `dart analyze` clean.
@@ -771,11 +771,11 @@ geomean onig/RegExp **1.3× → 1.2×** (median 1.8× → 1.5×). Now beats RegE
 `two-words` 1.5× → 1.2×.
 
 Fires for single char-class / ctype / anychar greedy repeats; not yet for single literal
-chars (`a+`) or groups (`(ab)+`) — future extension.
+chars (`a+`) or groups (`(ab)+`), future extension.
 
 ---
 
-# More engine + wrapper pushes — 2026-07-14 (loop-hoist + non-ASCII cursor)
+# More engine + wrapper pushes: 2026-07-14 (loop-hoist + non-ASCII cursor)
 
 Two follow-ups after Op.starGreedy:
 
@@ -793,23 +793,23 @@ Two follow-ups after Op.starGreedy:
 
 Validation: `dart test` **5293 pass** (+3 cursor edge-case tests); differential fuzz **0
 divergences** over 12,500 cases (5 seeds) after the hoist; `dart analyze` clean. (The cursor is
-wrapper-only — the byte-API oracle is unaffected.)
+wrapper-only: the byte-API oracle is unaffected.)
 
 ---
 
-# Engine round 3 — word-char ASCII fast path + alternation quick-check (2026-07-14)
+# Engine round 3: word-char ASCII fast path + alternation quick-check (2026-07-14)
 
 Two more "enable all optimizations" engine changes:
 
 1. **`\w` ASCII fast path** (`executor.dart` `_isWord`): ASCII word membership is identical
    under ascii-mode and Unicode-mode (`[A-Za-z0-9_]` in `[0,0x80)`), so `code < 0x80` now
-   uses the ASCII ctype table instead of the virtual `enc.isCodeCtype` — removing a virtual
+   uses the ASCII ctype table instead of the virtual `enc.isCodeCtype`, removing a virtual
    call per character on `\w`/`\W` over ASCII text.
 
 2. **Alternation quick-check `Op.peekByte`** (`compiler.dart` `_compileAlt`, `executor.dart`):
    before each non-last branch that has a *complete, non-nullable* first-byte set, peek the
    current byte; if it can't begin the branch, skip past it with no PUSH / enter / fail. The
-   first-byte helper (`_altFirstBytes`) is deliberately conservative — it declines nullable
+   first-byte helper (`_altFirstBytes`) is deliberately conservative: it declines nullable
    heads (`(a?)b|…`), negated classes (`[^a]|…`), and ctypes (`\w+|…`), so it can only ever
    skip a branch that provably cannot match.
 
@@ -823,7 +823,7 @@ algorithmic change (the NFA linear path is disqualified by back-references).
 
 ---
 
-# /goal per-pattern push — encode cache, Executor reuse, alloc-free backtrack (2026-07-14)
+# /goal per-pattern push: encode cache, Executor reuse, alloc-free backtrack (2026-07-14)
 
 Worst-first per-pattern optimization (`benchmark/sorted.py` ranks by port/min-competitor):
 
@@ -842,7 +842,7 @@ Validation each step: 5303 tests (+ String-API cache/reuse tests), differential 
 divergences (15k+/step), `dart analyze` clean.
 
 Remaining above C: `backref-dup` (6.8×), `email-like` (3.0×), `word-boundary` (2.3×),
-`alt-5`/`two-words`/`case-insens` (1.3–1.6×) — all backtracking-bound; even V8's interpreter
+`alt-5`/`two-words`/`case-insens` (1.3–1.6×), all backtracking-bound; even V8's interpreter
 is 2.4× C on `backref-dup`. This is the practical floor for a pure-Dart bytecode interpreter
 vs a C library / V8's C++ interpreter. `literal-unicode` (6.4× V8) is bounded by V8's
 zero-copy match on the native UTF-16 buffer, which pure Dart can't replicate.
@@ -852,7 +852,7 @@ zero-copy match on the native UTF-16 buffer, which pure Dart can't replicate.
 # literal-unicode & backref-dup: why they're proven floors (2026-07-14 investigation)
 
 **literal-unicode (6.4× V8).** Measured the byte-API match alone: **811 µs, which BEATS C
-(0.92×)** — the engine is not the bottleneck. V8's 0.16 ms is native **UTF-16 zero-copy**
+(0.92×)**. The engine is not the bottleneck. V8's 0.16 ms is native **UTF-16 zero-copy**
 matching (600 KB vs our 900 KB UTF-8). I built a UTF-16 subject engine and differentially
 tested it: **~13,000 randomized first-match cases + 308 fixed cases across `\w \d \s \p \X`
 backrefs / case-insensitive / anchors / alternation over CJK/emoji/accented/supplementary
@@ -861,14 +861,14 @@ byte-advance artifact). So a UTF-16 port engine is *feasible and semantically co
 (a) it still requires an O(n) encode (Dart exposes no zero-copy access to a String's internal
 bytes), so it **cannot reach V8's zero-copy 0.16 ms**; (b) it would put a second, less-oracle-
 covered encoding on the hot path for uncommon constructs (look-around, `\K`, multi-char folds,
-`\R`) not in the differential set — a real risk to the byte-exact-C guarantee. Net: the V8 gap
+`\R`) not in the differential set, a real risk to the byte-exact-C guarantee. Net: the V8 gap
 is a hard **zero-copy floor**; the port already beats C at the byte level.
 
 **backref-dup (3.4× C).** Classic O(word²) backtracking re-scan. **Even V8's own interpreter is
-2.4× C here** — hard for every interpreter. Auto-possessification halved it (6.8 → 3.4×). The
+2.4× C here**: hard for every interpreter. Auto-possessification halved it (6.8 → 3.4×). The
 residual is the pure-Dart per-step constant factor (bounds-checked typed lists, no computed-goto)
 vs V8/C's C++.
 
 Both gaps are architectural/fundamental, not unexplored optimizations: closing them needs
-zero-copy String bytes (absent in Dart) or a different engine class (DFA — loses Oniguruma
+zero-copy String bytes (absent in Dart) or a different engine class (DFA: loses Oniguruma
 features), each forfeiting either the language's limits or this port's byte-exact-C purpose.
