@@ -1,3 +1,7 @@
+## 1.0.1+2
+
+- Relax minimum version constraints to allow `meta: ^1.18.0`
+
 ## 1.0.1+1
 
 - Relax dependency constraints.

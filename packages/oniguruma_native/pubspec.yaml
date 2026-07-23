@@ -4,7 +4,7 @@ description: >-
   Oniguruma regex bindings for Dart on every platform: native dart:ffi on IO,
   WebAssembly on web, behind one vscode-oniguruma-compatible OnigScanner API.
 
-version: 1.0.1+1
+version: 1.0.1+2
 
 repository: https://github.com/BirjuVachhani/oniguruma-dart/tree/main/packages/oniguruma_native
 issue_tracker: https://github.com/BirjuVachhani/oniguruma-dart/issues
