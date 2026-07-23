@@ -12,7 +12,7 @@ library;
 
 /// This package's version. **Must** match `version:` in `pubspec.yaml`
 /// (enforced by `test/version_test.dart`).
-const String packageVersion = '1.0.1+1';
+const String packageVersion = '1.0.1+2';
 
 /// The GitHub repository that hosts the released wasm assets.
 const String _repoBaseUrl = 'https://github.com/BirjuVachhani/oniguruma-dart';
