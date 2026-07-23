@@ -1,3 +1,7 @@
+## 1.0.1+1
+
+- Relax dependency constraints.
+
 ## 1.0.1
 
 - Docs: add "Advanced features" and "Examples" sections to the README, covering the full Oniguruma dialect driven through `OnigScanner`, a tokenizer loop, and reading capture groups by index.

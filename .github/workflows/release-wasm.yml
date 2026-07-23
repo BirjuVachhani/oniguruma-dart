@@ -17,7 +17,7 @@ name: release-wasm
 on:
   push:
     tags:
-      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+(+[0-9]+)?'
   workflow_dispatch:
     inputs:
       tag:
