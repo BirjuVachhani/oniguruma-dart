@@ -15,8 +15,8 @@ topics:
   - oniguruma
   - regex
   - regexp
-  - unicode
   - textmate
+  - syntax-highlighting
 
 environment:
   sdk: ^3.12.0

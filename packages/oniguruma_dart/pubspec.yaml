@@ -13,11 +13,11 @@ issue_tracker: https://github.com/BirjuVachhani/oniguruma-dart/issues
 resolution: workspace
 
 topics:
+  - oniguruma
   - regex
   - regexp
-  - oniguruma
-  - regular-expression
   - unicode
+  - text-processing
 
 environment:
   sdk: ^3.12.0
