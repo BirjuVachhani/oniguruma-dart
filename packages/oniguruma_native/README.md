@@ -1,3 +1,5 @@
+![oniguruma_native](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/banner.webp)
+
 # oniguruma_native
 
 Dart bindings to the [Oniguruma](https://github.com/kkos/oniguruma)

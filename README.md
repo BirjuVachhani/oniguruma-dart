@@ -1,3 +1,5 @@
+![Oniguruma for Dart](https://raw.githubusercontent.com/BirjuVachhani/oniguruma-dart/main/banner.webp)
+
 # Oniguruma for Dart
 
 Dart implementations of the [Oniguruma](https://github.com/kkos/oniguruma)
